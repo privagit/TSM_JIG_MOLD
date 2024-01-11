@@ -132,7 +132,7 @@ router.delete('/receive/delete', async (req, res) => {
 //* ========== Maintenace ==========
 // Maintenance
 const storagePmImage = multer.diskStorage({
-    destination: path.join(__dirname, '../public/mold/pm_checkfile'),
+    destination: path.join(__dirname, '../../public/mold/pm_checkfile'),
     filename: (req, file, cb) => {
         let { MoldID } = req.query;
         let uploadDate = new Date();
@@ -670,7 +670,7 @@ router.delete('/sparepart/location/delete', async (req, res) => {
 
 //* ========== Skill ==========
 const storageTechnicianImage = multer.diskStorage({
-    destination: path.join(__dirname, '../public/mold/technician'),
+    destination: path.join(__dirname, '../../public/mold/technician'),
     filename: (req, file, cb) => {
         let { EmployeeID } = req.query;
         let uploadDate = new Date();
@@ -682,7 +682,7 @@ const storageTechnicianImage = multer.diskStorage({
 const uploadTechnicianImage = multer({ storage: storageTechnicianImage }).single('technician_image');
 
 const storageTechnicianSkill = multer.diskStorage({
-    destination: path.join(__dirname, '../public/mold/tech_skill'),
+    destination: path.join(__dirname, '../../public/mold/tech_skill'),
     filename: (req, file, cb) => {
         let { EmployeeID, SkillID } = req.query;
         let uploadDate = new Date();
