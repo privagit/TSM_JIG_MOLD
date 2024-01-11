@@ -11,7 +11,7 @@ app.use(express.urlencoded({extended: false}));
 app.use(express.json()); //body-parser for get
 app.use(morgan('dev'));
 app.use(cors({
-    origin: CORS_URL, // Replace with the actual URL of your main server
+    origin: JSON.parse(CORS_URL), // Replace with the actual URL of your main server
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
 }));
@@ -65,7 +65,7 @@ let server = app.listen(PORT, () => {
 })
 
 const io = require('socket.io')(server, {
-    cors: CORS_URL
+    cors: JSON.parse(CORS_URL)
 });
 app.set('socketio', io);
 
