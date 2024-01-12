@@ -25,7 +25,7 @@ router.post('/jig', async (req, res) => { //TODO: UseIn
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/jig/type/edit', async (req, res) => {
+router.put('/jig/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { JigID, PartCode, PartName, Asset, Location, Status } = req.body;
@@ -444,11 +444,12 @@ router.post('/maintenace', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { JigID } = req.body;
+        console.log(req.body)
         let maintenance = await pool.request().query(`SELECT a.PmID, a.JigID, a.Week, a.ImagePath, a.PmTopic
         FROM [Jig].[MasterPm] a
         WHERE JigID = ${JigID};
         `);
-        res.json(maintenance.receiveCheck);
+        res.json(maintenance.recordset);
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -1183,6 +1184,18 @@ router.post('/skill/technician/skill/train', async (req, res) => { //TODO: EditU
 router.post('/docctrl', async (req, res) => {
     try {
         let pool = await sql.connect(config);
+        let DocCtrl = await pool.request().query(`SELECT DocumentID, DocumentCtrlNo, DocumentName
+        FROM [Jig].[MasterDocumentCtrl];
+        `);
+        res.json(DocCtrl.recordset)
+    } catch(err){
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/docctrl/item', async (req, res) => {
+    try {
+        let pool = await sql.connect(config);
         let { DocumentName } = req.body;
         let DocCtrl = await pool.request().query(`SELECT DocumentID, DocumentCtrlNo, DocumentName
         FROM [Jig].[MasterDocumentCtrl]
@@ -1198,7 +1211,7 @@ router.put('/docctrl/edit', async (req, res) => {
     try
     {
         let pool = await sql.connect(config);
-        let { DocumentID, DocumentName, DocumentCtrlNo } = req.body;
+        let { DocumentName, DocumentCtrlNo } = req.body;
         let updateDocCrtl = `
         DECLARE @DocumentID INT
         SET @DocumentID = (SELECT DocumentID FROM [Jig].[MasterDocumentCtrl] WHERE DocumentName = '${DocumentName}');
