@@ -50,7 +50,7 @@ const swaggerOptions = {
             },
         ],
     },
-    apis: ['./routes/*.js', './routes/jig/*.js', './routes/mold/*.js']
+    apis: ['./routes/jig/*.js']
 };
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec));
