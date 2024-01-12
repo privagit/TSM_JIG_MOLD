@@ -378,7 +378,7 @@ router.post('/daily/checkpoint/detail', async (req, res) => {
         SELECT a.DailyCheckDetailID, a.DailyCheckDetail, a.DailyCheckDetailNo
         FROM [Jig].[MasterDailyCheckDetail] a
         WHERE a.DailyCheckPointID = ${DailyCheckPointID} AND Active = 1
-        ORDER BY DailyCheckDetailNo;
+        ORDER BY DailyCheckDetailNo ;
         `);
         res.json(dailyCheckpointDetail.recordset);
     } catch (err) {
@@ -450,7 +450,7 @@ router.post('/maintenace', async (req, res) => {
         FROM [Jig].[MasterPm] a
         WHERE JigID = ${JigID};
         `);
-        res.json(maintenance.receiveCheck);
+        res.json(maintenance.recordset);
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
