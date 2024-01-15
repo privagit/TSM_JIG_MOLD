@@ -35,6 +35,8 @@ app.use('/mold/setting', moldSettingRouter);
 let jigSettingRouter = require('./routes/jig/setting');
 app.use('/jig/setting', jigSettingRouter);
 
+let jigSparepartRouter = require('./routes/jig/sparepart');
+app.use('/jig/sparepart', jigSparepartRouter);
 // Swagger definition
 const swaggerOptions = {
     definition: {
