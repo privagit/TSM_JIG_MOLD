@@ -433,7 +433,7 @@ const storagePmImage = multer.diskStorage({
     filename: (req, file, cb) => {
         let { JigID } = req.query;
         let uploadDate = new Date();
-        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth()+1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
+        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth() + 1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
         const ext = file.mimetype.split('/')[1];
         cb(null, `${JigID}_${uploadDateStr}` + '.' + ext);
     }
@@ -444,11 +444,12 @@ router.post('/maintenace', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { JigID } = req.body;
+        console.log(req.body)
         let maintenance = await pool.request().query(`SELECT a.PmID, a.JigID, a.Week, a.ImagePath, a.PmTopic
         FROM [Jig].[MasterPm] a
         WHERE JigID = ${JigID};
         `);
-        res.json(maintenance.receiveCheck);
+        res.json(maintenance.recordset);
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -485,6 +486,7 @@ router.post('/maintenace/pm/checkfile/upload', async (req, res) => { // Upload P
         } else {
             try {
                 let pool = await sql.connect(config);
+                console.log(req.file.filename)
                 let ImagePath = (req.file) ? "/jig/pm_checkfile/" + req.file.filename : "";
                 let { JigID } = req.body;
                 let updatePmCheckfile = `DECLARE @PmID INT;
@@ -770,6 +772,7 @@ router.post('/sparepart/category', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let category = await pool.request().query(`SELECT SpareCategoryID, Category FROM [Jig].[MasterSpareCategory] WHERE Active = 1;`);
+
         res.json(category.recordset);
     } catch (err) {
         console.log(req.url, err);
@@ -867,7 +870,7 @@ const storageTechnicianImage = multer.diskStorage({
     filename: (req, file, cb) => {
         let { EmployeeID } = req.query;
         let uploadDate = new Date();
-        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth()+1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
+        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth() + 1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
         const ext = file.mimetype.split('/')[1];
         cb(null, `${EmployeeID}_${uploadDateStr}` + '.' + ext);
     }
@@ -879,7 +882,7 @@ const storageTechnicianSkill = multer.diskStorage({
     filename: (req, file, cb) => {
         let { EmployeeID, SkillID } = req.query;
         let uploadDate = new Date();
-        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth()+1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
+        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth() + 1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
         const ext = file.mimetype.split('/')[1];
         cb(null, `${EmployeeID}_SkillID_${uploadDateStr}` + '.' + ext);
     }
@@ -963,12 +966,12 @@ router.post('/skill/position/skill', async (req, res) => { //* initial Skill by 
         WHERE a.PositionID = ${PositionID};
         `);
 
-        if(positionSkill.recordset.length){
+        if (positionSkill.recordset.length) {
             let UsedSkillJson = JSON.parse(positionSkill.recordset[0].UsedSkill);
             let Skill = [];
-            for(let item of UsedSkillJson){
+            for (let item of UsedSkillJson) {
                 let getSkill = await pool.request().query(`SELECT a.SkillID, a.Skill FROM [Jig].[MasterSkill] a WHERE a.SkillID = ${item.SkillID} AND a.Active = 1;`);
-                if(getSkill.recordset.length){
+                if (getSkill.recordset.length) {
                     Skill.push(getSkill.recordset[0]);
                 }
             }
@@ -1018,7 +1021,7 @@ router.post('/skill/technician', async (req, res) => { // Where DepartmentID = 1
         LEFT JOIN [TSM_EM].[Jig].[MasterTechnician] d ON a.UserID = d.UserID
         WHERE c.PositionName like '%tech%'
         `);
-        for(let user of skill.recordset){
+        for (let user of skill.recordset) {
             user.FirstName = atob(user.FirstName);
         }
         res.json(skill.recordset);
@@ -1035,12 +1038,12 @@ router.post('/skill/technician/skill', async (req, res) => { //* get Tech Skill
         FROM [TSM_EM].[Jig].[MasterPositionSkill] a
         WHERE a.PositionID = ${PositionID};
         `);
-        if(PositionSkill.recordset.length){
+        if (PositionSkill.recordset.length) {
             let UsedSkillJson = JSON.parse(PositionSkill.recordset[0].UsedSkill);
             let Skill = [];
-            for(let item of UsedSkillJson){
+            for (let item of UsedSkillJson) {
                 let getSkill = await pool.request().query(`SELECT a.SkillID, a.Skill FROM [Jig].[MasterSkill] a WHERE a.SkillID = ${item.SkillID} AND a.Active = 1;`);
-                if(getSkill.recordset.length){
+                if (getSkill.recordset.length) {
                     Skill.push(getSkill.recordset[0]);
                 }
             }
@@ -1189,14 +1192,13 @@ router.post('/docctrl', async (req, res) => {
         WHERE DocumentName = '${DocumentName}';
         `);
         res.json(DocCtrl.recordset)
-    } catch(err){
+    } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
     }
 })
 router.put('/docctrl/edit', async (req, res) => {
-    try
-    {
+    try {
         let pool = await sql.connect(config);
         let { DocumentID, DocumentName, DocumentCtrlNo } = req.body;
         let updateDocCrtl = `
@@ -1213,9 +1215,9 @@ router.put('/docctrl/edit', async (req, res) => {
 	        END
         `;
         await pool.request().query(updateDocCrtl);
-        res.json({ message:`Success` });
+        res.json({ message: `Success` });
     }
-    catch(err){
+    catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
     }
