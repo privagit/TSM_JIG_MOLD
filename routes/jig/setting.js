@@ -296,7 +296,7 @@ router.put('/torque/check/edit', async (req, res) => {
         IF(@TorqueCheckID IS NULL) -- Insert
         BEGIN
             INSERT INTO [Jig].[MasterTorqueCheck](JigID, TorqueNo, Spec, ToleranceMin, ToleranceMax, Model, ProcessFileNo, UseScrew)
-            VALUES(${JigID}, N'${TorqueNo}', ${Spec}, ${ToleranceMin}, ${ToleranceMax}, N'${Model}', N'${ProcessFileNo}', N''${UseScrew});
+            VALUES(${JigID}, N'${TorqueNo}', ${Spec}, ${ToleranceMin}, ${ToleranceMax}, N'${Model}', N'${ProcessFileNo}', N'${UseScrew}');
         END
         ELSE -- Update
         BEGIN
@@ -446,7 +446,6 @@ router.post('/maintenace', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { JigID } = req.body;
-        console.log(req.body)
         let maintenance = await pool.request().query(`SELECT a.PmID, a.JigID, a.Week, a.ImagePath, a.PmTopic
         FROM [Jig].[MasterPm] a
         WHERE JigID = ${JigID};
@@ -1214,6 +1213,7 @@ router.put('/docctrl/edit', async (req, res) => {
     {
         let pool = await sql.connect(config);
         let { DocumentName, DocumentCtrlNo } = req.body;
+        console.log(req.body)
         let updateDocCrtl = `
         DECLARE @DocumentID INT
         SET @DocumentID = (SELECT DocumentID FROM [Jig].[MasterDocumentCtrl] WHERE DocumentName = '${DocumentName}');

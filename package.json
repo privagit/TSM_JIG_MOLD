@@ -27,6 +27,6 @@
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0",
     "xlsx-populate": "^1.21.0",
-    "node-cron": "^3.0.3",
+    "node-cron": "^3.0.3"
   }
 }
