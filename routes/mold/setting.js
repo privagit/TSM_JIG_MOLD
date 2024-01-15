@@ -132,7 +132,7 @@ router.delete('/receive/delete', async (req, res) => {
 //* ========== Maintenace ==========
 // Maintenance
 const storagePmImage = multer.diskStorage({
-    destination: path.join(__dirname, '../public/mold/pm_checkfile'),
+    destination: path.join(__dirname, '../../public/mold/pm_checkfile'),
     filename: (req, file, cb) => {
         let { MoldID } = req.query;
         let uploadDate = new Date();
@@ -670,7 +670,7 @@ router.delete('/sparepart/location/delete', async (req, res) => {
 
 //* ========== Skill ==========
 const storageTechnicianImage = multer.diskStorage({
-    destination: path.join(__dirname, '../public/mold/technician'),
+    destination: path.join(__dirname, '../../public/mold/technician'),
     filename: (req, file, cb) => {
         let { EmployeeID } = req.query;
         let uploadDate = new Date();
@@ -682,7 +682,7 @@ const storageTechnicianImage = multer.diskStorage({
 const uploadTechnicianImage = multer({ storage: storageTechnicianImage }).single('technician_image');
 
 const storageTechnicianSkill = multer.diskStorage({
-    destination: path.join(__dirname, '../public/mold/tech_skill'),
+    destination: path.join(__dirname, '../../public/mold/tech_skill'),
     filename: (req, file, cb) => {
         let { EmployeeID, SkillID } = req.query;
         let uploadDate = new Date();
@@ -822,7 +822,7 @@ router.post('/skill/technician', async (req, res) => { // Where DepartmentID = 1
         FROM [TSMolymer_F].[dbo].[User] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterDepartment] b ON a.DepartmentID = b.DepartmentID
         LEFT JOIN [TSMolymer_F].[dbo].[MasterPosition] c ON a.PositionID = c.PositionID
-        LEFT JOIN [TSM_EM].[Mold].[MasterTechnician] d ON a.UserID = d.UserID
+        LEFT JOIN [TSM_Mold].[Mold].[MasterTechnician] d ON a.UserID = d.UserID
         WHERE c.PositionName like '%tech%'
         `);
         for(let user of skill.recordset){
@@ -839,7 +839,7 @@ router.post('/skill/technician/skill', async (req, res) => { //* get Tech Skill
         let pool = await sql.connect(config);
         let { PositionID, UserID } = req.body;
         let PositionSkill = await pool.request().query(`SELECT a.PositionSkillID, a.PositionID, a.UsedSkill, a.TotalUsedSkill
-        FROM [TSM_EM].[Mold].[MasterPositionSkill] a
+        FROM [TSM_Mold].[Mold].[MasterPositionSkill] a
         WHERE a.PositionID = ${PositionID};
         `);
         if(PositionSkill.recordset.length){
@@ -857,7 +857,7 @@ router.post('/skill/technician/skill', async (req, res) => { //* get Tech Skill
         let TechSkill = await pool.request().query(`WITH cte AS (
             SELECT ROW_NUMBER() OVER (PARTITION BY a.SkillID ORDER BY a.TechSkillID DESC) AS RowNum,
             a.SkillID, a.Score
-            FROM [TSM_EM].[Mold].[MasterTechSkill] a
+            FROM [TSM_Mold].[Mold].[MasterTechSkill] a
             WHERE a.UserID = ${UserID}
         )
         SELECT a.SkillID, a.Score
@@ -876,7 +876,7 @@ router.post('/skill/technician/skill/item/history', async (req, res) => { //* ge
         let { UserID, SkillID } = req.body;
 
         let TechSkill = await pool.request().query(`SELECT a.TechSkillID, a.UpdatedAt, a.FilePath, a.Score
-        FROM [TSM_EM].[Mold].[MasterTechSkill] a
+        FROM [TSM_Mold].[Mold].[MasterTechSkill] a
         WHERE a.UserID = ${UserID} AND a.SkillID = ${SkillID}
         ORDER BY a.UpdatedAt;
         `);
@@ -891,8 +891,8 @@ router.post('/skill/technician/skill/item', async (req, res) => { //* get Tech S
         let pool = await sql.connect(config);
         let { TechSkillID } = req.body;
         let TechSkill = await pool.request().query(`SELECT a.TechSkillID, b.SkillID, b.Skill, a.UpdatedAt, a.Score, a.FilePath
-        FROM [TSM_EM].[Mold].[MasterTechSkill] a
-        LEFT JOIN [TSM_EM].[Mold].[MasterSkill] b ON a.SkillID = b.SkillID
+        FROM [TSM_Mold].[Mold].[MasterTechSkill] a
+        LEFT JOIN [TSM_Mold].[Mold].[MasterSkill] b ON a.SkillID = b.SkillID
         WHERE a.TechSkillID = ${TechSkillID};
         `);
         res.json(TechSkill.recordset);

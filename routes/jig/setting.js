@@ -25,7 +25,7 @@ router.post('/jig', async (req, res) => { //TODO: UseIn
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/jig/type/edit', async (req, res) => {
+router.put('/jig/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { JigID, PartCode, PartName, Asset, Location, Status } = req.body;
@@ -99,7 +99,7 @@ router.delete('/jig/type/delete', async (req, res) => {
 
 //* ========== Creation ==========
 // Evaluation Topic
-router.post('/eval/topic', async (req, res) => {
+router.post('/evaluation/topic', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let evalTopic = await pool.request().query(`
@@ -113,7 +113,7 @@ router.post('/eval/topic', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/eval/topic/add', async (req, res) => {
+router.post('/evaluation/topic/add', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { EvalTopic } = req.body;
@@ -127,7 +127,7 @@ router.post('/eval/topic/add', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/eval/topic/edit', async (req, res) => {
+router.put('/evaluation/topic/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { EvalTopicID, EvalTopic } = req.body;
@@ -141,7 +141,7 @@ router.put('/eval/topic/edit', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.delete('/eval/topic/delete', async (req, res) => {
+router.delete('/evaluation/topic/delete', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { EvalTopicID } = req.body;
@@ -154,7 +154,7 @@ router.delete('/eval/topic/delete', async (req, res) => {
     }
 })
 // Evaluation Detail
-router.post('/eval/detail', async (req, res) => {
+router.post('/evaluation/detail', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { EvalTopicID } = req.body;
@@ -169,7 +169,7 @@ router.post('/eval/detail', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/eval/detail/add', async (req, res) => {
+router.post('/evaluation/detail/add', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { EvalTopicID, EvalDetail } = req.body;
@@ -183,7 +183,7 @@ router.post('/eval/detail/add', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/eval/detail/edit', async (req, res) => {
+router.put('/evaluation/detail/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { EvalDetailID, EvalDetail } = req.body;
@@ -197,7 +197,7 @@ router.put('/eval/detail/edit', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.delete('/eval/detail/delete', async (req, res) => {
+router.delete('/evaluation/detail/delete', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { EvalDetailID } = req.body;
@@ -210,7 +210,7 @@ router.delete('/eval/detail/delete', async (req, res) => {
     }
 })
 // Evaluation Criteria
-router.post('/eval/criteria', async (req, res) => {
+router.post('/evaluation/criteria', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { EvalDetailID } = req.body;
@@ -225,7 +225,7 @@ router.post('/eval/criteria', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/eval/criteria/add', async (req, res) => {
+router.post('/evaluation/criteria/add', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { EvalDetailID, EvalCriteria } = req.body;
@@ -239,7 +239,7 @@ router.post('/eval/criteria/add', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/eval/criteria/edit', async (req, res) => {
+router.put('/evaluation/criteria/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { EvalCriteriaID, EvalCriteria } = req.body;
@@ -253,7 +253,7 @@ router.put('/eval/criteria/edit', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.delete('/eval/criteria/delete', async (req, res) => {
+router.delete('/evaluation/criteria/delete', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { EvalCriteriaID } = req.body;
@@ -296,7 +296,7 @@ router.put('/torque/check/edit', async (req, res) => {
         IF(@TorqueCheckID IS NULL) -- Insert
         BEGIN
             INSERT INTO [Jig].[MasterTorqueCheck](JigID, TorqueNo, Spec, ToleranceMin, ToleranceMax, Model, ProcessFileNo, UseScrew)
-            VALUES(${JigID}, N'${TorqueNo}', ${Spec}, ${ToleranceMin}, ${ToleranceMax}, N'${Model}', N'${ProcessFileNo}', N''${UseScrew});
+            VALUES(${JigID}, N'${TorqueNo}', ${Spec}, ${ToleranceMin}, ${ToleranceMax}, N'${Model}', N'${ProcessFileNo}', N'${UseScrew}');
         END
         ELSE -- Update
         BEGIN
@@ -320,7 +320,8 @@ router.post('/daily/checkpoint', async (req, res) => {
         let dailyCheckpoint = await pool.request().query(`
         SELECT a.DailyCheckPointID, a.JigID, a.DailyCheckPoint, a.DailyCheckPointNo
         FROM [Jig].[MasterDailyCheckPoint] a
-        WHERE a.JigID = ${JigID} AND a.Active = 1;
+        WHERE a.JigID = ${JigID} AND a.Active = 1
+        ORDER BY DailyCheckPointNo;
         `);
         res.json(dailyCheckpoint.recordset);
     } catch (err) {
@@ -376,7 +377,8 @@ router.post('/daily/checkpoint/detail', async (req, res) => {
         let dailyCheckpointDetail = await pool.request().query(`
         SELECT a.DailyCheckDetailID, a.DailyCheckDetail, a.DailyCheckDetailNo
         FROM [Jig].[MasterDailyCheckDetail] a
-        WHERE a.DailyCheckPointID = ${DailyCheckPointID};
+        WHERE a.DailyCheckPointID = ${DailyCheckPointID} AND Active = 1
+        ORDER BY DailyCheckDetailNo ;
         `);
         res.json(dailyCheckpointDetail.recordset);
     } catch (err) {
@@ -429,7 +431,7 @@ router.delete('/daily/checkpoint/detail/delete', async (req, res) => {
 //* ========== Maintenace ==========
 // Maintenance
 const storagePmImage = multer.diskStorage({
-    destination: path.join(__dirname, '../public/jig/pm_checkfile'),
+    destination: path.join(__dirname, '../../public/jig/pm_checkfile'),
     filename: (req, file, cb) => {
         let { JigID } = req.query;
         let uploadDate = new Date();
@@ -866,7 +868,7 @@ router.delete('/sparepart/location/delete', async (req, res) => {
 
 //* ========== Skill ==========
 const storageTechnicianImage = multer.diskStorage({
-    destination: path.join(__dirname, '../public/jig/technician'),
+    destination: path.join(__dirname, '../../public/jig/technician'),
     filename: (req, file, cb) => {
         let { EmployeeID } = req.query;
         let uploadDate = new Date();
@@ -878,7 +880,7 @@ const storageTechnicianImage = multer.diskStorage({
 const uploadTechnicianImage = multer({ storage: storageTechnicianImage }).single('technician_image');
 
 const storageTechnicianSkill = multer.diskStorage({
-    destination: path.join(__dirname, '../public/jig/tech_skill'),
+    destination: path.join(__dirname, '../../public/jig/tech_skill'),
     filename: (req, file, cb) => {
         let { EmployeeID, SkillID } = req.query;
         let uploadDate = new Date();
@@ -1018,7 +1020,7 @@ router.post('/skill/technician', async (req, res) => { // Where DepartmentID = 1
         FROM [TSMolymer_F].[dbo].[User] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterDepartment] b ON a.DepartmentID = b.DepartmentID
         LEFT JOIN [TSMolymer_F].[dbo].[MasterPosition] c ON a.PositionID = c.PositionID
-        LEFT JOIN [TSM_EM].[Jig].[MasterTechnician] d ON a.UserID = d.UserID
+        LEFT JOIN [TSM_Jig].[Jig].[MasterTechnician] d ON a.UserID = d.UserID
         WHERE c.PositionName like '%tech%'
         `);
         for (let user of skill.recordset) {
@@ -1035,7 +1037,7 @@ router.post('/skill/technician/skill', async (req, res) => { //* get Tech Skill
         let pool = await sql.connect(config);
         let { PositionID, UserID } = req.body;
         let PositionSkill = await pool.request().query(`SELECT a.PositionSkillID, a.PositionID, a.UsedSkill, a.TotalUsedSkill
-        FROM [TSM_EM].[Jig].[MasterPositionSkill] a
+        FROM [TSM_Jig].[Jig].[MasterPositionSkill] a
         WHERE a.PositionID = ${PositionID};
         `);
         if (PositionSkill.recordset.length) {
@@ -1053,7 +1055,7 @@ router.post('/skill/technician/skill', async (req, res) => { //* get Tech Skill
         let TechSkill = await pool.request().query(`WITH cte AS (
             SELECT ROW_NUMBER() OVER (PARTITION BY a.SkillID ORDER BY a.TechSkillID DESC) AS RowNum,
             a.SkillID, a.Score
-            FROM [TSM_EM].[Jig].[MasterTechSkill] a
+            FROM [TSM_Jig].[Jig].[MasterTechSkill] a
             WHERE a.UserID = ${UserID}
         )
         SELECT a.SkillID, a.Score
@@ -1072,7 +1074,7 @@ router.post('/skill/technician/skill/item/history', async (req, res) => { //* ge
         let { UserID, SkillID } = req.body;
 
         let TechSkill = await pool.request().query(`SELECT a.TechSkillID, a.UpdatedAt, a.FilePath, a.Score
-        FROM [TSM_EM].[Jig].[MasterTechSkill] a
+        FROM [TSM_Jig].[Jig].[MasterTechSkill] a
         WHERE a.UserID = ${UserID} AND a.SkillID = ${SkillID}
         ORDER BY a.UpdatedAt;
         `);
@@ -1087,8 +1089,8 @@ router.post('/skill/technician/skill/item', async (req, res) => { //* get Tech S
         let pool = await sql.connect(config);
         let { TechSkillID } = req.body;
         let TechSkill = await pool.request().query(`SELECT a.TechSkillID, b.SkillID, b.Skill, a.UpdatedAt, a.Score, a.FilePath
-        FROM [TSM_EM].[Jig].[MasterTechSkill] a
-        LEFT JOIN [TSM_EM].[Jig].[MasterSkill] b ON a.SkillID = b.SkillID
+        FROM [TSM_Jig].[Jig].[MasterTechSkill] a
+        LEFT JOIN [TSM_Jig].[Jig].[MasterSkill] b ON a.SkillID = b.SkillID
         WHERE a.TechSkillID = ${TechSkillID};
         `);
         res.json(TechSkill.recordset);
@@ -1186,6 +1188,18 @@ router.post('/skill/technician/skill/train', async (req, res) => { //TODO: EditU
 router.post('/docctrl', async (req, res) => {
     try {
         let pool = await sql.connect(config);
+        let DocCtrl = await pool.request().query(`SELECT DocumentID, DocumentCtrlNo, DocumentName
+        FROM [Jig].[MasterDocumentCtrl];
+        `);
+        res.json(DocCtrl.recordset)
+    } catch(err){
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/docctrl/item', async (req, res) => {
+    try {
+        let pool = await sql.connect(config);
         let { DocumentName } = req.body;
         let DocCtrl = await pool.request().query(`SELECT DocumentID, DocumentCtrlNo, DocumentName
         FROM [Jig].[MasterDocumentCtrl]
@@ -1226,3 +1240,83 @@ router.put('/docctrl/edit', async (req, res) => {
 
 
 module.exports = router;
+
+//? Jig
+/**
+ * @swagger
+ * /jig/setting/jig:
+ *   post:
+ *     summary: Returns all Jig List filter by Customer
+ *     responses:
+ *       200:
+ *         description: A JSON array of Jig list
+ *       500:
+ *         description: Internal Server Error
+ */
+
+/**
+ * @swagger
+ * /jig/setting/jig/edit:
+ *   put:
+ *     summary: Returns all Jig List filter by Customer
+ *     responses:
+ *       200:
+ *         description: A JSON array of Jig list
+ *       500:
+ *         description: Internal Server Error
+ */
+
+//? Jig Type
+/**
+ * @swagger
+ * /jig/setting/jig/type:
+ *   post:
+ *     summary: Returns all Jig List filter by Customer
+ *     responses:
+ *       200:
+ *         description: A JSON array of Jig list
+ *       500:
+ *         description: Internal Server Error
+ */
+
+/**
+ * @swagger
+ * /jig/setting/jig/type/add:
+ *   post:
+ *     summary: Returns all Jig List filter by Customer
+ *     responses:
+ *       200:
+ *         description: A JSON array of Jig list
+ *       500:
+ *         description: Internal Server Error
+ */
+
+/**
+ * @swagger
+ * /jig/setting/jig/type/edit:
+ *   put:
+ *     summary: Returns all Jig List filter by Customer
+ *     responses:
+ *       200:
+ *         description: A JSON array of Jig list
+ *       500:
+ *         description: Internal Server Error
+ */
+
+/**
+ * @swagger
+ * /jig/setting/jig/type/delete:
+ *   delete:
+ *     summary: Returns all Jig List filter by Customer
+ *     responses:
+ *       200:
+ *         description: A JSON array of Jig list
+ *       500:
+ *         description: Internal Server Error
+ */
+
+
+
+
+
+
