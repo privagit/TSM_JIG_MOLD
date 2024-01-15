@@ -296,7 +296,7 @@ router.put('/torque/check/edit', async (req, res) => {
         IF(@TorqueCheckID IS NULL) -- Insert
         BEGIN
             INSERT INTO [Jig].[MasterTorqueCheck](JigID, TorqueNo, Spec, ToleranceMin, ToleranceMax, Model, ProcessFileNo, UseScrew)
-            VALUES(${JigID}, N'${TorqueNo}', ${Spec}, ${ToleranceMin}, ${ToleranceMax}, N'${Model}', N'${ProcessFileNo}', N''${UseScrew});
+            VALUES(${JigID}, N'${TorqueNo}', ${Spec}, ${ToleranceMin}, ${ToleranceMax}, N'${Model}', N'${ProcessFileNo}', N'${UseScrew}');
         END
         ELSE -- Update
         BEGIN
