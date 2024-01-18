@@ -95,7 +95,7 @@ router.post('/spare-part/restock', async (req, res) => {
         SELECT @OldPrice = Price, @NewPrice = ${Price} FROM [Jig].[MasterSpare] WHERE SpareID = ${SpareID};
         IF(@OldPrice != @NewPrice)
         BEGIN
-            UPDATE [Em].[MasterSpare] SET Price = ${Price} WHERE SpareID = ${SpareID};
+            UPDATE [Jig].[MasterSpare] SET Price = ${Price} WHERE SpareID = ${SpareID};
         END
 
         -- Get from [SpareMonth]
