@@ -513,20 +513,17 @@ router.post('/maintenace/pm/checkfile/upload', async (req, res) => { // Upload P
 router.put('/maintenace/inspect/edit', async (req, res) => { // select PM Topic to use
     try {
         let pool = await sql.connect(config);
-        let { JigID, PmTopic } = req.body;
-        let updateJigInspect = `DECLARE @PmID INT;
-        SET @PmID = (SELECT PmID FROM [Jig].[MasterPm] WHERE JigID = ${JigID});
-
-        IF(@PmID IS NULL) -- Insert
-        BEGIN
-            INSERT INTO [Jig].[MasterPm](JigID, PmTopic) VALUES(${JigID}, N'${PmTopic}');
-        END
-        ELSE -- Update
-        BEGIN
-            UPDATE [Jig].[MasterPm] SET PmTopic = N'${PmTopic}' WHERE PmID = @PmID;
-        END;
-        `;
-        await pool.request().query(updateJigInspect);
+        let { JigID, PmTopicID } = req.body;
+        let getJigInspect = await pool.request().query(`SELECT PmID, JigID, PmTopic FROM [Jig].[MasterPm] WHERE JigID = ${JigID};`);
+        if(getJigInspect.recordset.length){
+            let PmID = getJigInspect.recordset[0].PmID;
+            let PmTopic = JSON.parse(getJigInspect.recordset[0].PmTopic).push(PmTopicID);
+            let updateJigInspect = `UPDATE [Jig].[MasterPm] SET PmTopic = N'${PmTopic}' WHERE PmID = ${PmID};`;
+            await pool.request().query(updateJigInspect);
+        } else {
+            let insertJigInspect = `INSERT INTO [Jig].[MasterPm](JigID, PmTopic) VALUES(${JigID}, N'[${PmTopicID}]');`;
+            await pool.request().query(insertJigInspect);
+        }
         res.json({ message: 'Success' });
     } catch (err) {
         console.log(req.url, err);
@@ -588,7 +585,6 @@ router.delete('/maintenace/pm/topic/delete', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-
 
 //* ========== Repair ==========
 // Repair Type
