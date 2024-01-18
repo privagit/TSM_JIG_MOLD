@@ -105,30 +105,15 @@ router.post('/spare-part/restock', async (req, res) => {
 
         IF(@SpareMonthID IS NULL)
         BEGIN
-            IF(${RestockType} = 1) -- Purchase
-            BEGIN
-                INSERT INTO [Jig].[SpareMonth](SpareID, MonthYear, Purchase) VALUES(${SpareID}, '${year}-${month}-1', ${Qty});
-                SELECT @SpareMonthID = SCOPE_IDENTITY();
-            END
-            ELSE -- Received
-            BEGIN
-                INSERT INTO [Jig].[SpareMonth](SpareID, MonthYear, Received) VALUES(${SpareID}, '${year}-${month}-1', ${Qty});
-                SELECT @SpareMonthID = SCOPE_IDENTITY();
-            END
+            INSERT INTO [Jig].[SpareMonth](SpareID, MonthYear, Received) VALUES(${SpareID}, '${year}-${month}-1', ${Qty});
+            SELECT @SpareMonthID = SCOPE_IDENTITY();
 
             INSERT INTO [Jig].[SpareRestock](SpareMonthID, ReceiveDate, RestockType, SupplierID, PrNo, PoNo, InvoiceNo, Qty, Price, ReceiveBy)
             VALUES(@SpareMonthID, '${ReceiveDate}', ${RestockType}, ${SupplierID}, N'${PrNo}', N'${PoNo}', N'${InvoiceNo}', ${Qty}, ${Price}, '${ReceiveBy}');
         END
         ELSE
         BEGIN
-            IF(${RestockType} = 1) -- Purchase
-            BEGIN
-                UPDATE [Jig].[SpareMonth] SET Purchase = Purchase + ${Qty} WHERE SpareMonthID = @SpareMonthID;
-            END
-            ELSE -- Received
-            BEGIN
-                UPDATE [Jig].[SpareMonth] SET Received = Received + ${Qty} WHERE SpareMonthID = @SpareMonthID;
-            END
+            UPDATE [Jig].[SpareMonth] SET Received = Received + ${Qty} WHERE SpareMonthID = @SpareMonthID;
 
             INSERT INTO [Jig].[SpareRestock](SpareMonthID, ReceiveDate, RestockType, SupplierID, PrNo, PoNo, InvoiceNo, Qty, Price, ReceiveBy)
             VALUES(@SpareMonthID, '${ReceiveDate}', ${RestockType}, ${SupplierID}, N'${PrNo}', N'${PoNo}', N'${InvoiceNo}', ${Qty}, ${Price}, '${ReceiveBy}');
@@ -160,7 +145,7 @@ router.post('/spare-part/history', async (req, res) => {
     }
 })
 
-router.post('/spare-part/history/item', async (req, res) => {
+router.post('/spare-part/restorck/item', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { RestockSpareID } = req.body;
