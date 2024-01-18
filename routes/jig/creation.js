@@ -77,7 +77,7 @@ router.post('/issue', async (req, res) => {
 })
 
 //* ===== Request Jig =====
-router.post('/request/item', async (req, res) => { //TODO: Table Project
+router.post('/request', async (req, res) => { //TODO: Table Project
     try {
         let pool = await sql.connect(config);
         let { JigCreationID } = req.body;
@@ -116,7 +116,7 @@ router.post('/request/item', async (req, res) => { //TODO: Table Project
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/request/item/confirm-target-date/edit', async (req, res) => {
+router.put('/request/confirm-target-date/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { JigCreationID, ConfirmDateResult, ConfirmDate } = req.body;
@@ -130,7 +130,7 @@ router.put('/request/item/confirm-target-date/edit', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/request/item/tooling/edit', async (req, res) => {
+router.put('/request/tooling/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { JigCreationID, ExamResult, Reason } = req.body;
@@ -277,7 +277,7 @@ router.put('/request/sign/exam-approve', async (req, res) => {
 })
 
 //* ===== Part List =====
-router.post('/part-list/item', async (req, res) => { //TODO:
+router.post('/part-list', async (req, res) => { //TODO:
     try {
         let pool = await sql.connect(config);
         let { JigCreationID } = req.body;
@@ -292,7 +292,7 @@ router.post('/part-list/item', async (req, res) => { //TODO:
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/part-list/item/edit', async (req, res) => { //TODO:
+router.put('/part-list/edit', async (req, res) => { //TODO:
     try {
         let pool = await sql.connect(config);
         let { PartListID, JigCreationID, ApproveBy } = req.body;
@@ -332,11 +332,105 @@ router.put('/part-list/sign/approve', async (req, res) => { //TODO:
 })
 
 //* ===== Work List =====
-
-
+router.post('/work-list', async (req, res) => { //TODO: test
+    try {
+        let pool = await sql.connect(config);
+        let { JigCreationID } = req.body;
+        let jigWorkList = await pool.request().query(`SELECT a.WorkListID, a.WorkType, a.StartTime, a.FinishTime, a.Detail, a.Responsible
+        FROM [Jig].[JigWorkList] a
+        WHERE a.JigCreationID = ${JigCreationID} AND Active = 1;
+        `);
+        res.json(jigWorkList.recordset);
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/work-list/add', async (req, res) => { //TODO: test
+    try {
+        let pool = await sql.connect(config);
+        let { JigCreationID, WorkType, StartTime, FinishTime, Detail, Responsible } = req.body;
+        let insertWorkList = `INSERT INTO [Jig].[JigWorkList](JigCreationID, WorkType, StartTime, FinishTime, Detail, Responsible, Active)
+        VALUES(${JigCreationID}, N'${WorkType}', '${StartTime}', '${FinishTime}', N'${Detail}', N'${Responsible}', 1);
+        `;
+        await pool.request().query(insertWorkList);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.put('/work-list/edit', async (req, res) => { //TODO: test
+    try {
+        let pool = await sql.connect(config);
+        let { WorkListID, WorkType, StartTime, FinishTime, Detail, Responsible } = req.body;
+        let updateWorkList = `UPDATE [Jig].[JigWorkList] SET WorkType = N'${WorkType}', StartTime = '${StartTime}', FinishTime = '${FinishTime}',
+        Detail = N'${Detail}', Responsible = N'${Responsible}' WHERE WorkListID = ${WorkListID};
+        `;
+        await pool.request().query(updateWorkList);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.delete('/work-list/delete', async (req, res) => { //TODO: test
+    try {
+        let pool = await sql.connect(config);
+        let { WorkListID } = req.body;
+        let deleteWorkList = `UPDATE [Jig].[JigWorkList] SET Active = 0 WHERE WorkListID = ${WorkListID};`;
+        await pool.request().query(deleteWorkList);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
 
 //* ===== Modify Jig =====
-
+router.post('/modify', async (req, res) => { //TODO: test
+    try {
+        let pool = await sql.connect(config);
+        let { JigCreationID } = req.body;
+        let jigModify = await pool.request().query(`SELECT a.ModifyID, a.JigCreationID, a.ModifyNo, a.ModifyDate, a.CustomerBudget, a.Responsible,
+        a.Problem, a.Solution, a.Detail, a.Benefit, a.Cost
+        FROM [Jig].[JigModify] a
+        WHERE a.JigCreationID = ${JigCreationID}
+        ORDER BY ModifyNo;
+        `);
+        res.json(jigModify.recordset);
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/modify/add', async (req, res) => { //TODO: test
+    try {
+        let pool = await sql.connect(config);
+        let { JigCreationID } = req.body;
+        let insertModify = `INSERT INTO [Jig].[JigModify](JigCreationID) VALUES(${JigCreationID});`;
+        await pool.request().query(insertModify);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.put('/modify/edit', async (req, res) => { //TODO: test
+    try {
+        let pool = await sql.connect(config);
+        let { ModifyID, ModifyNo, ModifyDate, CustomerBudget, Responsible, Problem, Solution, Detail, Benefit, Cost } = req.body;
+        let updateModify = `UPDATE [Jig].[JigWorkList] SET ModifyNo = ${ModifyNo}, ModifyDate = '${ModifyDate}', CustomerBudget = ${CustomerBudget},
+        Responsible = N'${Responsible}', Problem = N'${Problem}', Solution = N'${Solution}', Detail = N'${Detail}', Benefit = N'${Benefit}', Cost = N'${Cost}'
+        WHERE ModifyID = ${ModifyID};
+        `;
+        await pool.request().query(updateModify);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
 
 
 //* ===== Trial =====
@@ -348,3 +442,51 @@ router.put('/part-list/sign/approve', async (req, res) => { //TODO:
 
 
 //* ===== Comment =====
+router.post('/comment', async (req, res) => { //TODO: test
+    try {
+        let pool = await sql.connect(config);
+        let { JigCreationID } = req.body;
+        let jigComment = await pool.request().query(`SELECT a.CommentID, a.Comment, a.Fix, a.FixDateTime, a.Remark,
+        b.FirstName AS FixBy
+        FROM [Jig].[JigComment] a
+        LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.FixBy
+        WHERE a.JigCreationID = ${JigCreationID};
+        `);
+        res.json(jigComment.recordset);
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/comment/add', async (req, res) => { //TODO: test
+    try {
+        let pool = await sql.connect(config);
+        let { JigCreationID, Comment } = req.body;
+        let insertComment = `INSERT INTO [Jig].[JigComment](JigCreationID, Comment) VALUES(${JigCreationID}, N'${Comment}');`;
+        await pool.request().query(insertComment);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.put('/comment/fix', async (req, res) => { //TODO: test
+    try {
+        let pool = await sql.connect(config);
+        let { CommentID, FixBy, Remark } = req.body;
+
+        // Check Employee
+        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${RequestBy};`);
+        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
+
+        let updateWorkList = `UPDATE [Jig].[JigWorkList] SET Fix = 1, FixBy = N'${FixBy}', Remark = N'${Remark}' WHERE CommentID = ${CommentID};`;
+        await pool.request().query(updateWorkList);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+
+
+module.exports = router;
