@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const config = require('../../lib/dbconfig').dbconfig_jig;
+const config = require('../../lib/dbconfig').dbconfig_mold;
 const sql = require('mssql');
 
 //* ========= Spare Part ==========
@@ -8,7 +8,7 @@ router.post('/dropdown/category', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let category = await pool.request().query(`SELECT a.SpareCategoryID, a.Category
-        FROM [Jig].[MasterSpareCategory] a
+        FROM [Mold].[MasterSpareCategory] a
         WHERE a.Active = 1;
         `);
         res.json(category.recordset);
@@ -22,7 +22,7 @@ router.post('/dropdown/supplier', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let suppliers = await pool.request().query(`SELECT a.SupplierID, a.SupplierName
-        FROM [Jig].[MasterSupplier] a
+        FROM [Mold].[MasterSupplier] a
         WHERE a.Active = 1;
         `);
         res.json(suppliers.recordset);
@@ -43,10 +43,10 @@ router.post('/spare-part', async (req, res) => {
         .execute('SparePartMonth');
 
         let repairs = await pool.request().query(`SELECT a.SpareID, a.Qty, d.Location, e.FirstName AS UsedBy, DAY(a.UsedDate) AS D
-        FROM [Jig].[RepairCost] a
-        LEFT JOIN [Jig].[RepairCheck] b ON b.RepairCheckID = a.RepairCheckID
-        LEFT JOIN [Jig].[MasterSpare] c ON c.SpareID = a.SpareID
-        LEFT JOIN [Jig].[MasterSpareLocation] d ON d.SpareLocationID = c.SpareLocationID
+        FROM [Mold].[RepairCost] a
+        LEFT JOIN [Mold].[RepairCheck] b ON b.RepairCheckID = a.RepairCheckID
+        LEFT JOIN [Mold].[MasterSpare] c ON c.SpareID = a.SpareID
+        LEFT JOIN [Mold].[MasterSpareLocation] d ON d.SpareLocationID = c.SpareLocationID
         LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = b.RepairBy
         WHERE MONTH(b.RequestTime) = ${month} AND YEAR(b.RequestTime) = ${year};
         `);
@@ -92,7 +92,7 @@ router.post('/spare-part/restock', async (req, res) => {
             @NewPrice FLOAT;
 
         -- Update Price
-        SELECT @OldPrice = Price, @NewPrice = ${Price} FROM [Jig].[MasterSpare] WHERE SpareID = ${SpareID};
+        SELECT @OldPrice = Price, @NewPrice = ${Price} FROM [Mold].[MasterSpare] WHERE SpareID = ${SpareID};
         IF(@OldPrice != @NewPrice)
         BEGIN
             UPDATE [Em].[MasterSpare] SET Price = ${Price} WHERE SpareID = ${SpareID};
@@ -100,22 +100,22 @@ router.post('/spare-part/restock', async (req, res) => {
 
         -- Get from [SpareMonth]
         SELECT @SpareMonthID = a.SpareMonthID
-        FROM [Jig].[SpareMonth] a
+        FROM [Mold].[SpareMonth] a
         WHERE a.SpareID = ${SpareID} AND MONTH(a.MonthYear) = ${month} AND YEAR(a.MonthYear) = ${year};
 
         IF(@SpareMonthID IS NULL)
         BEGIN
-            INSERT INTO [Jig].[SpareMonth](SpareID, MonthYear, Received) VALUES(${SpareID}, '${year}-${month}-1', ${Qty});
+            INSERT INTO [Mold].[SpareMonth](SpareID, MonthYear, Received) VALUES(${SpareID}, '${year}-${month}-1', ${Qty});
             SELECT @SpareMonthID = SCOPE_IDENTITY();
 
-            INSERT INTO [Jig].[SpareRestock](SpareMonthID, ReceiveDate, RestockType, SupplierID, PrNo, PoNo, InvoiceNo, Qty, Price, ReceiveBy)
+            INSERT INTO [Mold].[SpareRestock](SpareMonthID, ReceiveDate, RestockType, SupplierID, PrNo, PoNo, InvoiceNo, Qty, Price, ReceiveBy)
             VALUES(@SpareMonthID, '${ReceiveDate}', ${RestockType}, ${SupplierID}, N'${PrNo}', N'${PoNo}', N'${InvoiceNo}', ${Qty}, ${Price}, '${ReceiveBy}');
         END
         ELSE
         BEGIN
-            UPDATE [Jig].[SpareMonth] SET Received = Received + ${Qty} WHERE SpareMonthID = @SpareMonthID;
+            UPDATE [Mold].[SpareMonth] SET Received = Received + ${Qty} WHERE SpareMonthID = @SpareMonthID;
 
-            INSERT INTO [Jig].[SpareRestock](SpareMonthID, ReceiveDate, RestockType, SupplierID, PrNo, PoNo, InvoiceNo, Qty, Price, ReceiveBy)
+            INSERT INTO [Mold].[SpareRestock](SpareMonthID, ReceiveDate, RestockType, SupplierID, PrNo, PoNo, InvoiceNo, Qty, Price, ReceiveBy)
             VALUES(@SpareMonthID, '${ReceiveDate}', ${RestockType}, ${SupplierID}, N'${PrNo}', N'${PoNo}', N'${InvoiceNo}', ${Qty}, ${Price}, '${ReceiveBy}');
         END;
         `;
@@ -133,8 +133,8 @@ router.post('/spare-part/history', async (req, res) => {
         let pool = await sql.connect(config);
         let { SpareID, month, year } = req.body;
         let restocks = await pool.request().query(`SELECT a.RestockSpareID, a.ReceiveDate
-		FROM [Jig].[SpareRestock] a
-        LEFT JOIN [Jig].[SpareMonth] b ON a.SpareMonthID = b.SpareMonthID
+		FROM [Mold].[SpareRestock] a
+        LEFT JOIN [Mold].[SpareMonth] b ON a.SpareMonthID = b.SpareMonthID
 		WHERE b.SpareID = ${SpareID} AND MONTH(a.ReceiveDate) = ${month} AND YEAR(a.ReceiveDate) = ${year}
         ORDER BY a.ReceiveDate
         `);
@@ -153,9 +153,9 @@ router.post('/spare-part/restorck/item', async (req, res) => {
         //* Restock: increase Received
         let restockSpare = await pool.request().query(`SELECT a.RestockSpareID, a.SpareMonthID, a.ReceiveDate, a.RestockType, a.SupplierID,
         a.PrNo, a.PoNo, a.InvoiceNo, a.Qty, a.Price, a.Amount, b.FirstName AS ReceiveName, c.SupplierName
-        FROM [Jig].[SpareRestock] a
+        FROM [Mold].[SpareRestock] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.ReceiveBy = b.EmployeeID
-        LEFT JOIN [Jig].[MasterSupplier] c ON c.SupplierID = a.SupplierID
+        LEFT JOIN [Mold].[MasterSupplier] c ON c.SupplierID = a.SupplierID
         WHERE a.RestockSpareID = ${RestockSpareID};
         `);
         if(restockSpare.recordset.length){
