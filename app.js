@@ -27,13 +27,18 @@ const swaggerJsdoc = require('swagger-jsdoc');
 let indexRouter = require('./routes/index');
 app.use('/api', indexRouter);
 
-//* MOLD ROUTES
-let moldSettingRouter = require('./routes/mold/setting');
-app.use('/mold/setting', moldSettingRouter);
-
 //* JIG ROUTES
 let jigSettingRouter = require('./routes/jig/setting');
+let jigSparepartRouter = require('./routes/jig/sparepart');
 app.use('/jig/setting', jigSettingRouter);
+app.use('/jig/sparepart', jigSparepartRouter);
+
+//* MOLD ROUTES
+let moldSettingRouter = require('./routes/mold/setting');
+let moldSparepartRouter = require('./routes/mold/sparepart');
+app.use('/mold/setting', moldSettingRouter);
+app.use('/mold/sparepart', moldSparepartRouter);
+
 
 let jigSparepartRouter = require('./routes/jig/sparepart');
 app.use('/jig/sparepart', jigSparepartRouter);
