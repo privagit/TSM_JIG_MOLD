@@ -105,15 +105,30 @@ router.post('/spare-part/restock', async (req, res) => {
 
         IF(@SpareMonthID IS NULL)
         BEGIN
-            INSERT INTO [Mold].[SpareMonth](SpareID, MonthYear, Received) VALUES(${SpareID}, '${year}-${month}-1', ${Qty});
-            SELECT @SpareMonthID = SCOPE_IDENTITY();
+            IF(${RestockType} = 1) -- Purchase
+            BEGIN
+                INSERT INTO [Mold].[SpareMonth](SpareID, MonthYear, Purchase) VALUES(${SpareID}, '${year}-${month}-1', ${Qty});
+                SELECT @SpareMonthID = SCOPE_IDENTITY();
+            END
+            ELSE -- Received
+            BEGIN
+                INSERT INTO [Mold].[SpareMonth](SpareID, MonthYear, Received) VALUES(${SpareID}, '${year}-${month}-1', ${Qty});
+                SELECT @SpareMonthID = SCOPE_IDENTITY();
+            END
 
             INSERT INTO [Mold].[SpareRestock](SpareMonthID, ReceiveDate, RestockType, SupplierID, PrNo, PoNo, InvoiceNo, Qty, Price, ReceiveBy)
             VALUES(@SpareMonthID, '${ReceiveDate}', ${RestockType}, ${SupplierID}, N'${PrNo}', N'${PoNo}', N'${InvoiceNo}', ${Qty}, ${Price}, '${ReceiveBy}');
         END
         ELSE
         BEGIN
-            UPDATE [Mold].[SpareMonth] SET Received = Received + ${Qty} WHERE SpareMonthID = @SpareMonthID;
+            IF(${RestockType} = 1) -- Purchase
+            BEGIN
+                UPDATE [Mold].[SpareMonth] SET Purchase = Purchase + ${Qty} WHERE SpareMonthID = @SpareMonthID;
+            END
+            ELSE -- Received
+            BEGIN
+                UPDATE [Mold].[SpareMonth] SET Received = Received + ${Qty} WHERE SpareMonthID = @SpareMonthID;
+            END
 
             INSERT INTO [Mold].[SpareRestock](SpareMonthID, ReceiveDate, RestockType, SupplierID, PrNo, PoNo, InvoiceNo, Qty, Price, ReceiveBy)
             VALUES(@SpareMonthID, '${ReceiveDate}', ${RestockType}, ${SupplierID}, N'${PrNo}', N'${PoNo}', N'${InvoiceNo}', ${Qty}, ${Price}, '${ReceiveBy}');
