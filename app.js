@@ -30,14 +30,18 @@ app.use('/api', indexRouter);
 //* JIG ROUTES
 let jigSettingRouter = require('./routes/jig/setting');
 let jigSparepartRouter = require('./routes/jig/sparepart');
+let jigRepairRouter = require('./routes/jig/repair');
 app.use('/jig/setting', jigSettingRouter);
 app.use('/jig/sparepart', jigSparepartRouter);
+app.use('/jig/repair', jigRepairRouter);
 
 //* MOLD ROUTES
 let moldSettingRouter = require('./routes/mold/setting');
 let moldSparepartRouter = require('./routes/mold/sparepart');
+let moldRepairRouter = require('./routes/mold/repair'); //TODO
 app.use('/mold/setting', moldSettingRouter);
 app.use('/mold/sparepart', moldSparepartRouter);
+app.use('/mold/repair', moldRepairRouter);
 
 
 // Swagger definition
