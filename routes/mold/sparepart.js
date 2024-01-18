@@ -145,7 +145,7 @@ router.post('/spare-part/history', async (req, res) => {
     }
 })
 
-router.post('/spare-part/restorck/item', async (req, res) => {
+router.post('/spare-part/history/item', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { RestockSpareID } = req.body;
