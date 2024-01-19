@@ -105,8 +105,8 @@ router.post('/repair-issue/request/issue', async (req, res) => { // cache, Runni
         let ReportNo = `EM-${('0000'+RunningNo).substr(-4)}-${('00'+(date.getMonth()+1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
 
 
-        let issueRepair = await pool.request().query(`INSERT INTO [Jig].[RepairCheck](EmMachineID, AccessoryID, MachineTypeID, RequestBy, RequestTime, Shift, Complaint, Type, RepairTypeID, RepairProblemID, ReportNo)
-        VALUES(${EmMachineID}, ${AccessoryID}, ${MachineTypeID}, N'${RequestBy}', '${RequestTime}', '${Shift}', N'${Complaint}', ${Type}, ${RepairTypeID}, ${RepairProblemID}, '${ReportNo}');
+        let issueRepair = await pool.request().query(`INSERT INTO [Jig].[RepairCheck](JigID, RequestBy, RequestTime, Shift, Complaint, Type, RepairTypeID, RepairProblemID, ReportNo)
+        VALUES(${JigID}, N'${RequestBy}', '${RequestTime}', '${Shift}', N'${Complaint}', ${Type}, ${RepairTypeID}, ${RepairProblemID}, '${ReportNo}');
 
         SELECT SCOPE_IDENTITY() AS RepairCheckID;
         `);

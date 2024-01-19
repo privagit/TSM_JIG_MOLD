@@ -86,7 +86,7 @@ router.post('/spare-part/restock', async (req, res) => {
         let { SpareID, month, year, ReceiveDate, RestockType, SupplierID, PrNo, PoNo, InvoiceNo, Qty, Price, ReceiveBy } = req.body;
 
         //* Restock: increase Received
-        let restockSpare = `
+        var restockSpare = `
         DECLARE @SpareMonthID BIGINT,
             @OldPrice FLOAT,
             @NewPrice FLOAT;
