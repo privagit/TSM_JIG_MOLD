@@ -21,20 +21,20 @@ router.post('/repair-issue', async (req, res) => {
         `);
 
         //* Filter Status
-        if(Status){ //* Status: All = null, 1: Issue, 2: Repair, 3: Wait Sign, 4: Complete
-            if(Status == 1){
+        if (Status) { //* Status: All = null, 1: Issue, 2: Repair, 3: Wait Sign, 4: Complete
+            if (Status == 1) {
                 let repairIssueFiltered = repairIssue.recordset.filter(v => !v.StartTime && !v.EndTime);
                 return res.json(repairIssueFiltered);
             }
-            else if(Status == 2){
+            else if (Status == 2) {
                 let repairIssueFiltered = repairIssue.recordset.filter(v => v.StartTime && !v.EndTime);
                 return res.json(repairIssueFiltered);
             }
-            else if(Status == 3){
+            else if (Status == 3) {
                 let repairIssueFiltered = repairIssue.recordset.filter(v => v.StartTime && v.EndTime && !v.ApproveBy);
                 return res.json(repairIssueFiltered);
             }
-            else if(Status == 4){
+            else if (Status == 4) {
                 let repairIssueFiltered = repairIssue.recordset.filter(v => v.StartTime && v.EndTime && v.ApproveBy);
                 return res.json(repairIssueFiltered);
             }
@@ -89,20 +89,20 @@ router.post('/repair-issue/request/issue', async (req, res) => { // cache, Runni
         let pool = await sql.connect(config);
         let { JigID, RequestBy, RequestTime, Shift, Complaint, Type, RepairTypeID, RepairProblemID } = req.body;
 
-         //* Get RunningNo
+        //* Get RunningNo
         let date = new Date();
         let monthRunningNo = await pool.request().query(`SELECT a.MonthDate, a.RunningNo
         FROM [MonthRunningNo] a
-        WHERE Month(MonthDate) = ${date.getMonth()+1} AND YEAR(MonthDate) = ${date.getFullYear()};
+        WHERE Month(MonthDate) = ${date.getMonth() + 1} AND YEAR(MonthDate) = ${date.getFullYear()};
         `);
-        if(monthRunningNo.recordset.length){
+        if (monthRunningNo.recordset.length) {
             var RunningNo = monthRunningNo.recordset[0].RunningNo + 1;
-            await pool.request().query(`UPDATE [MonthRunningNo] SET RunningNo = ${RunningNo} WHERE Month(MonthDate) = ${date.getMonth()+1} AND YEAR(MonthDate) = ${date.getFullYear()};`);
-        } else{
+            await pool.request().query(`UPDATE [MonthRunningNo] SET RunningNo = ${RunningNo} WHERE Month(MonthDate) = ${date.getMonth() + 1} AND YEAR(MonthDate) = ${date.getFullYear()};`);
+        } else {
             var RunningNo = 1;
-            await pool.request().query(`INSERT INTO [MonthRunningNo](MonthDate, RunningNo) VALUES('${date.getFullYear()}-${date.getMonth()+1}-1', 1)`);
+            await pool.request().query(`INSERT INTO [MonthRunningNo](MonthDate, RunningNo) VALUES('${date.getFullYear()}-${date.getMonth() + 1}-1', 1)`);
         }
-        let ReportNo = `EM-${('0000'+RunningNo).substr(-4)}-${('00'+(date.getMonth()+1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
+        let ReportNo = `EM-${('0000' + RunningNo).substr(-4)}-${('00' + (date.getMonth() + 1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
 
 
         let issueRepair = await pool.request().query(`INSERT INTO [Jig].[RepairCheck](JigID, RequestBy, RequestTime, Shift, Complaint, Type, RepairTypeID, RepairProblemID, ReportNo)
@@ -128,12 +128,12 @@ router.post('/repair-issue/request/issue', async (req, res) => { // cache, Runni
             SELECT a.MachineNo FROM [Jig].[MasterAccessory] a WHERE AccessoryID = ${AccessoryID};
         END;
         `);
-        let alertTime = `${date.getHours()}:${('00'+date.getMinutes()).substr(-2)}`;
-        let alertDate = `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`;
+        let alertTime = `${date.getHours()}:${('00' + date.getMinutes()).substr(-2)}`;
+        let alertDate = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
         let alertLog = { MachineNo: machine.recordset[0]?.MachineNo, Module: 1, Action: 1, time: alertTime, date: alertDate };
         io.emit('alert-log', alertLog);
         let cacheAlertLog = await redis.get('em-alert-log');
-        if(!cacheAlertLog){
+        if (!cacheAlertLog) {
             await redis.set('em-alert-log', JSON.stringify([alertLog]));
         } else {
             let cur = new Date();
@@ -156,7 +156,7 @@ router.post('/repair-issue/repair/start', async (req, res) => {
         let { RepairCheckID } = req.body;
 
         let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${(cur.getMonth()+1).toString().padStart(2,'0')}-${(cur.getDate()).toString().padStart(2,'0')} ${cur.getHours().toString().padStart(2,'0')}:${cur.getMinutes().toString().padStart(2,'0')}`;
+        let curStr = `${cur.getFullYear()}-${(cur.getMonth() + 1).toString().padStart(2, '0')}-${(cur.getDate()).toString().padStart(2, '0')} ${cur.getHours().toString().padStart(2, '0')}:${cur.getMinutes().toString().padStart(2, '0')}`;
         let startRepair = `UPDATE [Jig].[RepairCheck] SET StartTime = '${curStr}' WHERE RepairCheckID = ${RepairCheckID};`;
         await pool.request().query(startRepair);
 
@@ -183,12 +183,12 @@ router.post('/repair-issue/repair/item', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[User] f ON a.ReceiveApproveBy = f.EmployeeID
         WHERE a.RepairCheckID = ${RepairCheckID};
         `);
-        if(repair.recordset.length){
-            repair.recordset[0].RequestSign = !repair.recordset[0].RequestSign ? null: atob(repair.recordset[0].RequestSign);
-            repair.recordset[0].RepairBy = !repair.recordset[0].RepairBy ? null: atob(repair.recordset[0].RepairBy);
-            repair.recordset[0].ApproveBy = !repair.recordset[0].ApproveBy ? null: atob(repair.recordset[0].ApproveBy);
-            repair.recordset[0].ReceiveBy = !repair.recordset[0].ReceiveBy ? null: atob(repair.recordset[0].ReceiveBy);
-            repair.recordset[0].ReceiveApproveBy = !repair.recordset[0].ReceiveApproveBy ? null: atob(repair.recordset[0].ReceiveApproveBy);
+        if (repair.recordset.length) {
+            repair.recordset[0].RequestSign = !repair.recordset[0].RequestSign ? null : atob(repair.recordset[0].RequestSign);
+            repair.recordset[0].RepairBy = !repair.recordset[0].RepairBy ? null : atob(repair.recordset[0].RepairBy);
+            repair.recordset[0].ApproveBy = !repair.recordset[0].ApproveBy ? null : atob(repair.recordset[0].ApproveBy);
+            repair.recordset[0].ReceiveBy = !repair.recordset[0].ReceiveBy ? null : atob(repair.recordset[0].ReceiveBy);
+            repair.recordset[0].ReceiveApproveBy = !repair.recordset[0].ReceiveApproveBy ? null : atob(repair.recordset[0].ReceiveApproveBy);
         }
         res.json(repair.recordset);
     } catch (err) {
@@ -224,7 +224,7 @@ router.post('/repair-issue/repair/tech', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.EmployeeID = b.EmployeeID
         WHERE a.RepairCheckID = ${RepairCheckID};
         `);
-        for(let t of techs.recordset){
+        for (let t of techs.recordset) {
             t.TechName = atob(t.TechName);
         }
 
@@ -240,7 +240,7 @@ router.post('/repair-issue/repair/tech/add', async (req, res) => {
         let { RepairCheckID, EmployeeID } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${EmployeeID};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
+        if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let insertTech = await pool.request().query(`DECLARE @CntTech INT;
         SELECT @CntTech = COUNT(RepairTechID) FROM [Jig].[RepairTech] WHERE EmployeeID = ${EmployeeID} AND RepairCheckID = ${RepairCheckID};
@@ -256,7 +256,7 @@ router.post('/repair-issue/repair/tech/add', async (req, res) => {
         END;
         `);
 
-        if(insertTech.recordset[0]?.CntTech) return res.status(400).send({ message: 'ขออภัย รหัสพนักงานซ้ำ' });
+        if (insertTech.recordset[0]?.CntTech) return res.status(400).send({ message: 'ขออภัย รหัสพนักงานซ้ำ' });
 
         res.json({ message: 'Success' });
     } catch (err) {
@@ -348,7 +348,7 @@ router.post('/repair-issue/service/add', async (req, res) => { // ถ้า Use 
         SELECT ISNULL(@BF,0) + ISNULL(@Received,0) + ISNULL(@Purchase,0) - ISNULL(@Used,0) AS Remain;
         `);
         let remain = getRemain.recordset[0]?.Remain || 0;
-        if(Qty > remain) return res.status(400).send({ message: 'คงเหลือใน Stock น้อยกว่าที่ใช้' });
+        if (Qty > remain) return res.status(400).send({ message: 'คงเหลือใน Stock น้อยกว่าที่ใช้' });
 
 
         let insertPart = `INSERT [Jig].[RepairCost](RepairCheckID, SpareID, Qty, UnitPrice, UsedDate, Reuse)
@@ -383,17 +383,17 @@ router.post('/repair-issue/sign/repair', async (req, res) => { //* cache, io
         let { RepairCheckID, RepairBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${RepairBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
+        if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
+        let curStr = `${cur.getFullYear()}-${('00' + (cur.getMonth() + 1)).substr(-2)}-${('00' + cur.getDate()).substr(-2)} ${('00' + cur.getHours()).substr(-2)}:${('00' + cur.getMinutes()).substr(-2)}`;
         let signRepair = `UPDATE [Jig].[RepairCheck] SET RepairBy = ${RepairBy}, EndTime = '${curStr}' WHERE RepairCheckID = ${RepairCheckID};`;
         await pool.request().query(signRepair);
 
         // Socket io
         let date = new Date();
-        let alertTime = `${date.getHours()}:${('00'+date.getMinutes()).substr(-2)}`;
-        let alertDate = `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`;
+        let alertTime = `${date.getHours()}:${('00' + date.getMinutes()).substr(-2)}`;
+        let alertDate = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
         const io = req.app.get('socketio');
         let machine = await pool.request().query(`SELECT b.JigNo
         FROM [Jig].[RepairCheck] a
@@ -403,7 +403,7 @@ router.post('/repair-issue/sign/repair', async (req, res) => { //* cache, io
         let alertLog = { JigNo: machine.recordset[0]?.JigNo, Module: 1, Action: 2, time: alertTime, date: alertDate }
         io.emit('alert-log', alertLog);
         let cacheAlertLog = await redis.get('em-alert-log');
-        if(!cacheAlertLog){
+        if (!cacheAlertLog) {
             await redis.set('jig-alert-log', JSON.stringify([alertLog]));
         } else {
             let cur = new Date();
@@ -413,7 +413,7 @@ router.post('/repair-issue/sign/repair', async (req, res) => { //* cache, io
             await redis.set('jig-alert-log', JSON.stringify(cacheAlertLogFilter));
         }
 
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), EndTime: curStr });
+        res.json({ message: 'Success', Username: !getUser.recordset.length ? null : atob(getUser.recordset[0].FirstName), EndTime: curStr });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -425,14 +425,14 @@ router.post('/repair-issue/sign/approve', async (req, res) => {
         let { RepairCheckID, ApproveBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ApproveBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
+        if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
+        let curStr = `${cur.getFullYear()}-${('00' + (cur.getMonth() + 1)).substr(-2)}-${('00' + cur.getDate()).substr(-2)} ${('00' + cur.getHours()).substr(-2)}:${('00' + cur.getMinutes()).substr(-2)}`;
         let signRequest = `UPDATE [Jig].[RepairCheck] SET ApproveBy = ${ApproveBy} WHERE RepairCheckID = ${RepairCheckID};`;
         await pool.request().query(signRequest);
 
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
+        res.json({ message: 'Success', Username: !getUser.recordset.length ? null : atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -444,14 +444,14 @@ router.post('/repair-issue/sign/receive', async (req, res) => {
         let { RepairCheckID, ReceiveBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ReceiveBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
+        if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
+        let curStr = `${cur.getFullYear()}-${('00' + (cur.getMonth() + 1)).substr(-2)}-${('00' + cur.getDate()).substr(-2)} ${('00' + cur.getHours()).substr(-2)}:${('00' + cur.getMinutes()).substr(-2)}`;
         let signRepair = `UPDATE [Jig].[RepairCheck] SET ReceiveBy = ${ReceiveBy}, CheckerTime = '${curStr}' WHERE RepairCheckID = ${RepairCheckID};`;
         await pool.request().query(signRepair);
 
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
+        res.json({ message: 'Success', Username: !getUser.recordset.length ? null : atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -463,14 +463,14 @@ router.post('/repair-issue/sign/receive-approve', async (req, res) => {
         let { RepairCheckID, ReceiveApproveBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ReceiveApproveBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
+        if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
+        let curStr = `${cur.getFullYear()}-${('00' + (cur.getMonth() + 1)).substr(-2)}-${('00' + cur.getDate()).substr(-2)} ${('00' + cur.getHours()).substr(-2)}:${('00' + cur.getMinutes()).substr(-2)}`;
         let signRepair = `UPDATE [Jig].[RepairCheck] SET ReceiveApproveBy = ${ReceiveApproveBy}, ApproveTime = '${curStr}' WHERE RepairCheckID = ${RepairCheckID};`;
         await pool.request().query(signRepair);
 
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
+        res.json({ message: 'Success', Username: !getUser.recordset.length ? null : atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });

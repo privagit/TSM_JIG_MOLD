@@ -517,7 +517,7 @@ router.put('/maintenace/inspect/edit', async (req, res) => { // select PM Topic 
         let pool = await sql.connect(config);
         let { JigID, PmTopicID } = req.body;
         let getJigInspect = await pool.request().query(`SELECT PmID, JigID, PmTopic FROM [Jig].[MasterPm] WHERE JigID = ${JigID};`);
-        if(getJigInspect.recordset.length){
+        if (getJigInspect.recordset.length) {
             let PmID = getJigInspect.recordset[0].PmID;
             let PmTopic = JSON.parse(getJigInspect.recordset[0].PmTopic).push(PmTopicID);
             let updateJigInspect = `UPDATE [Jig].[MasterPm] SET PmTopic = N'${PmTopic}' WHERE PmID = ${PmID};`;
@@ -1234,7 +1234,7 @@ router.post('/docctrl', async (req, res) => {
         FROM [Jig].[MasterDocumentCtrl];
         `);
         res.json(DocCtrl.recordset)
-    } catch(err){
+    } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
     }
