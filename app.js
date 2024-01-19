@@ -31,9 +31,11 @@ app.use('/api', indexRouter);
 let jigSettingRouter = require('./routes/jig/setting');
 let jigSparepartRouter = require('./routes/jig/sparepart');
 let jigRepairRouter = require('./routes/jig/repair');
+let jigCreationRouter = require('./routes/jig/creation');
 app.use('/jig/setting', jigSettingRouter);
 app.use('/jig/sparepart', jigSparepartRouter);
 app.use('/jig/repair', jigRepairRouter);
+app.use('/jig/creation', jigCreationRouter);
 
 //* MOLD ROUTES
 let moldSettingRouter = require('./routes/mold/setting');
