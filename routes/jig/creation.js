@@ -145,132 +145,24 @@ router.put('/request/tooling/edit', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/request/sign/responsible', async (req, res) => {
+router.put('/request/sign', async (req, res) => {
     try {
         let pool = await sql.connect(config);
-        let { JigCreationID, ResponsibleBy } = req.body;
+        let { JigCreationID, EmployeeID, itemNo } = req.body;
+        let itemMap = { 1: 'Responsible', 2: 'Request', 3: 'Checked', 4: 'Approve', 5: 'ExamRequest', 6: 'ExamChecked', 7: 'ExamApprove' };
 
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ResponsibleBy};`);
+        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${EmployeeID};`);
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
-        let signResponsible = `UPDATE [Jig].[JigCreation] SET ResponsibleBy = ${ResponsibleBy} WHERE JigCreationID = ${JigCreationID};`;
-        await pool.request().query(signResponsible);
+        if(itemNo == 1){ // responsible
+            let signResponsible = `UPDATE [Jig].[JigCreation] SET ResponsibleBy = ${EmployeeID} WHERE JigCreationID = ${JigCreationID};`;
+            await pool.request().query(signResponsible);
+        } else{ // request, check, approve
+            let signResponsible = `UPDATE [Jig].[JigCreation] SET ${itemMap[itemNo]}By = ${EmployeeID}, ${itemMap[itemNo]}SignTime = GETDATE()  WHERE JigCreationID = ${JigCreationID};`;
+            await pool.request().query(signResponsible);
+        }
 
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName) });
-    } catch (err) {
-        console.log(req.url, err);
-        res.status(500).send({ message: `${err}` });
-    }
-})
-router.put('/request/sign/request', async (req, res) => {
-    try {
-        let pool = await sql.connect(config);
-        let { JigCreationID, RequestBy } = req.body;
-
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${RequestBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
-
-        let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signRequest = `UPDATE [Jig].[JigCreation] SET RequestBy = ${RequestBy}, RequestSignTime = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
-        await pool.request().query(signRequest);
-
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
-    } catch (err) {
-        console.log(req.url, err);
-        res.status(500).send({ message: `${err}` });
-    }
-})
-router.put('/request/sign/check', async (req, res) => {
-    try {
-        let pool = await sql.connect(config);
-        let { JigCreationID, CheckedBy } = req.body;
-
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${CheckedBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
-
-        let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signCheck = `UPDATE [Jig].[JigCreation] SET CheckedBy = ${CheckedBy}, CheckedSignTime = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
-        await pool.request().query(signCheck);
-
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
-    } catch (err) {
-        console.log(req.url, err);
-        res.status(500).send({ message: `${err}` });
-    }
-})
-router.put('/request/sign/approve', async (req, res) => {
-    try {
-        let pool = await sql.connect(config);
-        let { JigCreationID, ApproveBy } = req.body;
-
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ApproveBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
-
-        let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signApprove = `UPDATE [Jig].[JigCreation] SET ApproveBy = ${ApproveBy}, ApproveSignTime = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
-        await pool.request().query(signApprove);
-
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
-    } catch (err) {
-        console.log(req.url, err);
-        res.status(500).send({ message: `${err}` });
-    }
-})
-router.put('/request/sign/exam-request', async (req, res) => {
-    try {
-        let pool = await sql.connect(config);
-        let { JigCreationID, ExamRequestBy } = req.body;
-
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ExamRequestBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
-
-        let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signExamRequest = `UPDATE [Jig].[JigCreation] SET ExamRequestBy = ${ExamRequestBy}, ExamRequestSignTime = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
-        await pool.request().query(signExamRequest);
-
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
-    } catch (err) {
-        console.log(req.url, err);
-        res.status(500).send({ message: `${err}` });
-    }
-})
-router.put('/request/sign/exam-check', async (req, res) => {
-    try {
-        let pool = await sql.connect(config);
-        let { JigCreationID, ExamCheckedBy } = req.body;
-
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ExamCheckedBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
-
-        let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signExamCheck = `UPDATE [Jig].[JigCreation] SET ExamCheckedBy = ${ExamCheckedBy}, ExamCheckedSignTime = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
-        await pool.request().query(signExamCheck);
-
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
-    } catch (err) {
-        console.log(req.url, err);
-        res.status(500).send({ message: `${err}` });
-    }
-})
-router.put('/request/sign/exam-approve', async (req, res) => {
-    try {
-        let pool = await sql.connect(config);
-        let { JigCreationID, ExamApproveBy } = req.body;
-
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ExamApproveBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
-
-        let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signExamApprove = `UPDATE [Jig].[JigCreation] SET ExamApproveBy = ${ExamApproveBy}, ExamApproveSignTime = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
-        await pool.request().query(signExamApprove);
-
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -279,7 +171,7 @@ router.put('/request/sign/exam-approve', async (req, res) => {
 
 
 //* ===== Part List =====
-router.post('/part-list', async (req, res) => { //TODO:
+router.post('/part-list', async (req, res) => { //! TODO:
     try {
         let pool = await sql.connect(config);
         let { JigCreationID } = req.body;
@@ -294,7 +186,7 @@ router.post('/part-list', async (req, res) => { //TODO:
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/part-list/edit', async (req, res) => { //TODO:
+router.put('/part-list/edit', async (req, res) => { //! TODO:
     try {
         let pool = await sql.connect(config);
         let { PartListID, JigCreationID, ApproveBy } = req.body;
@@ -313,7 +205,7 @@ router.put('/part-list/edit', async (req, res) => { //TODO:
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/part-list/sign/approve', async (req, res) => { //TODO:
+router.put('/part-list/sign/approve', async (req, res) => { //! TODO:
     try {
         let pool = await sql.connect(config);
         let { PartListID, JigCreationID, ApproveBy } = req.body;
@@ -610,17 +502,18 @@ router.put('/evaluation/edit', async (req, res) => { //TODO: test
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/evaluation/sign/jig/eval', async (req, res) => { //TODO:
+router.put('/evaluation/sign/eval', async (req, res) => { //TODO:
     try {
         let pool = await sql.connect(config);
-        let { EvalID, JigEvalBy } = req.body;
+        let { EvalID, EvalBy, itemNo } = req.body;
+        let itemMap = { 1: 'Jig', 2: 'En', 3: 'Qa', 4: 'Pd', 5: 'Pe' };
 
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${JigEvalBy};`);
+        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${EvalBy};`);
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signEval = `UPDATE [Jig].[JigEvaluation] SET JigEvalBy = ${JigEvalBy}, JigEvalTime = GETDATE() WHERE EvalID = ${EvalID};`;
+        let signEval = `UPDATE [Jig].[JigEvaluation] SET ${itemMap[itemNo]}EvalBy = ${EvalBy}, ${itemMap[itemNo]}EvalTime = GETDATE() WHERE EvalID = ${EvalID};`;
         await pool.request().query(signEval);
 
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
@@ -629,17 +522,18 @@ router.put('/evaluation/sign/jig/eval', async (req, res) => { //TODO:
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/evaluation/sign/jig/approve', async (req, res) => { //TODO:
+router.put('/evaluation/sign/approve', async (req, res) => { //TODO:
     try {
         let pool = await sql.connect(config);
-        let { EvalID, JigApproveBy } = req.body;
+        let { EvalID, ApproveBy, itemNo } = req.body;
+        let itemMap = { 1: 'Jig', 2: 'En', 3: 'Qa', 4: 'Pd', 5: 'Pe' };
 
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${JigApproveBy};`);
+        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ApproveBy};`);
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signApprove = `UPDATE [Jig].[JigEvaluation] SET JigApproveBy = ${JigApproveBy}, JigApproveTime = GETDATE() WHERE EvalID = ${EvalID};`;
+        let signApprove = `UPDATE [Jig].[JigEvaluation] SET ${itemMap[itemNo]}ApproveBy = ${ApproveBy}, ${itemMap[itemNo]}ApproveTime = GETDATE() WHERE EvalID = ${EvalID};`;
         await pool.request().query(signApprove);
 
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
@@ -648,180 +542,13 @@ router.put('/evaluation/sign/jig/approve', async (req, res) => { //TODO:
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/evaluation/sign/en/eval', async (req, res) => { //TODO:
+router.put('/evaluation/sign/customer', async (req, res) => { //TODO:
     try {
         let pool = await sql.connect(config);
-        let { EvalID, EnEvalBy } = req.body;
-
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${EnEvalBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
-
+        let { EvalID, CustomerNo, CustomerName } = req.body;
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signEval = `UPDATE [Jig].[JigEvaluation] SET EnEvalBy = ${EnEvalBy}, EnEvalTime = GETDATE() WHERE EvalID = ${EvalID};`;
-        await pool.request().query(signEval);
-
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
-    } catch (err) {
-        console.log(req.url, err);
-        res.status(500).send({ message: `${err}` });
-    }
-})
-router.put('/evaluation/sign/en/approve', async (req, res) => { //TODO:
-    try {
-        let pool = await sql.connect(config);
-        let { EvalID, EnApproveBy } = req.body;
-
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${EnApproveBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
-
-        let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signApprove = `UPDATE [Jig].[JigEvaluation] SET EnApproveBy = ${EnApproveBy}, EnApproveTime = GETDATE() WHERE EvalID = ${EvalID};`;
-        await pool.request().query(signApprove);
-
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
-    } catch (err) {
-        console.log(req.url, err);
-        res.status(500).send({ message: `${err}` });
-    }
-})
-router.put('/evaluation/sign/qa/eval', async (req, res) => { //TODO:
-    try {
-        let pool = await sql.connect(config);
-        let { EvalID, QaEvalBy } = req.body;
-
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${QaEvalBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
-
-        let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signEval = `UPDATE [Jig].[JigEvaluation] SET QaEvalBy = ${QaEvalBy}, QaEvalTime = GETDATE() WHERE EvalID = ${EvalID};`;
-        await pool.request().query(signEval);
-
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
-    } catch (err) {
-        console.log(req.url, err);
-        res.status(500).send({ message: `${err}` });
-    }
-})
-router.put('/evaluation/sign/qa/approve', async (req, res) => { //TODO:
-    try {
-        let pool = await sql.connect(config);
-        let { EvalID, QaApproveBy } = req.body;
-
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${QaApproveBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
-
-        let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signApprove = `UPDATE [Jig].[JigEvaluation] SET QaApproveBy = ${QaApproveBy}, QaApproveTime = GETDATE() WHERE EvalID = ${EvalID};`;
-        await pool.request().query(signApprove);
-
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
-    } catch (err) {
-        console.log(req.url, err);
-        res.status(500).send({ message: `${err}` });
-    }
-})
-router.put('/evaluation/sign/pd/eval', async (req, res) => { //TODO:
-    try {
-        let pool = await sql.connect(config);
-        let { EvalID, PdEvalBy } = req.body;
-
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${PdEvalBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
-
-        let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signEval = `UPDATE [Jig].[JigEvaluation] SET PdEvalBy = ${PdEvalBy}, PdEvalTime = GETDATE() WHERE EvalID = ${EvalID};`;
-        await pool.request().query(signEval);
-
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
-    } catch (err) {
-        console.log(req.url, err);
-        res.status(500).send({ message: `${err}` });
-    }
-})
-router.put('/evaluation/sign/pd/approve', async (req, res) => { //TODO:
-    try {
-        let pool = await sql.connect(config);
-        let { EvalID, PdApproveBy } = req.body;
-
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${PdApproveBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
-
-        let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signApprove = `UPDATE [Jig].[JigEvaluation] SET PdApproveBy = ${PdApproveBy}, PdApproveTime = GETDATE() WHERE EvalID = ${EvalID};`;
-        await pool.request().query(signApprove);
-
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
-    } catch (err) {
-        console.log(req.url, err);
-        res.status(500).send({ message: `${err}` });
-    }
-})
-router.put('/evaluation/sign/pe/eval', async (req, res) => { //TODO:
-    try {
-        let pool = await sql.connect(config);
-        let { EvalID, PeEvalBy } = req.body;
-
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${PeEvalBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
-
-        let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signEval = `UPDATE [Jig].[JigEvaluation] SET PeEvalBy = ${PeEvalBy}, PeEvalTime = GETDATE() WHERE EvalID = ${EvalID};`;
-        await pool.request().query(signEval);
-
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
-    } catch (err) {
-        console.log(req.url, err);
-        res.status(500).send({ message: `${err}` });
-    }
-})
-router.put('/evaluation/sign/pe/approve', async (req, res) => { //TODO:
-    try {
-        let pool = await sql.connect(config);
-        let { EvalID, PeApproveBy } = req.body;
-
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${PeApproveBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
-
-        let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signApprove = `UPDATE [Jig].[JigEvaluation] SET PeApproveBy = ${PeApproveBy}, PeApproveTime = GETDATE() WHERE EvalID = ${EvalID};`;
-        await pool.request().query(signApprove);
-
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
-    } catch (err) {
-        console.log(req.url, err);
-        res.status(500).send({ message: `${err}` });
-    }
-})
-
-router.put('/evaluation/sign/customer1/eval', async (req, res) => { //TODO:
-    try {
-        let pool = await sql.connect(config);
-        let { EvalID, Customer1 } = req.body;
-        let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signEval = `UPDATE [Jig].[JigEvaluation] SET Customer1 = N'${Customer1}', CustomerEvalTime1 = GETDATE() WHERE EvalID = ${EvalID};`;
-        await pool.request().query(signEval);
-        res.json({ message: 'Success', SignTime: curStr });
-    } catch (err) {
-        console.log(req.url, err);
-        res.status(500).send({ message: `${err}` });
-    }
-})
-router.put('/evaluation/sign/customer1/eval', async (req, res) => { //TODO:
-    try {
-        let pool = await sql.connect(config);
-        let { EvalID, Customer2 } = req.body;
-        let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signEval = `UPDATE [Jig].[JigEvaluation] SET Customer2 = N'${Customer2}', CustomerEvalTime2 = GETDATE() WHERE EvalID = ${EvalID};`;
+        let signEval = `UPDATE [Jig].[JigEvaluation] SET Customer${CustomerNo} = N'${CustomerName}', CustomerEvalTime${CustomerNo} = GETDATE() WHERE EvalID = ${EvalID};`;
         await pool.request().query(signEval);
         res.json({ message: 'Success', SignTime: curStr });
     } catch (err) {

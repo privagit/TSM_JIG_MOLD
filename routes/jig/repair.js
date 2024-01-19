@@ -13,7 +13,7 @@ router.post('/repair-issue', async (req, res) => {
         let { month, year, Status } = req.body;
 
         let repairIssue = await pool.request().query(`SELECT a.RepairCheckID, b.JigNo, a.RequestTime, a.StartTime, a.EndTime, a.Complaint,
-        a.RepairResult, a.ApproveBy, a.RepairNo
+        a.RepairResult, a.ApproveBy, a.ReportNo
         FROM [Jig].[RepairCheck] a
         LEFT JOIN [Jig].[MasterJig] b ON b.JigID = a.JigID
         WHERE MONTH(a.RequestTime) = ${month} AND YEAR(a.RequestTime) = ${year}
