@@ -46,17 +46,20 @@ router.post('/repair-issue', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/repair-issue/dropdown/jig', async (req, res) => { //! Deprecate
+router.post('/repair-issue/dropdown/jig', async (req, res) => {
     try {
         let pool = await sql.connect(config);
-        let jigs = await pool.request().query(`SELECT a.JigID, a.JigNo FROM [Jig].[MasterJig] a WHERE a.Active = 1;`);
+        let jigs = await pool.request().query(`SELECT a.JigID, a.JigNo, a.JigTypeID, b.JigType FROM [Jig].[MasterJig] a
+        LEFT JOIN [Jig].[MasterJigType] b ON b.JigTypeID = a.JigTypeID
+        WHERE a.Active = 1
+        `);
         res.json(jigs.recordset);
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/repair-issue/dropdown/problem/type', async (req, res) => { //! Deprecate
+router.post('/repair-issue/dropdown/problem/type', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let problemType = await pool.request().query(`SELECT a.RepairTypeID, a.RepairType
@@ -87,7 +90,7 @@ router.post('/repair-issue/dropdown/problem', async (req, res) => {
 router.post('/repair-issue/request/issue', async (req, res) => { // cache, RunningNo., io
     try {
         let pool = await sql.connect(config);
-        let { JigID, RequestBy, RequestTime, Shift, Complaint, Type, RepairTypeID, RepairProblemID } = req.body;
+        let { JigID, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID } = req.body;
 
          //* Get RunningNo
         let date = new Date();
@@ -105,8 +108,8 @@ router.post('/repair-issue/request/issue', async (req, res) => { // cache, Runni
         let ReportNo = `EM-${('0000'+RunningNo).substr(-4)}-${('00'+(date.getMonth()+1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
 
 
-        let issueRepair = await pool.request().query(`INSERT INTO [Jig].[RepairCheck](JigID, RequestBy, RequestTime, Shift, Complaint, Type, RepairTypeID, RepairProblemID, ReportNo)
-        VALUES(${JigID}, N'${RequestBy}', '${RequestTime}', '${Shift}', N'${Complaint}', ${Type}, ${RepairTypeID}, ${RepairProblemID}, '${ReportNo}');
+        let issueRepair = await pool.request().query(`INSERT INTO [Jig].[RepairCheck](JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID, ReportNo)
+        VALUES(${JigID}, '${RequestBy}', '${RequestTime}', ${Section}, N'${Complaint}', ${RepairTypeID}, ${RepairProblemID}, '${ReportNo}');
 
         SELECT SCOPE_IDENTITY() AS RepairCheckID;
         `);

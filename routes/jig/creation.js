@@ -37,7 +37,7 @@ router.post('/list', async (req, res) => { //TODO: FinishDate, Status, PartList,
 })
 
 const storageJigRequestImage = multer.diskStorage({
-    destination: path.join(__dirname, '../public/jig/request'),
+    destination: path.join(__dirname, '../../public/jig/request'),
     filename: (req, file, cb) => {
         let { JigID } = req.query;
         let uploadDate = new Date();
@@ -75,6 +75,7 @@ router.post('/issue', async (req, res) => {
         }
     })
 })
+
 
 //* ===== Request Jig =====
 router.post('/request', async (req, res) => { //TODO: Table Project
@@ -276,6 +277,7 @@ router.put('/request/sign/exam-approve', async (req, res) => {
     }
 })
 
+
 //* ===== Part List =====
 router.post('/part-list', async (req, res) => { //TODO:
     try {
@@ -330,6 +332,7 @@ router.put('/part-list/sign/approve', async (req, res) => { //TODO:
         res.status(500).send({ message: `${err}` });
     }
 })
+
 
 //* ===== Work List =====
 router.post('/work-list', async (req, res) => { //TODO: test
@@ -387,13 +390,14 @@ router.delete('/work-list/delete', async (req, res) => { //TODO: test
     }
 })
 
+
 //* ===== Modify Jig =====
 router.post('/modify', async (req, res) => { //TODO: test
     try {
         let pool = await sql.connect(config);
         let { JigCreationID } = req.body;
         let jigModify = await pool.request().query(`SELECT a.ModifyID, a.JigCreationID, a.ModifyNo, a.ModifyDate, a.CustomerBudget, a.Responsible,
-        a.Problem, a.Solution, a.Detail, a.Benefit, a.Cost
+        a.Problem, a.Solution, a.Detail, a.Benefit, a.Cost, a.BeforeImagePath, a.AfterImagePath
         FROM [Jig].[JigModify] a
         WHERE a.JigCreationID = ${JigCreationID}
         ORDER BY ModifyNo;
@@ -432,13 +436,168 @@ router.put('/modify/edit', async (req, res) => { //TODO: test
     }
 })
 
+const storageModifyBefore = multer.diskStorage({
+    destination: path.join(__dirname, '../../public/jig/modify/before'),
+    filename: (req, file, cb) => {
+        let { JigCreationID } = req.query;
+        let uploadDate = new Date();
+        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth()+1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
+        const ext = file.mimetype.split('/')[1];
+        cb(null, `${JigCreationID}_${uploadDateStr}` + '.' + ext);
+    }
+});
+const uploadModifyBefore = multer({ storage: storageModifyBefore }).single('jig_modify_before');
+const storageModifyAfter = multer.diskStorage({
+    destination: path.join(__dirname, '../../public/jig/modify/after'),
+    filename: (req, file, cb) => {
+        let { JigCreationID } = req.query;
+        let uploadDate = new Date();
+        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth()+1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
+        const ext = file.mimetype.split('/')[1];
+        cb(null, `${JigCreationID}_${uploadDateStr}` + '.' + ext);
+    }
+});
+const uploadModifyAfter = multer({ storage: storageModifyAfter }).single('jig_modify_after');
+
+router.post('/modify/upload/before', async (req, res) => {
+    uploadModifyBefore(req, res, async (err) => {
+        if (err) {
+            console.log(req.url, 'Upload ERROR', err);
+            res.status(500).send({ message: `${err}` });
+        } else {
+            try {
+                let pool = await sql.connect(config);
+                let ImagePath = (req.file) ? "/jig/modify/before/" + req.file.filename : "";
+                let { ModifyID, JigCreationID } = req.body;
+                let updateModifyBefore = `UPDATE [Jig].[JigModify] SET BeforeImagePath = N'${ImagePath}' WHERE ModifyID = ${ModifyID};`;
+                await pool.request().query(updateModifyBefore);
+                res.json({ message: 'Success' });
+            } catch (err) {
+                console.log(req.url, 'DB ERROR', err);
+                res.status(500).send({ message: `${err}` });
+            }
+        }
+    })
+})
+router.post('/modify/upload/after', async (req, res) => {
+    uploadModifyAfter(req, res, async (err) => {
+        if (err) {
+            console.log(req.url, 'Upload ERROR', err);
+            res.status(500).send({ message: `${err}` });
+        } else {
+            try {
+                let pool = await sql.connect(config);
+                let ImagePath = (req.file) ? "/jig/modify/after/" + req.file.filename : "";
+                let { ModifyID, JigCreationID } = req.body;
+                let updateModifyAfter = `UPDATE [Jig].[JigModify] SET AfterImagePath = N'${ImagePath}' WHERE ModifyID = ${ModifyID};`;
+                await pool.request().query(updateModifyAfter);
+                res.json({ message: 'Success' });
+            } catch (err) {
+                console.log(req.url, 'DB ERROR', err);
+                res.status(500).send({ message: `${err}` });
+            }
+        }
+    })
+})
+//TODO: รายละเอียดค่าใช้จ่ายอื่นๆ
+
 
 //* ===== Trial =====
-
+router.post('/trial', async (req, res) => { //TODO: test
+    try {
+        let pool = await sql.connect(config);
+        let { JigCreationID } = req.body;
+        let jigTrial = await pool.request().query(`SELECT a.TrialID, CONVERT(NVARCHAR, a.PlanStart, 23) AS TestDate, a.Qty,
+        FORMAT(a.PlanStart, 'HH:MM') AS PlanStart, FORMAT(a.PlanFinish, 'HH:MM') AS PlanFinish,
+        DATEDIFF(HOUR, a.PlanStart, a.PlanFinish) AS PlanTime,
+        FORMAT(a.ActualStart, 'HH:MM') AS ActualStart, FORMAT(a.ActualFinish, 'HH:MM') AS ActualFinish,
+        DATEDIFF(HOUR, a.ActualStart, a.ActualFinish) AS ActualTime,
+        a.Problem, a.Reason, a.FixDetail, a.Remark
+        FROM [Jig].[JigTrial] a
+        WHERE a.JigCreationID = ${JigCreationID};
+        `);
+        res.json(jigTrial.recordset);
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/trial/add', async (req, res) => { //TODO: test
+    try {
+        let pool = await sql.connect(config);
+        let { JigCreationID } = req.body;
+        let insertModify = `INSERT INTO [Jig].[JigModify](JigCreationID) VALUES(${JigCreationID});`;
+        await pool.request().query(insertModify);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.put('/trial/edit', async (req, res) => { //TODO: test
+    try {
+        let pool = await sql.connect(config);
+        let { ModifyID, ModifyNo, ModifyDate, CustomerBudget, Responsible, Problem, Solution, Detail, Benefit, Cost } = req.body;
+        let updateModify = `UPDATE [Jig].[JigWorkList] SET ModifyNo = ${ModifyNo}, ModifyDate = '${ModifyDate}', CustomerBudget = ${CustomerBudget},
+        Responsible = N'${Responsible}', Problem = N'${Problem}', Solution = N'${Solution}', Detail = N'${Detail}', Benefit = N'${Benefit}', Cost = N'${Cost}'
+        WHERE ModifyID = ${ModifyID};
+        `;
+        await pool.request().query(updateModify);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
 
 
 //* ===== Evaluation =====
-
+router.post('/evaluation', async (req, res) => { //! TODO test
+    try {
+        let pool = await sql.connect(config);
+        let { JigCreationID } = req.body;
+        let jigTrial = await pool.request().query(`SELECT a.TrialID, CONVERT(NVARCHAR, a.PlanStart, 23) AS TestDate, a.Qty,
+        FORMAT(a.PlanStart, 'HH:MM') AS PlanStart, FORMAT(a.PlanFinish, 'HH:MM') AS PlanFinish,
+        DATEDIFF(HOUR, a.PlanStart, a.PlanFinish) AS PlanTime,
+        FORMAT(a.ActualStart, 'HH:MM') AS ActualStart, FORMAT(a.ActualFinish, 'HH:MM') AS ActualFinish,
+        DATEDIFF(HOUR, a.ActualStart, a.ActualFinish) AS ActualTime,
+        a.Problem, a.Reason, a.FixDetail, a.Remark
+        FROM [Jig].[JigTrial] a
+        WHERE a.JigCreationID = ${JigCreationID};
+        `);
+        res.json(jigTrial.recordset);
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/evaluation/add', async (req, res) => { //! TODO: test
+    try {
+        let pool = await sql.connect(config);
+        let { JigCreationID } = req.body;
+        let insertModify = `INSERT INTO [Jig].[JigModify](JigCreationID) VALUES(${JigCreationID});`;
+        await pool.request().query(insertModify);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.put('/evaluation/edit', async (req, res) => { //! TODO: test
+    try {
+        let pool = await sql.connect(config);
+        let { ModifyID, ModifyNo, ModifyDate, CustomerBudget, Responsible, Problem, Solution, Detail, Benefit, Cost } = req.body;
+        let updateModify = `UPDATE [Jig].[JigWorkList] SET ModifyNo = ${ModifyNo}, ModifyDate = '${ModifyDate}', CustomerBudget = ${CustomerBudget},
+        Responsible = N'${Responsible}', Problem = N'${Problem}', Solution = N'${Solution}', Detail = N'${Detail}', Benefit = N'${Benefit}', Cost = N'${Cost}'
+        WHERE ModifyID = ${ModifyID};
+        `;
+        await pool.request().query(updateModify);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
 
 
 //* ===== Comment =====
