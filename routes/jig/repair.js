@@ -90,8 +90,8 @@ router.post('/repair-issue/dropdown/problem', async (req, res) => {
 router.post('/repair-issue/request/issue', async (req, res) => { // cache, RunningNo., io
     try {
         let pool = await sql.connect(config);
-        let { JigID, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID } = req.body;
-
+        let { JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID } = req.body;
+        console.log(JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID)
          //* Get RunningNo
         let date = new Date();
         let monthRunningNo = await pool.request().query(`SELECT a.MonthDate, a.RunningNo
@@ -107,15 +107,34 @@ router.post('/repair-issue/request/issue', async (req, res) => { // cache, Runni
         }
         let ReportNo = `EM-${('0000'+RunningNo).substr(-4)}-${('00'+(date.getMonth()+1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
 
+        console.log(`INSERT INTO [Jig].[RepairCheck](JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID, ReportNo)
+        VALUES(${JigID}, '${RequestBy}', '${RequestTime}', '${Section}', N'${Complaint}', ${RepairTypeID}, ${RepairProblemID}, '${ReportNo}');
 
+        SELECT SCOPE_IDENTITY() AS RepairCheckID;
+        `)
         let issueRepair = await pool.request().query(`INSERT INTO [Jig].[RepairCheck](JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID, ReportNo)
-        VALUES(${JigID}, '${RequestBy}', '${RequestTime}', ${Section}, N'${Complaint}', ${RepairTypeID}, ${RepairProblemID}, '${ReportNo}');
+        VALUES(${JigID}, '${RequestBy}', '${RequestTime}', '${Section}', N'${Complaint}', ${RepairTypeID}, ${RepairProblemID}, '${ReportNo}');
 
         SELECT SCOPE_IDENTITY() AS RepairCheckID;
         `);
 
         // let date = new Date();
         const io = req.app.get('socketio');
+        console.log(`DECLARE @EmMachineID INT,
+        @AccessoryID INT;
+        SELECT @EmMachineID = ${EmMachineID}, @AccessoryID = ${AccessoryID};
+        IF(@EmMachineID IS NOT NULL)
+        BEGIN
+            SELECT b.MachineNo
+            FROM [Jig].[MasterEmMachine] a
+            LEFT JOIN [TSMolymer_F].[dbo].[MasterMachine] b ON a.MachineID = b.MachineID
+            WHERE a.EmMachineID = ${EmMachineID};
+        END;
+        IF(@AccessoryID IS NOT NULL)
+        BEGIN
+            SELECT a.MachineNo FROM [Jig].[MasterAccessory] a WHERE AccessoryID = ${AccessoryID};
+        END;
+        `)
         let machine = await pool.request().query(`DECLARE @EmMachineID INT,
         @AccessoryID INT;
         SELECT @EmMachineID = ${EmMachineID}, @AccessoryID = ${AccessoryID};

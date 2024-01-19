@@ -47,6 +47,7 @@ const storageJigRequestImage = multer.diskStorage({
     }
 });
 const uploadJigRequestImage = multer({ storage: storageJigRequestImage }).single('jig_request_image');
+
 router.post('/issue', async (req, res) => {
     uploadJigRequestImage(req, res, async (err) => {
         if (err) {
