@@ -451,8 +451,8 @@ router.post('/repair-issue/sign/approve', async (req, res) => {
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signRequest = `UPDATE [Jig].[RepairCheck] SET ApproveBy = ${ApproveBy} WHERE RepairCheckID = ${RepairCheckID};`;
-        await pool.request().query(signRequest);
+        let signApprove = `UPDATE [Jig].[RepairCheck] SET ApproveBy = ${ApproveBy} WHERE RepairCheckID = ${RepairCheckID};`;
+        await pool.request().query(signApprove);
 
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
@@ -470,8 +470,8 @@ router.post('/repair-issue/sign/receive', async (req, res) => {
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signRepair = `UPDATE [Jig].[RepairCheck] SET ReceiveBy = ${ReceiveBy}, CheckerTime = '${curStr}' WHERE RepairCheckID = ${RepairCheckID};`;
-        await pool.request().query(signRepair);
+        let signReceive = `UPDATE [Jig].[RepairCheck] SET ReceiveBy = ${ReceiveBy}, CheckerTime = '${curStr}' WHERE RepairCheckID = ${RepairCheckID};`;
+        await pool.request().query(signReceive);
 
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
@@ -489,8 +489,8 @@ router.post('/repair-issue/sign/receive-approve', async (req, res) => {
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signRepair = `UPDATE [Jig].[RepairCheck] SET ReceiveApproveBy = ${ReceiveApproveBy}, ApproveTime = '${curStr}' WHERE RepairCheckID = ${RepairCheckID};`;
-        await pool.request().query(signRepair);
+        let signReceiveApprove = `UPDATE [Jig].[RepairCheck] SET ReceiveApproveBy = ${ReceiveApproveBy}, ApproveTime = '${curStr}' WHERE RepairCheckID = ${RepairCheckID};`;
+        await pool.request().query(signReceiveApprove);
 
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
