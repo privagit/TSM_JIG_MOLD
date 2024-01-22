@@ -114,24 +114,10 @@ router.post('/repair-issue/request/issue', async (req, res) => { // cache, Runni
 
         // let date = new Date();
         const io = req.app.get('socketio');
-        let machine = await pool.request().query(`DECLARE @EmMachineID INT,
-        @AccessoryID INT;
-        SELECT @EmMachineID = ${EmMachineID}, @AccessoryID = ${AccessoryID};
-        IF(@EmMachineID IS NOT NULL)
-        BEGIN
-            SELECT b.MachineNo
-            FROM [Jig].[MasterEmMachine] a
-            LEFT JOIN [TSMolymer_F].[dbo].[MasterMachine] b ON a.MachineID = b.MachineID
-            WHERE a.EmMachineID = ${EmMachineID};
-        END;
-        IF(@AccessoryID IS NOT NULL)
-        BEGIN
-            SELECT a.MachineNo FROM [Jig].[MasterAccessory] a WHERE AccessoryID = ${AccessoryID};
-        END;
-        `);
+        let machine = await pool.request().query(`SELECT JigNo FROM [Jig].[MasterJig] WHERE JigID = ${JigID};`);
         let alertTime = `${date.getHours()}:${('00'+date.getMinutes()).substr(-2)}`;
         let alertDate = `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`;
-        let alertLog = { MachineNo: machine.recordset[0]?.MachineNo, Module: 1, Action: 1, time: alertTime, date: alertDate };
+        let alertLog = { MachineNo: machine.recordset[0]?.JigNo, Module: 1, Action: 1, time: alertTime, date: alertDate };
         io.emit('alert-log', alertLog);
         let cacheAlertLog = await redis.get('em-alert-log');
         if(!cacheAlertLog){
