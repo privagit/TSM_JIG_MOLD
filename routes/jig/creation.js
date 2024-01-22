@@ -59,6 +59,8 @@ router.post('/issue', async (req, res) => {
                 let RequestImagePath = (req.file) ? "/jig/request/" + req.file.filename : "";
                 let { CustomerID, JigTypeID, PartCode, PartName, RequiredDate, RequestTime, Quantity, RequestSection, RequestType,
                     ProductionDate, Budget, CustomerBudget, FgMonthQty, FgYearQty, UseIn, Requirement } = req.body;
+                    console.log(req.file.filename)
+                    console.log(req.body)
                 let insertJigCreate = await pool.request().query(`INSERT INTO [Jig].[JigCreation](CustomerID, JigTypeID, PartCode, PartName,
                     RequiredDate, RequestTime, Quantity, RequestSection, RequestType,
                     ProductionDate, Budget, CustomerBudget, FgMonthQty, FgYearQty, UseIn, Requirement, RequestImagePath)
