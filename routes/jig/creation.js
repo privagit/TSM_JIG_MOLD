@@ -148,7 +148,7 @@ router.put('/request/tooling/edit', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/request/sign', async (req, res) => {
+router.put('/request/sign', async (req, res) => { //todo ส่งเวลา Sign In มาด้วย
     try {
         let pool = await sql.connect(config);
         let { JigCreationID, EmployeeID, itemNo } = req.body;
@@ -234,7 +234,7 @@ router.post('/work-list', async (req, res) => { //TODO: test
     try {
         let pool = await sql.connect(config);
         let { JigCreationID } = req.body;
-        let jigWorkList = await pool.request().query(`SELECT a.WorkListID, a.WorkType, a.StartTime, a.FinishTime, a.Detail, a.Responsible
+        let jigWorkList = await pool.request().query(`SELECT a.WorkListID, a.WorkType, a.StartTime, a.FinishTime, a.Detail, a.Responsible, a.Remark
         FROM [Jig].[JigWorkList] a
         WHERE a.JigCreationID = ${JigCreationID} AND Active = 1;
         `);
@@ -247,9 +247,10 @@ router.post('/work-list', async (req, res) => { //TODO: test
 router.post('/work-list/add', async (req, res) => { //TODO: test
     try {
         let pool = await sql.connect(config);
-        let { JigCreationID, WorkType, StartTime, FinishTime, Detail, Responsible } = req.body;
-        let insertWorkList = `INSERT INTO [Jig].[JigWorkList](JigCreationID, WorkType, StartTime, FinishTime, Detail, Responsible, Active)
-        VALUES(${JigCreationID}, N'${WorkType}', '${StartTime}', '${FinishTime}', N'${Detail}', N'${Responsible}', 1);
+        let { JigCreationID, WorkType, StartTime, FinishTime, Detail, Responsible, Remark } = req.body;
+        console.log(req.body)
+        let insertWorkList = `INSERT INTO [Jig].[JigWorkList](JigCreationID, WorkType, StartTime, FinishTime, Detail, Responsible, Remark, Active)
+        VALUES(${JigCreationID}, N'${WorkType}', '${StartTime}', '${FinishTime}', N'${Detail}', N'${Responsible}', N'${Remark}' , 1);
         `;
         await pool.request().query(insertWorkList);
         res.json({ message: 'Success' });
@@ -261,9 +262,9 @@ router.post('/work-list/add', async (req, res) => { //TODO: test
 router.put('/work-list/edit', async (req, res) => { //TODO: test
     try {
         let pool = await sql.connect(config);
-        let { WorkListID, WorkType, StartTime, FinishTime, Detail, Responsible } = req.body;
+        let { WorkListID, WorkType, StartTime, FinishTime, Detail, Responsible, Remark } = req.body;
         let updateWorkList = `UPDATE [Jig].[JigWorkList] SET WorkType = N'${WorkType}', StartTime = '${StartTime}', FinishTime = '${FinishTime}',
-        Detail = N'${Detail}', Responsible = N'${Responsible}' WHERE WorkListID = ${WorkListID};
+        Detail = N'${Detail}', Responsible = N'${Responsible}', Remark = N'${Remark}' WHERE WorkListID = ${WorkListID};
         `;
         await pool.request().query(updateWorkList);
         res.json({ message: 'Success' });
