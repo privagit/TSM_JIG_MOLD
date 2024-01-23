@@ -399,7 +399,12 @@ router.put('/modify/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { ModifyID, ModifyNo, ModifyDate, Responsible, Problem, Solution, Detail, Benefit, Cost } = req.body;
-        let updateModify = `UPDATE [Jig].[JigWorkList] SET ModifyNo = ${ModifyNo}, ModifyDate = '${ModifyDate}', Responsible = N'${Responsible}',
+        console.log(req.body)
+        console.log(`UPDATE [Jig].[JigModify] SET ModifyNo = ${ModifyNo}, ModifyDate = '${ModifyDate}', Responsible = N'${Responsible}',
+        Problem = N'${Problem}', Solution = N'${Solution}', Detail = N'${Detail}', Benefit = N'${Benefit}', Cost = N'${Cost}'
+        WHERE ModifyID = ${ModifyID};
+        `)
+        let updateModify = `UPDATE [Jig].[JigModify] SET ModifyNo = ${ModifyNo}, ModifyDate = '${ModifyDate}', Responsible = N'${Responsible}',
         Problem = N'${Problem}', Solution = N'${Solution}', Detail = N'${Detail}', Benefit = N'${Benefit}', Cost = N'${Cost}'
         WHERE ModifyID = ${ModifyID};
         `;
@@ -502,8 +507,8 @@ router.post('/trial/add', async (req, res) => { //TODO: ต้อง Received �
     try {
         let pool = await sql.connect(config);
         let { JigCreationID } = req.body;
-        let insertModify = `INSERT INTO [Jig].[JigModify](JigCreationID) VALUES(${JigCreationID});`;
-        await pool.request().query(insertModify);
+        let insertTrial = `INSERT INTO [Jig].[JigTrial](JigCreationID) VALUES(${JigCreationID});`;
+        await pool.request().query(insertTrial);
         res.json({ message: 'Success' });
     } catch (err) {
         console.log(req.url, err);
@@ -514,11 +519,11 @@ router.put('/trial/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { ModifyID, ModifyNo, ModifyDate, CustomerBudget, Responsible, Problem, Solution, Detail, Benefit, Cost } = req.body;
-        let updateModify = `UPDATE [Jig].[JigWorkList] SET ModifyNo = ${ModifyNo}, ModifyDate = '${ModifyDate}', CustomerBudget = ${CustomerBudget},
+        let updateTrial = `UPDATE [Jig].[JigTrial] SET ModifyNo = ${ModifyNo}, ModifyDate = '${ModifyDate}', CustomerBudget = ${CustomerBudget},
         Responsible = N'${Responsible}', Problem = N'${Problem}', Solution = N'${Solution}', Detail = N'${Detail}', Benefit = N'${Benefit}', Cost = N'${Cost}'
         WHERE ModifyID = ${ModifyID};
         `;
-        await pool.request().query(updateModify);
+        await pool.request().query(updateTrial);
         res.json({ message: 'Success' });
     } catch (err) {
         console.log(req.url, err);
