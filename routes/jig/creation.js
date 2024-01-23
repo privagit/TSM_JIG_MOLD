@@ -195,11 +195,16 @@ router.put('/request/tooling/edit', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/request/sign', async (req, res) => { //TODO: ต้องอนุมัติก่อนถึงจะ sign Exam ได้
+router.put('/request/sign', async (req, res) => { // ต้องอนุมัติก่อนถึงจะ Sign Exam ได้
     try {
         let pool = await sql.connect(config);
         let { JigCreationID, EmployeeID, itemNo } = req.body;
         let itemMap = { 1: 'Responsible', 2: 'Request', 3: 'Checked', 4: 'Approve', 5: 'ExamRequest', 6: 'ExamChecked', 7: 'ExamApprove' };
+
+        if(itemNo == 5 || itemNo == 6 || itemNo == 7){ // Check ExamResult ต้องอนุมัติก่อนถึงจะ Sign Exam ได้
+            let getExamResult = await pool.request().query(`SELECT ExamResult FROM [Jig].[JigCreation] WHERE JigCreationID = ${JigCreationID};`);
+            if(!getExamResult.recordset[0].ExamResult) return res.status(400).send({ message: 'ไม่สามารถลงชื่อได้ ต้องทำการอนุมัติก่อน' });
+        }
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${EmployeeID};`);
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
@@ -495,10 +500,18 @@ router.post('/trial', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/trial/add', async (req, res) => { //TODO: ต้อง Received จาก PartList ให้ครบก่อน
+router.post('/trial/add', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { JigCreationID } = req.body;
+
+        let getPartList = await pool.request().query(`SELECT a.PartListID
+        FROM [Jig].[JigPartList] a
+        WHERE Received = 0 AND a.JigCreationID = 1;
+        `);
+        if(getPartList.recordset.length) return res.status(400).send({ message: 'มี PartList ยังไม่ถูก Receive' });
+
+
         let insertTrial = `INSERT INTO [Jig].[JigTrial](JigCreationID) VALUES(${JigCreationID});`;
         await pool.request().query(insertTrial);
         res.json({ message: 'Success' });
@@ -507,7 +520,7 @@ router.post('/trial/add', async (req, res) => { //TODO: ต้อง Received �
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/trial/edit', async (req, res) => { //TODO:
+router.put('/trial/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { TrialID, PlanStart, PlanFinish, ActualStart, ActualFinish, Qty, Problem, Reason, FixDetail, Remark } = req.body;
@@ -556,7 +569,7 @@ router.post('/evaluation', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/evaluation/add', async (req, res) => { //TODO: บล็อคตอนที่มี Pass แล้ว
+router.post('/evaluation/add', async (req, res) => { //TODO: บล็อคตอนที่มี Pass แล้ว (Pass อันไหนบ้าง)
     try {
         let pool = await sql.connect(config);
         let { JigCreationID } = req.body;
@@ -572,6 +585,10 @@ router.put('/evaluation/edit', async (req, res) => { //TODO: Check Comment
     try {
         let pool = await sql.connect(config);
         let { EvalID, EvalType, TsResult, CustomerResult, EvalTopic, Problem, Solution, ModifyDetail } = req.body;
+
+        let getUnfixComment = await pool.request().query();
+        if(getUnfixComment.recordset.length) return res.status(400).send({ message: 'ไม่สามารถ' })
+
         let updateEval = `UPDATE [Jig].[JigWorkList] SET EvalType = ${EvalType}, TsResult = ${TsResult}, CustomerResult = ${CustomerResult},
         EvalTopic = N'${EvalTopic}', Problem = N'${Problem}', Solution = N'${Solution}', ModifyDetail = N'${ModifyDetail}', Benefit = N'${Benefit}'
         WHERE EvalID = ${EvalID};
