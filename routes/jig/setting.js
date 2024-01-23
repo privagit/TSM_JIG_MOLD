@@ -510,7 +510,7 @@ router.post('/maintenace/pm/checkfile/upload', async (req, res) => { // Upload P
         }
     })
 })
-router.put('/maintenace/inspect/edit', async (req, res) => { // select PM Topic to use
+router.put('/maintenace/inspect/edit', async (req, res) => { //TODO:  uncheck, select PM Topic to use
     try {
         let pool = await sql.connect(config);
         let { JigID, PmTopicID } = req.body;
