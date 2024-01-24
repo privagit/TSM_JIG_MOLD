@@ -163,13 +163,15 @@ router.post('/repair-issue/repair/item', async (req, res) => {
         let repair = await pool.request().query(`SELECT a.RepairCheckID, a.RequestTime, a.RepairProblemID, a.RepairTypeID, a.Complaint,
         a.StartTime, a.EndTime, a.RootCause, a.FixDetail, a.TestDummyResult, a.RepairResult,
         b.FirstName AS RequestSign, c.FirstName AS RepairBy, d.FirstName AS ApproveBy, e.FirstName AS ReceiveBy,
-        f.FirstName AS ReceiveApproveBy
+        f.FirstName AS ReceiveApproveBy,
+        a.JigID, g.JigTypeID, g.JigType, a.Section
         FROM [Jig].[RepairCheck] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.RequestBy = b.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.RepairBy = c.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.ApproveBy = d.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] e ON a.ReceiveBy = e.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] f ON a.ReceiveApproveBy = f.EmployeeID
+        LEFT JOIN [Jig].[MasterJig] g ON g.JigID = a.JigID
         WHERE a.RepairCheckID = ${RepairCheckID};
         `);
         if(repair.recordset.length){

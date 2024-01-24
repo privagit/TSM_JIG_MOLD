@@ -647,7 +647,7 @@ router.put('/evaluation/edit', async (req, res) => { // Comment ต้อง Fix
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/evaluation/sign/eval', async (req, res) => {
+router.put('/evaluation/sign/eval', async (req, res) => { //TODO: finish
     try {
         let pool = await sql.connect(config);
         let { EvalID, EvalBy, itemNo } = req.body;
@@ -667,7 +667,7 @@ router.put('/evaluation/sign/eval', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/evaluation/sign/approve', async (req, res) => {
+router.put('/evaluation/sign/approve', async (req, res) => { //TODO: finish
     try {
         let pool = await sql.connect(config);
         let { EvalID, ApproveBy, itemNo } = req.body;
@@ -687,7 +687,7 @@ router.put('/evaluation/sign/approve', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/evaluation/sign/customer', async (req, res) => {
+router.put('/evaluation/sign/customer', async (req, res) => { // TODO: finish
     try {
         let pool = await sql.connect(config);
         let { EvalID, CustomerNo, CustomerName } = req.body;
