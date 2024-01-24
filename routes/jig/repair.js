@@ -203,7 +203,10 @@ router.post('/repair-issue/repair/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { RepairCheckID, RootCause, FixDetail, RepairResult } = req.body;
-
+        console.log(`UPDATE [Jig].[RepairCheck] SET RootCause = N'${RootCause}', FixDetail = N'${FixDetail}',
+        RepairResult = ${RepairResult}
+        WHERE RepairCheckID = ${RepairCheckID};
+        `)
         let updateRepair = `UPDATE [Jig].[RepairCheck] SET RootCause = N'${RootCause}', FixDetail = N'${FixDetail}',
         RepairResult = ${RepairResult}
         WHERE RepairCheckID = ${RepairCheckID};
