@@ -162,7 +162,7 @@ router.post('/repair-issue/repair/item', async (req, res) => {
 
         let repair = await pool.request().query(`SELECT a.RepairCheckID, a.RequestTime, a.RepairProblemID, a.RepairTypeID, a.Complaint,
         a.StartTime, a.EndTime, a.RootCause, a.FixDetail, a.TestDummyResult, a.RepairResult,
-        b.FirstName AS RequestSign, c.FirstName AS RepairBy, d.FirstName AS ApproveBy, e.FirstName AS ReceiveBy,
+        b.FirstName AS RequestSign, c.FirstName AS RepairBy, d.FirstName AS ApproveBy, e.FirstName AS ReceiveBy, a.ReceiveTime,
         f.FirstName AS ReceiveApproveBy,
         a.JigID, g.JigTypeID, h.JigType, a.Section
         FROM [Jig].[RepairCheck] a
