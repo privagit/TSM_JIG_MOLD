@@ -303,7 +303,7 @@ router.post('/repair-issue/service', async (req, res) => {
         let pool = await sql.connect(config);
         let { RepairCheckID } = req.body;
 
-        let PartsCost = await pool.request().query(`SELECT a.RepairCheckID, a.RepairCheckID, a.SpareID, b.SpareName, a.Qty, a.UnitPrice, a.UsedDate,
+        let PartsCost = await pool.request().query(`SELECT a.RepairCheckID, a.RepairCostID, a.SpareID, b.SpareName, a.Qty, a.UnitPrice, a.UsedDate,
         (a.UnitPrice * a.Qty) AS Amounth, a.Reuse
         FROM [Jig].[RepairCost] a
         LEFT JOIN [Jig].[MasterSpare] b ON a.SpareID = b.SpareID
@@ -346,6 +346,18 @@ router.post('/repair-issue/service/add', async (req, res) => { // ถ้า Use 
         `;
         await pool.request().query(insertPart);
 
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/repair-issue/service/reuse', async (req, res) => { // ติ๊ก Reuse
+    try {
+        let pool = await sql.connect(config);
+        let { RepairCostID, Reuse } = req.body;
+        let updateReuse = `UPDATE [Jig].[RepairCost] SET Reuse = ${Reuse} WHERE RepairCostID = ${RepairCostID};`;
+        await pool.request().query(updateReuse);
         res.json({ message: 'Success' });
     } catch (err) {
         console.log(req.url, err);
