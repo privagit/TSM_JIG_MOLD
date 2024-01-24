@@ -30,7 +30,10 @@ router.post('/list', async (req, res) => { //TODO: FinishDate, RequestStatus, Ev
         FROM [Jig].[JigTrial] a
         GROUP BY a.JigCreationID;
         `);
-        let jigEval = await pool.request().query(); //TODO:
+        let jigEval = await pool.request().query(`SELECT a.EvalID, a.JigCreationID
+        FROM [Jig].[JigEvaluation] a
+        WHERE a.TsResult = 1 AND a.CustomerResult = 1;
+        `);
 
         for(let item of jigCreateList.recordset){
             // Request Status { 0: Issue, 1: Accept (Wait Approve), 2: Accept, 3: Reject }
