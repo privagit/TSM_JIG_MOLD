@@ -355,6 +355,18 @@ router.post('/repair-issue/service/add', async (req, res) => { // ถ้า Use 
         res.status(500).send({ message: `${err}` });
     }
 })
+router.post('/repair-issue/service/reuse', async (req, res) => { // ติ๊ก Reuse
+    try {
+        let pool = await sql.connect(config);
+        let { RepairCostID, Reuse } = req.body;
+        let updateReuse = `UPDATE [Jig].[RepairCost] SET Reuse = ${Reuse} WHERE RepairCostID = ${RepairCostID};`;
+        await pool.request().query(updateReuse);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
 router.delete('/repair-issue/service/delete', async (req, res) => {
     try {
         let pool = await sql.connect(config);
