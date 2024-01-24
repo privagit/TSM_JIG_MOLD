@@ -366,7 +366,6 @@ router.delete('/repair-issue/service/delete', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-//TODO: Requestor Section
 router.put('/repair-issue/result/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
