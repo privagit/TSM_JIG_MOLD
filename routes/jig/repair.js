@@ -364,11 +364,13 @@ router.delete('/repair-issue/service/delete', async (req, res) => {
     }
 })
 //TODO: Requestor Section
-router.post('/', async (req, res) => {
+router.put('/repair-issue/result/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
-        let { RepairCheckID } = req.body;
-
+        let { RepairCheckID, RepairResult } = req.body;
+        let updateRepairResult = `UPDATE [Jig].[RepairCheck] SET RepairResult = ${RepairResult} WHERE RepairCheckID = ${RepairCheckID};`;
+        await pool.request().query(updateRepairResult);
+        res.json({ message: 'Success' });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });

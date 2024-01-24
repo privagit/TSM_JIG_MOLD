@@ -500,7 +500,7 @@ router.post('/trial', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/trial/add', async (req, res) => {
+router.post('/trial/add', async (req, res) => { // ต้อง Receive PartList ให้ครบก่อน
     try {
         let pool = await sql.connect(config);
         let { JigCreationID } = req.body;
@@ -581,13 +581,15 @@ router.post('/evaluation/add', async (req, res) => { //TODO: บล็อคต�
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/evaluation/edit', async (req, res) => { //TODO: Check Comment
+router.put('/evaluation/edit', async (req, res) => { // Comment ต้อง Fix ให้หมดถึงจผ่านได้
     try {
         let pool = await sql.connect(config);
-        let { EvalID, EvalType, TsResult, CustomerResult, EvalTopic, Problem, Solution, ModifyDetail } = req.body;
+        let { JigCreationID, EvalID, EvalType, TsResult, CustomerResult, EvalTopic, Problem, Solution, ModifyDetail } = req.body;
 
-        let getUnfixComment = await pool.request().query();
-        if(getUnfixComment.recordset.length) return res.status(400).send({ message: 'ไม่สามารถ' })
+        let getUnfixComment = await pool.request().query(`SELECT a.CommentID FROM [Jig].[JigComment] a
+        WHERE JigCreationID = ${JigCreationID} AND (a.Fix = 0 OR a.Fix IS NULL);
+        `);
+        if(getUnfixComment.recordset.length) return res.status(400).send({ message: 'ไม่สามารถบันทึกผลได้ มี Comment ยังไม่ถูก Fix' });
 
         let updateEval = `UPDATE [Jig].[JigWorkList] SET EvalType = ${EvalType}, TsResult = ${TsResult}, CustomerResult = ${CustomerResult},
         EvalTopic = N'${EvalTopic}', Problem = N'${Problem}', Solution = N'${Solution}', ModifyDetail = N'${ModifyDetail}', Benefit = N'${Benefit}'
