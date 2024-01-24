@@ -164,7 +164,7 @@ router.post('/repair-issue/repair/item', async (req, res) => {
         a.StartTime, a.EndTime, a.RootCause, a.FixDetail, a.TestDummyResult, a.RepairResult,
         b.FirstName AS RequestSign, c.FirstName AS RepairBy, d.FirstName AS ApproveBy, e.FirstName AS ReceiveBy,
         f.FirstName AS ReceiveApproveBy,
-        a.JigID, g.JigTypeID, g.JigType, a.Section
+        a.JigID, g.JigTypeID, h.JigType, a.Section
         FROM [Jig].[RepairCheck] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.RequestBy = b.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.RepairBy = c.EmployeeID
@@ -172,6 +172,7 @@ router.post('/repair-issue/repair/item', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[User] e ON a.ReceiveBy = e.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] f ON a.ReceiveApproveBy = f.EmployeeID
         LEFT JOIN [Jig].[MasterJig] g ON g.JigID = a.JigID
+        LEFT JOIN [Jig].[MasterJigType] h ON h.JigTypeID = g.JigTypeID
         WHERE a.RepairCheckID = ${RepairCheckID};
         `);
         if(repair.recordset.length){
@@ -305,7 +306,7 @@ router.post('/repair-issue/service', async (req, res) => {
         let pool = await sql.connect(config);
         let { RepairCheckID } = req.body;
 
-        let PartsCost = await pool.request().query(`SELECT a.RepairCheckID, a.RepairCheckID, a.SpareID, b.SpareName, a.Qty, a.UnitPrice, a.UsedDate,
+        let PartsCost = await pool.request().query(`SELECT a.RepairCheckID, a.RepairCostID, a.SpareID, b.SpareName, a.Qty, a.UnitPrice, a.UsedDate,
         (a.UnitPrice * a.Qty) AS Amounth, a.Reuse
         FROM [Jig].[RepairCost] a
         LEFT JOIN [Jig].[MasterSpare] b ON a.SpareID = b.SpareID
