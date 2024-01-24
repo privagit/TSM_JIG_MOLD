@@ -22,6 +22,7 @@ router.post('/repair-issue', async (req, res) => {
 
         //* Filter Status
         if(Status){ //* Status: All = null, 1: Issue, 2: Repair, 3: Wait Sign, 4: Complete
+            console.log(Status)
             if(Status == 1){
                 let repairIssueFiltered = repairIssue.recordset.filter(v => !v.StartTime && !v.EndTime);
                 return res.json(repairIssueFiltered);
@@ -31,6 +32,7 @@ router.post('/repair-issue', async (req, res) => {
                 return res.json(repairIssueFiltered);
             }
             else if(Status == 3){
+                
                 let repairIssueFiltered = repairIssue.recordset.filter(v => v.StartTime && v.EndTime && !v.ApproveBy);
                 return res.json(repairIssueFiltered);
             }
