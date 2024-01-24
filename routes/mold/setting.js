@@ -216,7 +216,7 @@ router.post('/maintenace/pm/checkfile/upload', async (req, res) => {
         }
     })
 })
-router.put('/maintenace/inspect/edit', async (req, res) => {
+router.put('/maintenace/inspect/edit', async (req, res) => { //TODO: uncheck
     try {
         let pool = await sql.connect(config);
         let { MoldID, PmTopicID } = req.body;
