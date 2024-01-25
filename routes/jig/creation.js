@@ -174,6 +174,7 @@ router.put('/request/confirm-target-date/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { JigCreationID, ConfirmDateResult, ConfirmDate } = req.body;
+        console.log(req.body)
         let updateConfirmTarget = `UPDATE [Jig].[JigCreation] SET ConfirmDateResult = ${ConfirmDateResult}, ConfirmDate = '${ConfirmDate}'
         WHERE JigCreationID = ${JigCreationID};
         `;
