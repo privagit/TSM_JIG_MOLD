@@ -213,15 +213,18 @@ router.put('/request/sign', async (req, res) => { // ต้องอนุมั
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${EmployeeID};`);
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
+
+        let cur = new Date();
+        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).slice(-2)}-${('00'+cur.getDate()).slice(-2)} ${('00'+cur.getHours()).slice(-2)}:${('00'+cur.getMinutes()).slice(-2)}`;
         if(itemNo == 1){ // responsible
             let signResponsible = `UPDATE [Jig].[JigCreation] SET ResponsibleBy = ${EmployeeID} WHERE JigCreationID = ${JigCreationID};`;
             await pool.request().query(signResponsible);
         } else{ // request, check, approve
-            let signResponsible = `UPDATE [Jig].[JigCreation] SET ${itemMap[itemNo]}By = ${EmployeeID}, ${itemMap[itemNo]}SignTime = GETDATE()  WHERE JigCreationID = ${JigCreationID};`;
+            let signResponsible = `UPDATE [Jig].[JigCreation] SET ${itemMap[itemNo]}By = ${EmployeeID}, ${itemMap[itemNo]}SignTime = '${curStr}'  WHERE JigCreationID = ${JigCreationID};`;
             await pool.request().query(signResponsible);
         }
 
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName) });
+        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });

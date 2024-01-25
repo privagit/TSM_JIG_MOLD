@@ -33,11 +33,13 @@ let jigSparepartRouter = require('./routes/jig/sparepart');
 let jigRepairRouter = require('./routes/jig/repair');
 let jigCreationRouter = require('./routes/jig/creation');
 let jigOverviewRouter = require('./routes/jig/overview');
+let jigDashboardRouter = require('./routes/jig/dashboad');
 app.use('/jig/setting', jigSettingRouter);
 app.use('/jig/sparepart', jigSparepartRouter);
 app.use('/jig/repair', jigRepairRouter);
 app.use('/jig/creation', jigCreationRouter);
-app.use('/jig/Overview', jigOverviewRouter);
+app.use('/jig/overview', jigOverviewRouter);
+app.use('/jig/dashboard', jigDashboardRouter);
 
 //* MOLD ROUTES
 let moldSettingRouter = require('./routes/mold/setting');
@@ -46,7 +48,6 @@ let moldRepairRouter = require('./routes/mold/repair'); //TODO
 app.use('/mold/setting', moldSettingRouter);
 app.use('/mold/sparepart', moldSparepartRouter);
 app.use('/mold/repair', moldRepairRouter);
-
 
 // Swagger definition
 const swaggerOptions = {
