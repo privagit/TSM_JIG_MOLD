@@ -120,16 +120,16 @@ router.post('/repair-issue/request/issue', async (req, res) => { // cache, Runni
         let alertTime = `${date.getHours()}:${('00'+date.getMinutes()).substr(-2)}`;
         let alertDate = `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`;
         let alertLog = { MachineNo: machine.recordset[0]?.JigNo, Module: 1, Action: 1, time: alertTime, date: alertDate };
-        io.emit('alert-log', alertLog);
-        let cacheAlertLog = await redis.get('em-alert-log');
+        io.emit('jig-alert-log', alertLog);
+        let cacheAlertLog = await redis.get('jig-alert-log');
         if(!cacheAlertLog){
-            await redis.set('em-alert-log', JSON.stringify([alertLog]));
+            await redis.set('jig-alert-log', JSON.stringify([alertLog]));
         } else {
             let cur = new Date();
             let cacheAlertLogJSON = JSON.parse(cacheAlertLog);
             let cacheAlertLogFilter = cacheAlertLogJSON.filter(v => cur - new Date(`${v.date} ${v.time}`) < 43200000); // 12 Hour
             cacheAlertLogFilter.push(alertLog);
-            await redis.set('em-alert-log', JSON.stringify(cacheAlertLogFilter));
+            await redis.set('jig-alert-log', JSON.stringify(cacheAlertLogFilter));
         }
 
         res.json({ message: 'Success', RepairCheckID: issueRepair.recordset[0]?.RepairCheckID });
@@ -162,7 +162,7 @@ router.post('/repair-issue/repair/item', async (req, res) => {
 
         let repair = await pool.request().query(`SELECT a.RepairCheckID, a.RequestTime, a.RepairProblemID, a.RepairTypeID, a.Complaint,
         a.StartTime, a.EndTime, a.RootCause, a.FixDetail, a.TestDummyResult, a.RepairResult,
-        b.FirstName AS RequestSign, c.FirstName AS RepairBy, d.FirstName AS ApproveBy, e.FirstName AS ReceiveBy,
+        b.FirstName AS RequestSign, c.FirstName AS RepairBy, d.FirstName AS ApproveBy, e.FirstName AS ReceiveBy, a.ReceiveTime,
         f.FirstName AS ReceiveApproveBy,
         a.JigID, g.JigTypeID, h.JigType, a.Section
         FROM [Jig].[RepairCheck] a
@@ -415,8 +415,8 @@ router.post('/repair-issue/sign/repair', async (req, res) => { //* cache, io
         WHERE a.RepairCheckID = ${RepairCheckID};
         `);
         let alertLog = { JigNo: machine.recordset[0]?.JigNo, Module: 1, Action: 2, time: alertTime, date: alertDate }
-        io.emit('alert-log', alertLog);
-        let cacheAlertLog = await redis.get('em-alert-log');
+        io.emit('jig-alert-log', alertLog);
+        let cacheAlertLog = await redis.get('jig-alert-log');
         if(!cacheAlertLog){
             await redis.set('jig-alert-log', JSON.stringify([alertLog]));
         } else {
