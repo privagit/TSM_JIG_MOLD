@@ -128,7 +128,6 @@ router.post('/issue', async (req, res) => {
     })
 })
 
-
 //* ===== Request Jig =====
 router.post('/request', async (req, res) => {
     try {
@@ -226,7 +225,6 @@ router.put('/request/sign', async (req, res) => { // ต้องอนุมั
     }
 })
 
-
 //* ===== Part List =====
 router.post('/part-list', async (req, res) => {
     try {
@@ -310,7 +308,6 @@ router.put('/part-list/sign/approve', async (req, res) => {
     }
 })
 
-
 //* ===== Work List =====
 router.post('/work-list', async (req, res) => {
     try {
@@ -368,7 +365,6 @@ router.delete('/work-list/delete', async (req, res) => {
     }
 })
 
-
 //* ===== Modify Jig =====
 router.post('/modify', async (req, res) => { // Budget ดูจาก JigCreation
     try {
@@ -414,6 +410,7 @@ router.put('/modify/edit', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
+
 // รายละเอียดวัสดุ / ค่าใช้จ่ายอื่นๆ
 router.post('/modify/part-list', async (req, res) => {
     try {
@@ -522,7 +519,6 @@ router.post('/modify/upload/after', async (req, res) => {
         }
     })
 })
-
 
 //* ===== Trial =====
 router.post('/trial', async (req, res) => {
