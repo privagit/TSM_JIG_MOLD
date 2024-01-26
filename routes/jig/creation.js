@@ -721,14 +721,25 @@ router.post('/evaluation/topic', async (req, res) => {
         WHERE Active = 1;
         `);
         for(let topic of evalTopic.recordset){
+            let rowSpan = 0;
             let detailFiltered = evalDetail.recordset.filter(detail => detail.EvalTopicID == topic.EvalTopicID);
             for(let detail of detailFiltered){
                 let criteriaFiltered = evalCriteria.recordset.filter(criteria => criteria.EvalDetailID == detail.EvalDetailID);
-                if(!criteriaFiltered.length) detail.Criteria = []; // no criteria
-                detail.Criteria = criteriaFiltered; // has criteria
+                if(!criteriaFiltered.length) {
+                    detail.Criteria = []; // no criteria
+                    rowSpan += 1;
+                } else{
+                    detail.Criteria = criteriaFiltered; // has criteria
+                    rowSpan += criteriaFiltered.length;
+                }
             }
-            if(!detailFiltered.length) topic.Detail = []; // no detail
-            topic.Detail = detailFiltered; // has detail
+            if(!detailFiltered.length){
+                topic.Detail = []; // no detail
+                rowSpan += 1;
+            } else{
+                topic.Detail = detailFiltered; // has detail
+            }
+            topic.rowSpan = rowSpan;
         }
         res.json(evalTopic.recordset);
     } catch (err) {

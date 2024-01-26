@@ -9,7 +9,9 @@ const morgan = require("morgan");
 app.use(express.static(__dirname + '/public'));
 app.use(express.urlencoded({extended: false}));
 app.use(express.json()); //body-parser for get
-app.use(morgan('dev'));
+app.use(morgan('dev', {
+    skip: function(req, res) { return res.statusCode < 400 }
+}));
 app.use(cors({
     origin: JSON.parse(CORS_URL), // Replace with the actual URL of your main server
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
