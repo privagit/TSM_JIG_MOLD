@@ -37,7 +37,7 @@ router.post('/list', async (req, res) => { //TODO: FinishDate, RequestStatus, Ev
 
         for(let item of jigCreateList.recordset){
             // Request Status { 0: Issue, 1: Accept (Wait Approve), 2: Accept, 3: Reject }
-            if(!item.ExamResult){
+            if(item.ExamResult == null){
                 item.RequestStatus = 0; // Issue
             } else if(item.ExamResult == 1){ //TODO: ExamResult value ?
                 if(!item.ExamApproveBy){
@@ -45,7 +45,7 @@ router.post('/list', async (req, res) => { //TODO: FinishDate, RequestStatus, Ev
                 } else {
                     item.RequestStatus = 2; // Accept
                 }
-            } else{
+            } else if(item.ExamResult == 0){
                 item.RequestStatus = 3; // Reject
             }
             // Trial Count
