@@ -255,7 +255,7 @@ router.post('/jig/confirm/edit', async (req, res) => { //TODO: test
 router.post('/daily', async (req, res) => {
     try {
         let pool = await sql.connect(config);
-        let { PrepareID } = req.body;
+        let { JigID } = req.body;
         let dailyCheckSheet = await pool.request().query(`
         `);
         dailyCheckSheet.recordset.forEach(item => {
@@ -274,7 +274,7 @@ router.post('/daily', async (req, res) => {
 router.post('/torque', async (req, res) => {
     try {
         let pool = await sql.connect(config);
-        let { PrepareID } = req.body;
+        let { JigID } = req.body;
         let torqueCheckSheet = await pool.request().query(`
         `);
         torqueCheckSheet.recordset.forEach(item => {

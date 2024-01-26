@@ -619,6 +619,37 @@ router.post('/evaluation', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
+router.post('/evaluation/item', async (req, res) => {
+    try {
+        let pool = await sql.connect(config);
+        let { EvalID } = req.body;
+        let jigEval = await pool.request().query(`SELECT row_number() over(order by a.EvalDateTime) AS Attempt, a.EvalID,
+        a.EvalDateTime, a.EvalType, a.TsResult, a.CustomerResult, a.Problem, a.EvalTopic,
+        b.FirstName AS JigEvalBy, c.FirstName AS JigApproveBy,
+        d.FirstName AS EnEvalBy, e.FirstName AS EnApproveBy,
+        f.FirstName AS QaEvalBy, g.FirstName AS QaApproveBy,
+        h.FirstName AS PdEvalBy, i.FirstName AS PdApproveBy,
+        j.FirstName AS PeEvalBy, k.FirstName AS PeApproveBy,
+        a.CustomerEval1, a.CustomerEval2
+        FROM [Jig].[JigEvaluation] a
+        LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.JigEvalBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.JigApproveBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = a.EnEvalBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = a.EnEvalBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] f ON f.EmployeeID = a.QaEvalBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] g ON g.EmployeeID = a.QaApproveBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] h ON h.EmployeeID = a.PdEvalBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] i ON i.EmployeeID = a.PdApproveBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] j ON j.EmployeeID = a.PeEvalBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] k ON k.EmployeeID = a.PeApproveBy
+        WHERE a.EvalID = ${EvalID};
+        `);
+        res.json(jigEval.recordset);
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
 router.post('/evaluation/add', async (req, res) => { //TODO: บล็อคตอนที่มี Pass แล้ว (Pass อันไหนบ้าง)
     try {
         let pool = await sql.connect(config);
