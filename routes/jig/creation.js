@@ -37,7 +37,7 @@ router.post('/list', async (req, res) => { //TODO: FinishDate, RequestStatus, Ev
 
         for(let item of jigCreateList.recordset){
             // Request Status { 0: Issue, 1: Accept (Wait Approve), 2: Accept, 3: Reject }
-            if(!item.ExamResult){
+            if(item.ExamResult == null){
                 item.RequestStatus = 0; // Issue
             } else if(item.ExamResult == 1){ //TODO: ExamResult value ?
                 if(!item.ExamApproveBy){
@@ -45,7 +45,7 @@ router.post('/list', async (req, res) => { //TODO: FinishDate, RequestStatus, Ev
                 } else {
                     item.RequestStatus = 2; // Accept
                 }
-            } else{
+            } else if(item.ExamResult == 0){
                 item.RequestStatus = 3; // Reject
             }
 
@@ -720,14 +720,25 @@ router.post('/evaluation/topic', async (req, res) => {
         WHERE Active = 1;
         `);
         for(let topic of evalTopic.recordset){
+            let rowSpan = 0;
             let detailFiltered = evalDetail.recordset.filter(detail => detail.EvalTopicID == topic.EvalTopicID);
             for(let detail of detailFiltered){
                 let criteriaFiltered = evalCriteria.recordset.filter(criteria => criteria.EvalDetailID == detail.EvalDetailID);
-                if(!criteriaFiltered.length) detail.Criteria = []; // no criteria
-                detail.Criteria = criteriaFiltered; // has criteria
+                if(!criteriaFiltered.length) {
+                    detail.Criteria = []; // no criteria
+                    rowSpan += 1;
+                } else{
+                    detail.Criteria = criteriaFiltered; // has criteria
+                    rowSpan += criteriaFiltered.length;
+                }
             }
-            if(!detailFiltered.length) topic.Detail = []; // no detail
-            topic.Detail = detailFiltered; // has detail
+            if(!detailFiltered.length){
+                topic.Detail = []; // no detail
+                rowSpan += 1;
+            } else{
+                topic.Detail = detailFiltered; // has detail
+            }
+            topic.rowSpan = rowSpan;
         }
         res.json(evalTopic.recordset);
     } catch (err) {
