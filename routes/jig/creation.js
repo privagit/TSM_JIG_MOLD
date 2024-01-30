@@ -38,6 +38,8 @@ router.post('/list', async (req, res) => { //TODO: JigNo
         `);
 
         for(let item of jigCreateList.recordset){
+            item.PartListApproveBy = !item.PartListApproveBy ? null : atob(item.PartListApproveBy);
+
             // Request Status { 0: Issue, 1: Accept (Wait Approve), 2: Accept, 3: Reject }
             if(item.ExamResult == null){
                 item.RequestStatus = 0; // Issue
