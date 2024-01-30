@@ -224,13 +224,13 @@ router.put('/maintenace/inspect/edit', async (req, res) => {
 
         if(getMoldInspect.recordset.length){
             let PmID = getMoldInspect.recordset[0].PmID;
-            let PmTopic = JSON.parse(getJigInspect.recordset[0].PmTopic);
-            if(PmTopic.includes(PmTopicID)){
+            let PmTopic = JSON.parse(getMoldInspect.recordset[0].PmTopic);
+            if(PmTopic.find(v=>v==PmTopicID)){
                 PmTopic = PmTopic.filter(v=>v!=PmTopicID);
             } else{
                 PmTopic.push(PmTopicID);
             }
-            let updateMoldInspect = `UPDATE [Mold].[MasterPm] SET PmTopic = N'${PmTopic}' WHERE PmID = ${PmID};`;
+            let updateMoldInspect = `UPDATE [Mold].[MasterPm] SET PmTopic = N'[${PmTopic}]' WHERE PmID = ${PmID};`;
             await pool.request().query(updateMoldInspect);
         } else {
             let insertMoldInspect = `INSERT INTO [Mold].[MasterPm](MoldID, PmTopic) VALUES(${MoldID}, N'[${PmTopicID}]');`;
