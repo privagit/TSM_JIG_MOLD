@@ -16,10 +16,11 @@ router.post('/list', async (req, res) => { //TODO: JigNo
         let jigCreateList = await pool.request().query(`SELECT a.JigCreationID, NULL AS JigNo, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.RequestSection, 
         CONVERT(NVARCHAR, a.RequestTime, 23) AS RequestDate, CONVERT(NVARCHAR, a.RequiredDate, 23) AS RequiredDate,
         a.Quantity, a.JigTypeID, c.JigType, a.RequestType, a.Budget, a.CustomerBudget,
-        a.PartListApproveBy, a.ExamResult, a.ExamApproveBy, CONVERT(NVARCHAR, a.FinishDate, 23) AS FinishDate
+        d.FirstName AS PartListApproveBy, a.PartListApproveSignTime, a.ExamResult, a.ExamApproveBy, CONVERT(NVARCHAR, a.FinishDate, 23) AS FinishDate
         FROM [Jig].[JigCreation] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
         LEFT JOIN [Jig].[MasterJigType] c ON c.JigTypeID = a.JigTypeID
+        LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.PartListApproveBy = d.EmployeeID
         `);
         let jigPartList = await pool.request().query(`SELECT a.JigCreationID, COUNT(a.PartListID) AS CntPartList,
         COUNT(CASE WHEN a.Received = 1 THEN a.PartListID ELSE 0 END) AS CntReceived
@@ -632,20 +633,15 @@ router.post('/evaluation', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-
-//todo ขาด  Solution & Detail Modify(เพิ่มแล้ว),  EvalTime ApproveTime (เพิ่มแล้ว), Sign Name ยังไม่ได้แปลง (แปลงละ), ImagePath
-router.post('/evaluation/item', async (req, res) => {  
+router.post('/evaluation/item', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { EvalID } = req.body;
         let jigEval = await pool.request().query(`SELECT row_number() over(order by a.EvalDateTime) AS Attempt, a.EvalID,
-        a.EvalDateTime, a.EvalType, a.TsResult, a.CustomerResult, a.Problem, a.EvalTopic, 
-
+        a.EvalDateTime, a.EvalType, a.TsResult, a.CustomerResult, a.Problem, a.EvalTopic,
         a.Solution, a.ModifyDetail,
-        a.JigEvalTime, a.EnEvalTime, a.QaEvalTime, a.PdEvalTime, a.PeEvalTime, 
+        a.JigEvalTime, a.EnEvalTime, a.QaEvalTime, a.PdEvalTime, a.PeEvalTime,
         a.JigApproveTime, a.EnApproveTime, a.QaApproveTime, a.PdApproveTime, a.PeApproveTime,
-        
-
         b.FirstName AS JigEvalBy, c.FirstName AS JigApproveBy,
         d.FirstName AS EnEvalBy, e.FirstName AS EnApproveBy,
         f.FirstName AS QaEvalBy, g.FirstName AS QaApproveBy,
@@ -699,7 +695,7 @@ router.put('/evaluation/edit', async (req, res) => { // Comment ต้อง Fix
     try {
         let pool = await sql.connect(config);
         let { JigCreationID, EvalID, EvalType, TsResult, CustomerResult, EvalTopic, Problem, Solution, ModifyDetail } = req.body;
-      
+
         let getUnfixComment = await pool.request().query(`SELECT a.CommentID FROM [Jig].[JigComment] a
         WHERE JigCreationID = ${JigCreationID} AND (a.Fix = 0 OR a.Fix IS NULL);
         `);
@@ -759,7 +755,6 @@ router.put('/evaluation/sign/customer', async (req, res) => { // TODO: finish
         let pool = await sql.connect(config);
         let { EvalID, CustomerNo, CustomerName } = req.body;
         let cur = new Date();
-        //todo CustomerNo = {1,2} aof แก้ ชื่อ col Customer${CustomerNo} --> CustomerEval${CustomerNo} ตาม Sql ใน sql เปน type Int
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
         let signEval = `UPDATE [Jig].[JigEvaluation] SET CustomerEval${CustomerNo} = N'${CustomerName}', CustomerEvalTime${CustomerNo} = GETDATE() WHERE EvalID = ${EvalID};`;
         await pool.request().query(signEval);
@@ -846,7 +841,6 @@ router.post('/evaluation/upload', async (req, res) => {
 })
 
 //* ===== Comment =====
-//todo แก้ไขละ
 router.post('/comment', async (req, res) => {
     try {
         let pool = await sql.connect(config);
@@ -879,7 +873,6 @@ router.post('/comment/add', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-//todo  (แก้ละ)
 router.put('/comment/fix', async (req, res) => {
     try {
         let pool = await sql.connect(config);
