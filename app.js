@@ -51,7 +51,6 @@ app.use('/mold/setting', moldSettingRouter);
 app.use('/mold/sparepart', moldSparepartRouter);
 app.use('/mold/repair', moldRepairRouter);
 
-
 // Swagger definition
 const swaggerOptions = {
     definition: {

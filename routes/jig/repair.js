@@ -12,7 +12,7 @@ router.post('/repair-issue', async (req, res) => {
         let pool = await sql.connect(config);
         let { month, year, Status } = req.body;
 
-        let repairIssue = await pool.request().query(`SELECT a.RepairCheckID, b.JigNo, a.RequestTime, a.StartTime, a.EndTime, a.Complaint,
+        let repairIssue = await pool.request().query(`SELECT a.RepairCheckID, b.JigNo, a.RequestTime, a.StartTime, a.EndTime, a.Complaint, a.RootCause,
         a.RepairResult, a.ApproveBy, a.ReportNo
         FROM [Jig].[RepairCheck] a
         LEFT JOIN [Jig].[MasterJig] b ON b.JigID = a.JigID
@@ -22,6 +22,7 @@ router.post('/repair-issue', async (req, res) => {
 
         //* Filter Status
         if(Status){ //* Status: All = null, 1: Issue, 2: Repair, 3: Wait Sign, 4: Complete
+            console.log(Status)
             if(Status == 1){
                 let repairIssueFiltered = repairIssue.recordset.filter(v => !v.StartTime && !v.EndTime);
                 return res.json(repairIssueFiltered);
@@ -31,6 +32,7 @@ router.post('/repair-issue', async (req, res) => {
                 return res.json(repairIssueFiltered);
             }
             else if(Status == 3){
+                
                 let repairIssueFiltered = repairIssue.recordset.filter(v => v.StartTime && v.EndTime && !v.ApproveBy);
                 return res.json(repairIssueFiltered);
             }
@@ -91,7 +93,6 @@ router.post('/repair-issue/request/issue', async (req, res) => { // cache, Runni
     try {
         let pool = await sql.connect(config);
         let { JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID } = req.body;
-
          //* Get RunningNo
         let date = new Date();
         let monthRunningNo = await pool.request().query(`SELECT a.MonthDate, a.RunningNo
@@ -106,7 +107,6 @@ router.post('/repair-issue/request/issue', async (req, res) => { // cache, Runni
             await pool.request().query(`INSERT INTO [MonthRunningNo](MonthDate, RunningNo) VALUES('${date.getFullYear()}-${date.getMonth()+1}-1', 1)`);
         }
         let ReportNo = `EM-${('0000'+RunningNo).substr(-4)}-${('00'+(date.getMonth()+1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
-
 
         let issueRepair = await pool.request().query(`INSERT INTO [Jig].[RepairCheck](JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID, ReportNo)
         VALUES(${JigID}, '${RequestBy}', '${RequestTime}', '${Section}', N'${Complaint}', ${RepairTypeID}, ${RepairProblemID}, '${ReportNo}');
@@ -192,7 +192,10 @@ router.post('/repair-issue/repair/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { RepairCheckID, RootCause, FixDetail, TestDummyResult } = req.body;
-
+        console.log(`UPDATE [Jig].[RepairCheck] SET RootCause = N'${RootCause}', FixDetail = N'${FixDetail}',
+        TestDummyResult = ${TestDummyResult}
+        WHERE RepairCheckID = ${RepairCheckID};
+        `)
         let updateRepair = `UPDATE [Jig].[RepairCheck] SET RootCause = N'${RootCause}', FixDetail = N'${FixDetail}',
         TestDummyResult = ${TestDummyResult}
         WHERE RepairCheckID = ${RepairCheckID};

@@ -1259,7 +1259,8 @@ router.put('/docctrl/edit', async (req, res) => {
     try
     {
         let pool = await sql.connect(config);
-        let { DocumentID, DocumentName, DocumentCtrlNo } = req.body;
+        let { DocumentName, DocumentCtrlNo } = req.body;
+        console.log(req.body)
         let updateDocCrtl = `
         DECLARE @DocumentID INT
         SET @DocumentID = (SELECT DocumentID FROM [Jig].[MasterDocumentCtrl] WHERE DocumentName = '${DocumentName}');
