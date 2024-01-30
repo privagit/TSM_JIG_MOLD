@@ -510,14 +510,19 @@ router.post('/maintenace/pm/checkfile/upload', async (req, res) => { // Upload P
         }
     })
 })
-router.put('/maintenace/inspect/edit', async (req, res) => { //TODO:  uncheck, select PM Topic to use
+router.put('/maintenace/inspect/edit', async (req, res) => { // select PM Topic to use
     try {
         let pool = await sql.connect(config);
         let { JigID, PmTopicID } = req.body;
         let getJigInspect = await pool.request().query(`SELECT PmID, JigID, PmTopic FROM [Jig].[MasterPm] WHERE JigID = ${JigID};`);
         if(getJigInspect.recordset.length){
             let PmID = getJigInspect.recordset[0].PmID;
-            let PmTopic = JSON.parse(getJigInspect.recordset[0].PmTopic).push(PmTopicID);
+            let PmTopic = JSON.parse(getJigInspect.recordset[0].PmTopic);
+            if(PmTopic.includes(PmTopicID)){
+                PmTopic = PmTopic.filter(v=>v!=PmTopicID);
+            } else{
+                PmTopic.push(PmTopicID);
+            }
             let updateJigInspect = `UPDATE [Jig].[MasterPm] SET PmTopic = N'${PmTopic}' WHERE PmID = ${PmID};`;
             await pool.request().query(updateJigInspect);
         } else {
