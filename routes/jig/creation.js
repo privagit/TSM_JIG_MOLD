@@ -7,7 +7,7 @@ const path = require('path');
 
 
 //* ========== Jig Creation ==========
-router.post('/list', async (req, res) => { //TODO: FinishDate, RequestStatus, EvalStatus
+router.post('/list', async (req, res) => { //TODO: JigNo
     try {
         let pool = await sql.connect(config);
         let { RequestSection, Status } = req.body;
@@ -16,7 +16,7 @@ router.post('/list', async (req, res) => { //TODO: FinishDate, RequestStatus, Ev
         let jigCreateList = await pool.request().query(`SELECT a.JigCreationID, NULL AS JigNo, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.RequestSection, 
         CONVERT(NVARCHAR, a.RequestTime, 23) AS RequestDate, CONVERT(NVARCHAR, a.RequiredDate, 23) AS RequiredDate,
         a.Quantity, a.JigTypeID, c.JigType, a.RequestType, a.Budget, a.CustomerBudget,
-        a.PartListApproveBy, a.ExamResult, a.ExamApproveBy
+        a.PartListApproveBy, a.ExamResult, a.ExamApproveBy, CONVERT(NVARCHAR, a.FinishDate, 23) AS FinishDate
         FROM [Jig].[JigCreation] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
         LEFT JOIN [Jig].[MasterJigType] c ON c.JigTypeID = a.JigTypeID
@@ -30,6 +30,7 @@ router.post('/list', async (req, res) => { //TODO: FinishDate, RequestStatus, Ev
         FROM [Jig].[JigTrial] a
         GROUP BY a.JigCreationID;
         `);
+        //TODO: Where
         let jigEval = await pool.request().query(`SELECT a.EvalID, a.JigCreationID
         FROM [Jig].[JigEvaluation] a
         WHERE a.TsResult = 1 AND a.CustomerResult = 1;
@@ -39,7 +40,7 @@ router.post('/list', async (req, res) => { //TODO: FinishDate, RequestStatus, Ev
             // Request Status { 0: Issue, 1: Accept (Wait Approve), 2: Accept, 3: Reject }
             if(item.ExamResult == null){
                 item.RequestStatus = 0; // Issue
-            } else if(item.ExamResult == 1){ //TODO: ExamResult value ?
+            } else if(item.ExamResult == 1){
                 if(!item.ExamApproveBy){
                     item.RequestStatus = 1; // Accept (Wait Approve)
                 } else {
@@ -130,7 +131,7 @@ router.post('/issue', async (req, res) => {
 
 
 //* ===== Request Jig =====
-router.post('/request', async (req, res) => {
+router.post('/request', async (req, res) => { //TODO: JigNo
     try {
         let pool = await sql.connect(config);
         let { JigCreationID } = req.body;
@@ -847,7 +848,7 @@ router.put('/comment/fix', async (req, res) => {
         let { CommentID, FixBy, Remark } = req.body;
 
         // Check Employee
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${RequestBy};`);
+        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${FixBy};`);
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let updateWorkList = `UPDATE [Jig].[JigWorkList] SET Fix = 1, FixBy = N'${FixBy}', Remark = N'${Remark}' WHERE CommentID = ${CommentID};`;

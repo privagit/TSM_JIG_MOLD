@@ -216,7 +216,7 @@ router.post('/maintenace/pm/checkfile/upload', async (req, res) => {
         }
     })
 })
-router.put('/maintenace/inspect/edit', async (req, res) => { //TODO: uncheck
+router.put('/maintenace/inspect/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { MoldID, PmTopicID } = req.body;
@@ -224,7 +224,12 @@ router.put('/maintenace/inspect/edit', async (req, res) => { //TODO: uncheck
 
         if(getMoldInspect.recordset.length){
             let PmID = getMoldInspect.recordset[0].PmID;
-            let PmTopic = JSON.parse(getMoldInspect.recordset[0].PmTopic).push(PmTopicID);
+            let PmTopic = JSON.parse(getJigInspect.recordset[0].PmTopic);
+            if(PmTopic.includes(PmTopicID)){
+                PmTopic = PmTopic.filter(v=>v!=PmTopicID);
+            } else{
+                PmTopic.push(PmTopicID);
+            }
             let updateMoldInspect = `UPDATE [Mold].[MasterPm] SET PmTopic = N'${PmTopic}' WHERE PmID = ${PmID};`;
             await pool.request().query(updateMoldInspect);
         } else {
