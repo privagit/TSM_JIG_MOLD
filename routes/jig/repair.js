@@ -89,7 +89,7 @@ router.post('/repair-issue/dropdown/problem', async (req, res) => {
     }
 })
 // Request
-router.post('/repair-issue/request/issue', async (req, res) => { // cache, RunningNo., io
+router.post('/repair-issue/request/issue', async (req, res) => { //TODO: ReportNo., cache, RunningNo., io
     try {
         let pool = await sql.connect(config);
         let { JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID } = req.body;
@@ -109,12 +109,11 @@ router.post('/repair-issue/request/issue', async (req, res) => { // cache, Runni
         let ReportNo = `EM-${('0000'+RunningNo).substr(-4)}-${('00'+(date.getMonth()+1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
 
         let issueRepair = await pool.request().query(`INSERT INTO [Jig].[RepairCheck](JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID, ReportNo)
-        VALUES(${JigID}, '${RequestBy}', '${RequestTime}', '${Section}', N'${Complaint}', ${RepairTypeID}, ${RepairProblemID}, '${ReportNo}');
+        VALUES(${JigID}, N'${RequestBy}', '${RequestTime}', '${Section}', N'${Complaint}', ${RepairTypeID}, ${RepairProblemID}, '${ReportNo}');
 
         SELECT SCOPE_IDENTITY() AS RepairCheckID;
         `);
 
-        // let date = new Date();
         const io = req.app.get('socketio');
         let machine = await pool.request().query(`SELECT JigNo FROM [Jig].[MasterJig] WHERE JigID = ${JigID};`);
         let alertTime = `${date.getHours()}:${('00'+date.getMinutes()).substr(-2)}`;

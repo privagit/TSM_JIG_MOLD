@@ -518,12 +518,12 @@ router.put('/maintenace/inspect/edit', async (req, res) => { // select PM Topic 
         if(getJigInspect.recordset.length){
             let PmID = getJigInspect.recordset[0].PmID;
             let PmTopic = JSON.parse(getJigInspect.recordset[0].PmTopic);
-            if(PmTopic.includes(PmTopicID)){
+            if(PmTopic.find(v=>v==PmTopicID)){
                 PmTopic = PmTopic.filter(v=>v!=PmTopicID);
             } else{
                 PmTopic.push(PmTopicID);
             }
-            let updateJigInspect = `UPDATE [Jig].[MasterPm] SET PmTopic = N'${PmTopic}' WHERE PmID = ${PmID};`;
+            let updateJigInspect = `UPDATE [Jig].[MasterPm] SET PmTopic = N'[${PmTopic}]' WHERE PmID = ${PmID};`;
             await pool.request().query(updateJigInspect);
         } else {
             let insertJigInspect = `INSERT INTO [Jig].[MasterPm](JigID, PmTopic) VALUES(${JigID}, N'[${PmTopicID}]');`;
@@ -1360,4 +1360,3 @@ module.exports = router;
  *       500:
  *         description: Internal Server Error
  */
-
