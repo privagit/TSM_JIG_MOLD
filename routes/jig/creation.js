@@ -613,18 +613,38 @@ router.post('/evaluation', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[User] k ON k.EmployeeID = a.PeApproveBy
         WHERE a.JigCreationID = ${JigCreationID};
         `);
+        for(let item of jigEval.recordset){
+            item.JigEvalBy = !item.JigEvalBy ? null : atob(item.JigEvalBy);
+            item.JigApproveBy = !item.JigApproveBy ? null : atob(item.JigApproveBy);
+            item.EnEvalBy = !item.EnEvalBy ? null : atob(item.EnEvalBy);
+            item.EnApproveBy = !item.EnApproveBy ? null : atob(item.EnApproveBy);
+            item.QaEvalBy = !item.QaEvalBy ? null : atob(item.QaEvalBy);
+            item.QaApproveBy = !item.QaApproveBy ? null : atob(item.QaApproveBy);
+            item.PdEvalBy = !item.PdEvalBy ? null : atob(item.PdEvalBy);
+            item.PdApproveBy = !item.PdApproveBy ? null : atob(item.PdApproveBy);
+            item.PeEvalBy = !item.PeEvalBy ? null : atob(item.PeEvalBy);
+            item.PeApproveBy = !item.PeApproveBy ? null : atob(item.PeApproveBy);
+        }
         res.json(jigEval.recordset);
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/evaluation/item', async (req, res) => {
+
+//todo ขาด  Solution & Detail Modify(เพิ่มแล้ว),  EvalTime ApproveTime (เพิ่มแล้ว), Sign Name ยังไม่ได้แปลง (แปลงละ), ImagePath
+router.post('/evaluation/item', async (req, res) => {  
     try {
         let pool = await sql.connect(config);
         let { EvalID } = req.body;
         let jigEval = await pool.request().query(`SELECT row_number() over(order by a.EvalDateTime) AS Attempt, a.EvalID,
-        a.EvalDateTime, a.EvalType, a.TsResult, a.CustomerResult, a.Problem, a.EvalTopic,
+        a.EvalDateTime, a.EvalType, a.TsResult, a.CustomerResult, a.Problem, a.EvalTopic, 
+
+        a.Solution, a.ModifyDetail,
+        a.JigEvalTime, a.EnEvalTime, a.QaEvalTime, a.PdEvalTime, a.PeEvalTime, 
+        a.JigApproveTime, a.EnApproveTime, a.QaApproveTime, a.PdApproveTime, a.PeApproveTime,
+        
+
         b.FirstName AS JigEvalBy, c.FirstName AS JigApproveBy,
         d.FirstName AS EnEvalBy, e.FirstName AS EnApproveBy,
         f.FirstName AS QaEvalBy, g.FirstName AS QaApproveBy,
@@ -644,6 +664,18 @@ router.post('/evaluation/item', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[User] k ON k.EmployeeID = a.PeApproveBy
         WHERE a.EvalID = ${EvalID};
         `);
+        for(let item of jigEval.recordset){
+            item.JigEvalBy = !item.JigEvalBy ? null : atob(item.JigEvalBy);
+            item.JigApproveBy = !item.JigApproveBy ? null : atob(item.JigApproveBy);
+            item.EnEvalBy = !item.EnEvalBy ? null : atob(item.EnEvalBy);
+            item.EnApproveBy = !item.EnApproveBy ? null : atob(item.EnApproveBy);
+            item.QaEvalBy = !item.QaEvalBy ? null : atob(item.QaEvalBy);
+            item.QaApproveBy = !item.QaApproveBy ? null : atob(item.QaApproveBy);
+            item.PdEvalBy = !item.PdEvalBy ? null : atob(item.PdEvalBy);
+            item.PdApproveBy = !item.PdApproveBy ? null : atob(item.PdApproveBy);
+            item.PeEvalBy = !item.PeEvalBy ? null : atob(item.PeEvalBy);
+            item.PeApproveBy = !item.PeApproveBy ? null : atob(item.PeApproveBy);
+        }
         res.json(jigEval.recordset);
     } catch (err) {
         console.log(req.url, err);
@@ -707,7 +739,6 @@ router.put('/evaluation/sign/approve', async (req, res) => { //TODO: finish
         let pool = await sql.connect(config);
         let { EvalID, ApproveBy, itemNo } = req.body;
         let itemMap = { 1: 'Jig', 2: 'En', 3: 'Qa', 4: 'Pd', 5: 'Pe' };
-
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ApproveBy};`);
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
@@ -727,8 +758,9 @@ router.put('/evaluation/sign/customer', async (req, res) => { // TODO: finish
         let pool = await sql.connect(config);
         let { EvalID, CustomerNo, CustomerName } = req.body;
         let cur = new Date();
+        //todo CustomerNo = {1,2} aof แก้ ชื่อ col Customer${CustomerNo} --> CustomerEval${CustomerNo} ตาม Sql ใน sql เปน type Int
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signEval = `UPDATE [Jig].[JigEvaluation] SET Customer${CustomerNo} = N'${CustomerName}', CustomerEvalTime${CustomerNo} = GETDATE() WHERE EvalID = ${EvalID};`;
+        let signEval = `UPDATE [Jig].[JigEvaluation] SET CustomerEval${CustomerNo} = N'${CustomerName}', CustomerEvalTime${CustomerNo} = GETDATE() WHERE EvalID = ${EvalID};`;
         await pool.request().query(signEval);
         res.json({ message: 'Success', SignTime: curStr });
     } catch (err) {
@@ -813,6 +845,7 @@ router.post('/evaluation/upload', async (req, res) => {
 })
 
 //* ===== Comment =====
+//todo แก้ไขละ
 router.post('/comment', async (req, res) => {
     try {
         let pool = await sql.connect(config);
@@ -824,6 +857,9 @@ router.post('/comment', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.FixBy
         WHERE a.JigCreationID = ${JigCreationID};
         `);
+        for(let item of jigComment.recordset){
+            item.FixBy = !item.FixBy ? null : atob(item.FixBy);
+        }
         res.json(jigComment.recordset);
     } catch (err) {
         console.log(req.url, err);
@@ -842,16 +878,17 @@ router.post('/comment/add', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
+//todo  (แก้ละ)
 router.put('/comment/fix', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { CommentID, FixBy, Remark } = req.body;
 
         // Check Employee
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${RequestBy};`);
+        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${FixBy};`);
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
-        let updateWorkList = `UPDATE [Jig].[JigWorkList] SET Fix = 1, FixBy = N'${FixBy}', Remark = N'${Remark}' WHERE CommentID = ${CommentID};`;
+        let updateWorkList = `UPDATE [Jig].[JigComment] SET Fix = 1, FixBy = ${FixBy}, Remark = N'${Remark}', FixDateTime = GETDATE() WHERE CommentID = ${CommentID};`;
         await pool.request().query(updateWorkList);
         res.json({ message: 'Success' });
     } catch (err) {
