@@ -523,7 +523,7 @@ router.put('/maintenace/inspect/edit', async (req, res) => { // select PM Topic 
             } else{
                 PmTopic.push(PmTopicID);
             }
-            let updateJigInspect = `UPDATE [Jig].[MasterPm] SET PmTopic = N'${PmTopic}' WHERE PmID = ${PmID};`;
+            let updateJigInspect = `UPDATE [Jig].[MasterPm] SET PmTopic = N'[${PmTopic}]' WHERE PmID = ${PmID};`;
             await pool.request().query(updateJigInspect);
         } else {
             let insertJigInspect = `INSERT INTO [Jig].[MasterPm](JigID, PmTopic) VALUES(${JigID}, N'[${PmTopicID}]');`;

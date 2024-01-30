@@ -673,7 +673,7 @@ router.delete('/sparepart/location/delete', async (req, res) => {
 router.post('/sparepart/supplier', async (req, res) => {
     try {
         let pool = await sql.connect(config);
-        let suppliers = await pool.request().query(`SELECT a.SupplierID, a.SupplierName FROM [Jig].[MasterSupplier] a WHERE a.Active = 1;`);
+        let suppliers = await pool.request().query(`SELECT a.SupplierID, a.SupplierName FROM [Mold].[MasterSupplier] a WHERE a.Active = 1;`);
         res.json(suppliers.recordset);
     } catch (err) {
         console.log(req.url, err);
@@ -684,7 +684,7 @@ router.post('/sparepart/supplier/add', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { SupplierName } = req.body;
-        let insertSupplier = `INSERT INTO [Jig].[MasterSupplier](SupplierName, Active) VALUES(N'${SupplierName}', 1);`;
+        let insertSupplier = `INSERT INTO [Mold].[MasterSupplier](SupplierName, Active) VALUES(N'${SupplierName}', 1);`;
         await pool.request().query(insertSupplier);
         res.json({ message: `Success` });
     } catch (err) {
@@ -696,7 +696,7 @@ router.put('/sparepart/supplier/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { SupplierID, SupplierName } = req.body;
-        let updateSupplier = `UPDATE [Jig].[MasterSupplier] SET SupplierName = N'${SupplierName}' WHERE SupplierID = ${SupplierID};`;
+        let updateSupplier = `UPDATE [Mold].[MasterSupplier] SET SupplierName = N'${SupplierName}' WHERE SupplierID = ${SupplierID};`;
         await pool.request().query(updateSupplier);
         res.json({ message: `Success` });
     } catch (err) {
@@ -708,7 +708,7 @@ router.delete('/sparepart/supplier/delete', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { SupplierID } = req.body;
-        let deleteSupplier = `UPDATE [Jig].[MasterSupplier] SET Active = 0 WHERE SupplierID = ${SupplierID};`;
+        let deleteSupplier = `UPDATE [Mold].[MasterSupplier] SET Active = 0 WHERE SupplierID = ${SupplierID};`;
         await pool.request().query(deleteSupplier);
         res.json({ message: `Success` });
     } catch (err) {
