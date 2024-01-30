@@ -16,10 +16,11 @@ router.post('/list', async (req, res) => { //TODO: JigNo
         let jigCreateList = await pool.request().query(`SELECT a.JigCreationID, NULL AS JigNo, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.RequestSection, 
         CONVERT(NVARCHAR, a.RequestTime, 23) AS RequestDate, CONVERT(NVARCHAR, a.RequiredDate, 23) AS RequiredDate,
         a.Quantity, a.JigTypeID, c.JigType, a.RequestType, a.Budget, a.CustomerBudget,
-        a.PartListApproveBy, a.PartListApproveSignTime, a.ExamResult, a.ExamApproveBy, CONVERT(NVARCHAR, a.FinishDate, 23) AS FinishDate
+        d.FirstName AS PartListApproveBy, a.PartListApproveSignTime, a.ExamResult, a.ExamApproveBy, CONVERT(NVARCHAR, a.FinishDate, 23) AS FinishDate
         FROM [Jig].[JigCreation] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
         LEFT JOIN [Jig].[MasterJigType] c ON c.JigTypeID = a.JigTypeID
+        LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.PartListApproveBy = d.EmployeeID
         `);
         let jigPartList = await pool.request().query(`SELECT a.JigCreationID, COUNT(a.PartListID) AS CntPartList,
         COUNT(CASE WHEN a.Received = 1 THEN a.PartListID ELSE 0 END) AS CntReceived
@@ -37,6 +38,8 @@ router.post('/list', async (req, res) => { //TODO: JigNo
         `);
 
         for (let item of jigCreateList.recordset) {
+            item.PartListApproveBy = !item.PartListApproveBy ? null : atob(item.PartListApproveBy);
+
             // Request Status { 0: Issue, 1: Accept (Wait Approve), 2: Accept, 3: Reject }
             if (item.ExamResult == null) {
                 item.RequestStatus = 0; // Issue
@@ -631,15 +634,14 @@ router.post('/evaluation', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-
 router.post('/evaluation/item', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { EvalID } = req.body;
         let jigEval = await pool.request().query(`SELECT row_number() over(order by a.EvalDateTime) AS Attempt, a.EvalID,
-        a.EvalDateTime, a.EvalType, a.TsResult, a.CustomerResult, a.Problem, a.EvalTopic, 
+        a.EvalDateTime, a.EvalType, a.TsResult, a.CustomerResult, a.Problem, a.EvalTopic,
         a.Solution, a.ModifyDetail,
-        a.JigEvalTime, a.EnEvalTime, a.QaEvalTime, a.PdEvalTime, a.PeEvalTime, 
+        a.JigEvalTime, a.EnEvalTime, a.QaEvalTime, a.PdEvalTime, a.PeEvalTime,
         a.JigApproveTime, a.EnApproveTime, a.QaApproveTime, a.PdApproveTime, a.PeApproveTime,
         b.FirstName AS JigEvalBy, c.FirstName AS JigApproveBy,
         d.FirstName AS EnEvalBy, e.FirstName AS EnApproveBy,
@@ -840,7 +842,6 @@ router.post('/evaluation/upload', async (req, res) => {
 })
 
 //* ===== Comment =====
-
 router.post('/comment', async (req, res) => {
     try {
         let pool = await sql.connect(config);
@@ -873,7 +874,6 @@ router.post('/comment/add', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-
 router.put('/comment/fix', async (req, res) => {
     try {
         let pool = await sql.connect(config);
