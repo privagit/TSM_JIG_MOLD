@@ -632,19 +632,15 @@ router.post('/evaluation', async (req, res) => {
     }
 })
 
-//todo ขาด  Solution & Detail Modify(เพิ่มแล้ว),  EvalTime ApproveTime (เพิ่มแล้ว), Sign Name ยังไม่ได้แปลง (แปลงละ), ImagePath
 router.post('/evaluation/item', async (req, res) => {  
     try {
         let pool = await sql.connect(config);
         let { EvalID } = req.body;
         let jigEval = await pool.request().query(`SELECT row_number() over(order by a.EvalDateTime) AS Attempt, a.EvalID,
         a.EvalDateTime, a.EvalType, a.TsResult, a.CustomerResult, a.Problem, a.EvalTopic, 
-
         a.Solution, a.ModifyDetail,
         a.JigEvalTime, a.EnEvalTime, a.QaEvalTime, a.PdEvalTime, a.PeEvalTime, 
         a.JigApproveTime, a.EnApproveTime, a.QaApproveTime, a.PdApproveTime, a.PeApproveTime,
-        
-
         b.FirstName AS JigEvalBy, c.FirstName AS JigApproveBy,
         d.FirstName AS EnEvalBy, e.FirstName AS EnApproveBy,
         f.FirstName AS QaEvalBy, g.FirstName AS QaApproveBy,
@@ -758,7 +754,6 @@ router.put('/evaluation/sign/customer', async (req, res) => { // TODO: finish
         let pool = await sql.connect(config);
         let { EvalID, CustomerNo, CustomerName } = req.body;
         let cur = new Date();
-        //todo CustomerNo = {1,2} aof แก้ ชื่อ col Customer${CustomerNo} --> CustomerEval${CustomerNo} ตาม Sql ใน sql เปน type Int
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
         let signEval = `UPDATE [Jig].[JigEvaluation] SET CustomerEval${CustomerNo} = N'${CustomerName}', CustomerEvalTime${CustomerNo} = GETDATE() WHERE EvalID = ${EvalID};`;
         await pool.request().query(signEval);
@@ -845,7 +840,7 @@ router.post('/evaluation/upload', async (req, res) => {
 })
 
 //* ===== Comment =====
-//todo แก้ไขละ
+
 router.post('/comment', async (req, res) => {
     try {
         let pool = await sql.connect(config);
@@ -878,7 +873,7 @@ router.post('/comment/add', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-//todo  (แก้ละ)
+
 router.put('/comment/fix', async (req, res) => {
     try {
         let pool = await sql.connect(config);
