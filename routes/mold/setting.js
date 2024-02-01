@@ -37,7 +37,7 @@ router.post('/mold/specification', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = a.ApproveBy
         WHERE a.MoldSpeciD = ${MoldSpecID};
         `);
-        if(moldSpec.recordset.length){
+        if (moldSpec.recordset.length) {
             moldSpec.recordset[0].IssueBy = !moldSpec.recordset[0].IssueBy ? null : atob(moldSpec.recordset[0].IssueBy);
             moldSpec.recordset[0].CheckBy = !moldSpec.recordset[0].CheckBy ? null : atob(moldSpec.recordset[0].CheckBy);
             moldSpec.recordset[0].ApproveBy = !moldSpec.recordset[0].ApproveBy ? null : atob(moldSpec.recordset[0].ApproveBy);
@@ -136,7 +136,7 @@ const storagePmImage = multer.diskStorage({
     filename: (req, file, cb) => {
         let { MoldID } = req.query;
         let uploadDate = new Date();
-        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth()+1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
+        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth() + 1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
         const ext = file.mimetype.split('/')[1];
         cb(null, `${MoldID}_${uploadDateStr}` + '.' + ext);
     }
@@ -147,12 +147,17 @@ router.post('/maintenace', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { MoldID } = req.body;
+        console.log('object :>> ', `SELECT a.PmID, a.MoldID, a.WarningShot, a.DangerShot, a.WarrantyShot,
+        a.AlertPercent, a.AlertWarrantyPercent, a.ImagePath, a.PmTopic
+        FROM [Mold].[MasterPm] a
+        WHERE a.MoldID = ${MoldID};
+        `);
         let maintenance = await pool.request().query(`SELECT a.PmID, a.MoldID, a.WarningShot, a.DangerShot, a.WarrantyShot,
         a.AlertPercent, a.AlertWarrantyPercent, a.ImagePath, a.PmTopic
         FROM [Mold].[MasterPm] a
         WHERE a.MoldID = ${MoldID};
         `);
-        res.json(maintenance.receiveCheck);
+        res.json(maintenance.recordset);
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -162,6 +167,21 @@ router.post('/maintenace/pm/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { MoldID, WarningShot, DangerShot, WarrantyShot, AlertPercent, AlertWarrantyPercent } = req.body;
+        console.log('object :>> ', `DECLARE @PmID INT;
+        SET @PmID = (SELECT PmID FROM [Mold].[MasterPm] WHERE MoldID = ${MoldID});
+
+        IF(@PmID IS NULL) -- Insert
+        BEGIN
+            INSERT INTO [Mold].[MasterPm](MoldID, WarningShot, DangerShot, WarrantyShot, AlertPercent, AlertWarrantyPercent)
+            VALUES(${MoldID}, ${WarningShot}, ${DangerShot}, ${WarrantyShot}, ${AlertPercent}, ${AlertWarrantyPercent});
+        END
+        ELSE -- Update
+        BEGIN
+            UPDATE [Mold].[MasterPm] SET WarningShot = ${WarningShot}, DangerShot = ${DangerShot}, WarrantyShot = ${WarrantyShot},
+            AlertPercent = ${AlertPercent}, AlertWarrantyPercent = ${AlertWarrantyPercent}
+            WHERE PmID = @PmID;
+        END;
+        `);
         let updatePm = `DECLARE @PmID INT;
         SET @PmID = (SELECT PmID FROM [Mold].[MasterPm] WHERE MoldID = ${MoldID});
 
@@ -192,7 +212,7 @@ router.post('/maintenace/pm/checkfile/upload', async (req, res) => {
         } else {
             try {
                 let pool = await sql.connect(config);
-                let ImagePath = (req.file) ? "/mold_pm_checkfile/" + req.file.filename : "";
+                let ImagePath = (req.file) ? "/mold/pm_checkfile/" + req.file.filename : "";
                 let { MoldID } = req.body;
                 let updatePmCheckfile = `DECLARE @PmID INT;
                 SET @PmID = (SELECT PmID FROM [Mold].[MasterPm] WHERE MoldID = ${MoldID});
@@ -222,7 +242,7 @@ router.put('/maintenace/inspect/edit', async (req, res) => { //TODO: uncheck
         let { MoldID, PmTopicID } = req.body;
         let getMoldInspect = await pool.request().query(`SELECT PmID, MoldID, PmTopic FROM [Mold].[MasterPm] WHERE MoldID = ${MoldID};`);
 
-        if(getMoldInspect.recordset.length){
+        if (getMoldInspect.recordset.length) {
             let PmID = getMoldInspect.recordset[0].PmID;
             let PmTopic = JSON.parse(getMoldInspect.recordset[0].PmTopic).push(PmTopicID);
             let updateMoldInspect = `UPDATE [Mold].[MasterPm] SET PmTopic = N'${PmTopic}' WHERE PmID = ${PmID};`;
@@ -668,7 +688,7 @@ router.delete('/sparepart/location/delete', async (req, res) => {
 router.post('/sparepart/supplier', async (req, res) => {
     try {
         let pool = await sql.connect(config);
-        let suppliers = await pool.request().query(`SELECT a.SupplierID, a.SupplierName FROM [Jig].[MasterSupplier] a WHERE a.Active = 1;`);
+        let suppliers = await pool.request().query(`SELECT a.SupplierID, a.SupplierName FROM [Mold].[MasterSupplier] a WHERE a.Active = 1;`);
         res.json(suppliers.recordset);
     } catch (err) {
         console.log(req.url, err);
@@ -679,7 +699,7 @@ router.post('/sparepart/supplier/add', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { SupplierName } = req.body;
-        let insertSupplier = `INSERT INTO [Jig].[MasterSupplier](SupplierName, Active) VALUES(N'${SupplierName}', 1);`;
+        let insertSupplier = `INSERT INTO [Mold].[MasterSupplier](SupplierName, Active) VALUES(N'${SupplierName}', 1);`;
         await pool.request().query(insertSupplier);
         res.json({ message: `Success` });
     } catch (err) {
@@ -691,7 +711,7 @@ router.put('/sparepart/supplier/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { SupplierID, SupplierName } = req.body;
-        let updateSupplier = `UPDATE [Jig].[MasterSupplier] SET SupplierName = N'${SupplierName}' WHERE SupplierID = ${SupplierID};`;
+        let updateSupplier = `UPDATE [Mold].[MasterSupplier] SET SupplierName = N'${SupplierName}' WHERE SupplierID = ${SupplierID};`;
         await pool.request().query(updateSupplier);
         res.json({ message: `Success` });
     } catch (err) {
@@ -703,7 +723,7 @@ router.delete('/sparepart/supplier/delete', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { SupplierID } = req.body;
-        let deleteSupplier = `UPDATE [Jig].[MasterSupplier] SET Active = 0 WHERE SupplierID = ${SupplierID};`;
+        let deleteSupplier = `UPDATE [Mold].[MasterSupplier] SET Active = 0 WHERE SupplierID = ${SupplierID};`;
         await pool.request().query(deleteSupplier);
         res.json({ message: `Success` });
     } catch (err) {
@@ -718,7 +738,7 @@ const storageTechnicianImage = multer.diskStorage({
     filename: (req, file, cb) => {
         let { EmployeeID } = req.query;
         let uploadDate = new Date();
-        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth()+1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
+        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth() + 1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
         const ext = file.mimetype.split('/')[1];
         cb(null, `${EmployeeID}_${uploadDateStr}` + '.' + ext);
     }
@@ -730,7 +750,7 @@ const storageTechnicianSkill = multer.diskStorage({
     filename: (req, file, cb) => {
         let { EmployeeID, SkillID } = req.query;
         let uploadDate = new Date();
-        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth()+1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
+        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth() + 1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
         const ext = file.mimetype.split('/')[1];
         cb(null, `${EmployeeID}_SkillID_${uploadDateStr}` + '.' + ext);
     }
@@ -814,12 +834,12 @@ router.post('/skill/position/skill', async (req, res) => { //* initial Skill by 
         WHERE a.PositionID = ${PositionID};
         `);
 
-        if(positionSkill.recordset.length){
+        if (positionSkill.recordset.length) {
             let UsedSkillJson = JSON.parse(positionSkill.recordset[0].UsedSkill);
             let Skill = [];
-            for(let item of UsedSkillJson){
+            for (let item of UsedSkillJson) {
                 let getSkill = await pool.request().query(`SELECT a.SkillID, a.Skill FROM [Mold].[MasterSkill] a WHERE a.SkillID = ${item.SkillID} AND a.Active = 1;`);
-                if(getSkill.recordset.length){
+                if (getSkill.recordset.length) {
                     Skill.push(getSkill.recordset[0]);
                 }
             }
@@ -869,7 +889,7 @@ router.post('/skill/technician', async (req, res) => { // Where DepartmentID = 1
         LEFT JOIN [TSM_Mold].[Mold].[MasterTechnician] d ON a.UserID = d.UserID
         WHERE c.PositionName like '%tech%'
         `);
-        for(let user of skill.recordset){
+        for (let user of skill.recordset) {
             user.FirstName = atob(user.FirstName);
         }
         res.json(skill.recordset);
@@ -886,12 +906,12 @@ router.post('/skill/technician/skill', async (req, res) => { //* get Tech Skill
         FROM [TSM_Mold].[Mold].[MasterPositionSkill] a
         WHERE a.PositionID = ${PositionID};
         `);
-        if(PositionSkill.recordset.length){
+        if (PositionSkill.recordset.length) {
             let UsedSkillJson = JSON.parse(PositionSkill.recordset[0].UsedSkill);
             let Skill = [];
-            for(let item of UsedSkillJson){
+            for (let item of UsedSkillJson) {
                 let getSkill = await pool.request().query(`SELECT a.SkillID, a.Skill FROM [Mold].[MasterSkill] a WHERE a.SkillID = ${item.SkillID} AND a.Active = 1;`);
-                if(getSkill.recordset.length){
+                if (getSkill.recordset.length) {
                     Skill.push(getSkill.recordset[0]);
                 }
             }
@@ -1041,14 +1061,13 @@ router.post('/docctrl', async (req, res) => {
         WHERE DocumentName = '${DocumentName}';
         `);
         res.json(DocCtrl.recordset)
-    } catch(err){
+    } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
     }
 })
 router.put('/docctrl/edit', async (req, res) => {
-    try
-    {
+    try {
         let pool = await sql.connect(config);
         let { DocumentID, DocumentName, DocumentCtrlNo } = req.body;
         let updateDocCrtl = `
@@ -1065,9 +1084,9 @@ router.put('/docctrl/edit', async (req, res) => {
 	        END
         `;
         await pool.request().query(updateDocCrtl);
-        res.json({ message:`Success` });
+        res.json({ message: `Success` });
     }
-    catch(err){
+    catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
     }
