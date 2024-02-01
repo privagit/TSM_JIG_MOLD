@@ -510,15 +510,20 @@ router.post('/maintenace/pm/checkfile/upload', async (req, res) => { // Upload P
         }
     })
 })
-router.put('/maintenace/inspect/edit', async (req, res) => { //TODO:  uncheck, select PM Topic to use
+router.put('/maintenace/inspect/edit', async (req, res) => { // select PM Topic to use
     try {
         let pool = await sql.connect(config);
         let { JigID, PmTopicID } = req.body;
         let getJigInspect = await pool.request().query(`SELECT PmID, JigID, PmTopic FROM [Jig].[MasterPm] WHERE JigID = ${JigID};`);
         if(getJigInspect.recordset.length){
             let PmID = getJigInspect.recordset[0].PmID;
-            let PmTopic = JSON.parse(getJigInspect.recordset[0].PmTopic).push(PmTopicID);
-            let updateJigInspect = `UPDATE [Jig].[MasterPm] SET PmTopic = N'${PmTopic}' WHERE PmID = ${PmID};`;
+            let PmTopic = JSON.parse(getJigInspect.recordset[0].PmTopic);
+            if(PmTopic.find(v=>v==PmTopicID)){
+                PmTopic = PmTopic.filter(v=>v!=PmTopicID);
+            } else{
+                PmTopic.push(PmTopicID);
+            }
+            let updateJigInspect = `UPDATE [Jig].[MasterPm] SET PmTopic = N'[${PmTopic}]' WHERE PmID = ${PmID};`;
             await pool.request().query(updateJigInspect);
         } else {
             let insertJigInspect = `INSERT INTO [Jig].[MasterPm](JigID, PmTopic) VALUES(${JigID}, N'[${PmTopicID}]');`;
@@ -1254,7 +1259,8 @@ router.put('/docctrl/edit', async (req, res) => {
     try
     {
         let pool = await sql.connect(config);
-        let { DocumentID, DocumentName, DocumentCtrlNo } = req.body;
+        let { DocumentName, DocumentCtrlNo } = req.body;
+        console.log(req.body)
         let updateDocCrtl = `
         DECLARE @DocumentID INT
         SET @DocumentID = (SELECT DocumentID FROM [Jig].[MasterDocumentCtrl] WHERE DocumentName = '${DocumentName}');
@@ -1354,4 +1360,3 @@ module.exports = router;
  *       500:
  *         description: Internal Server Error
  */
-

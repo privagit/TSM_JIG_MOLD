@@ -12,7 +12,7 @@ router.post('/repair-issue', async (req, res) => {
         let pool = await sql.connect(config);
         let { month, year, Status } = req.body;
 
-        let repairIssue = await pool.request().query(`SELECT a.RepairCheckID, b.JigNo, a.RequestTime, a.StartTime, a.EndTime, a.Complaint,
+        let repairIssue = await pool.request().query(`SELECT a.RepairCheckID, b.JigNo, a.RequestTime, a.StartTime, a.EndTime, a.Complaint, a.RootCause,
         a.RepairResult, a.ApproveBy, a.ReportNo
         FROM [Jig].[RepairCheck] a
         LEFT JOIN [Jig].[MasterJig] b ON b.JigID = a.JigID
@@ -22,6 +22,7 @@ router.post('/repair-issue', async (req, res) => {
 
         //* Filter Status
         if(Status){ //* Status: All = null, 1: Issue, 2: Repair, 3: Wait Sign, 4: Complete
+            console.log(Status)
             if(Status == 1){
                 let repairIssueFiltered = repairIssue.recordset.filter(v => !v.StartTime && !v.EndTime);
                 return res.json(repairIssueFiltered);
@@ -31,6 +32,7 @@ router.post('/repair-issue', async (req, res) => {
                 return res.json(repairIssueFiltered);
             }
             else if(Status == 3){
+                
                 let repairIssueFiltered = repairIssue.recordset.filter(v => v.StartTime && v.EndTime && !v.ApproveBy);
                 return res.json(repairIssueFiltered);
             }
@@ -87,11 +89,10 @@ router.post('/repair-issue/dropdown/problem', async (req, res) => {
     }
 })
 // Request
-router.post('/repair-issue/request/issue', async (req, res) => { // cache, RunningNo., io
+router.post('/repair-issue/request/issue', async (req, res) => { //TODO: ReportNo., cache, RunningNo., io
     try {
         let pool = await sql.connect(config);
         let { JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID } = req.body;
-
          //* Get RunningNo
         let date = new Date();
         let monthRunningNo = await pool.request().query(`SELECT a.MonthDate, a.RunningNo
@@ -107,29 +108,27 @@ router.post('/repair-issue/request/issue', async (req, res) => { // cache, Runni
         }
         let ReportNo = `EM-${('0000'+RunningNo).substr(-4)}-${('00'+(date.getMonth()+1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
 
-
         let issueRepair = await pool.request().query(`INSERT INTO [Jig].[RepairCheck](JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID, ReportNo)
-        VALUES(${JigID}, '${RequestBy}', '${RequestTime}', '${Section}', N'${Complaint}', ${RepairTypeID}, ${RepairProblemID}, '${ReportNo}');
+        VALUES(${JigID}, N'${RequestBy}', '${RequestTime}', '${Section}', N'${Complaint}', ${RepairTypeID}, ${RepairProblemID}, '${ReportNo}');
 
         SELECT SCOPE_IDENTITY() AS RepairCheckID;
         `);
 
-        // let date = new Date();
         const io = req.app.get('socketio');
         let machine = await pool.request().query(`SELECT JigNo FROM [Jig].[MasterJig] WHERE JigID = ${JigID};`);
         let alertTime = `${date.getHours()}:${('00'+date.getMinutes()).substr(-2)}`;
         let alertDate = `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`;
         let alertLog = { MachineNo: machine.recordset[0]?.JigNo, Module: 1, Action: 1, time: alertTime, date: alertDate };
-        io.emit('alert-log', alertLog);
-        let cacheAlertLog = await redis.get('em-alert-log');
+        io.emit('jig-alert-log', alertLog);
+        let cacheAlertLog = await redis.get('jig-alert-log');
         if(!cacheAlertLog){
-            await redis.set('em-alert-log', JSON.stringify([alertLog]));
+            await redis.set('jig-alert-log', JSON.stringify([alertLog]));
         } else {
             let cur = new Date();
             let cacheAlertLogJSON = JSON.parse(cacheAlertLog);
             let cacheAlertLogFilter = cacheAlertLogJSON.filter(v => cur - new Date(`${v.date} ${v.time}`) < 43200000); // 12 Hour
             cacheAlertLogFilter.push(alertLog);
-            await redis.set('em-alert-log', JSON.stringify(cacheAlertLogFilter));
+            await redis.set('jig-alert-log', JSON.stringify(cacheAlertLogFilter));
         }
 
         res.json({ message: 'Success', RepairCheckID: issueRepair.recordset[0]?.RepairCheckID });
@@ -162,7 +161,7 @@ router.post('/repair-issue/repair/item', async (req, res) => {
 
         let repair = await pool.request().query(`SELECT a.RepairCheckID, a.RequestTime, a.RepairProblemID, a.RepairTypeID, a.Complaint,
         a.StartTime, a.EndTime, a.RootCause, a.FixDetail, a.TestDummyResult, a.RepairResult,
-        b.FirstName AS RequestSign, c.FirstName AS RepairBy, d.FirstName AS ApproveBy, e.FirstName AS ReceiveBy,
+        b.FirstName AS RequestSign, c.FirstName AS RepairBy, d.FirstName AS ApproveBy, e.FirstName AS ReceiveBy, a.ReceiveTime,
         f.FirstName AS ReceiveApproveBy,
         a.JigID, g.JigTypeID, h.JigType, a.Section
         FROM [Jig].[RepairCheck] a
@@ -192,7 +191,10 @@ router.post('/repair-issue/repair/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { RepairCheckID, RootCause, FixDetail, TestDummyResult } = req.body;
-
+        console.log(`UPDATE [Jig].[RepairCheck] SET RootCause = N'${RootCause}', FixDetail = N'${FixDetail}',
+        TestDummyResult = ${TestDummyResult}
+        WHERE RepairCheckID = ${RepairCheckID};
+        `)
         let updateRepair = `UPDATE [Jig].[RepairCheck] SET RootCause = N'${RootCause}', FixDetail = N'${FixDetail}',
         TestDummyResult = ${TestDummyResult}
         WHERE RepairCheckID = ${RepairCheckID};
@@ -415,8 +417,8 @@ router.post('/repair-issue/sign/repair', async (req, res) => { //* cache, io
         WHERE a.RepairCheckID = ${RepairCheckID};
         `);
         let alertLog = { JigNo: machine.recordset[0]?.JigNo, Module: 1, Action: 2, time: alertTime, date: alertDate }
-        io.emit('alert-log', alertLog);
-        let cacheAlertLog = await redis.get('em-alert-log');
+        io.emit('jig-alert-log', alertLog);
+        let cacheAlertLog = await redis.get('jig-alert-log');
         if(!cacheAlertLog){
             await redis.set('jig-alert-log', JSON.stringify([alertLog]));
         } else {

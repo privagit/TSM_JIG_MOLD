@@ -9,7 +9,9 @@ const morgan = require("morgan");
 app.use(express.static(__dirname + '/public'));
 app.use(express.urlencoded({extended: false}));
 app.use(express.json()); //body-parser for get
-app.use(morgan('dev'));
+app.use(morgan('dev', {
+    skip: function(req, res) { return res.statusCode < 400 }
+}));
 app.use(cors({
     origin: JSON.parse(CORS_URL), // Replace with the actual URL of your main server
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
@@ -32,10 +34,14 @@ let jigSettingRouter = require('./routes/jig/setting');
 let jigSparepartRouter = require('./routes/jig/sparepart');
 let jigRepairRouter = require('./routes/jig/repair');
 let jigCreationRouter = require('./routes/jig/creation');
+let jigOverviewRouter = require('./routes/jig/overview');
+let jigDashboardRouter = require('./routes/jig/dashboad');
 app.use('/jig/setting', jigSettingRouter);
 app.use('/jig/sparepart', jigSparepartRouter);
 app.use('/jig/repair', jigRepairRouter);
 app.use('/jig/creation', jigCreationRouter);
+app.use('/jig/overview', jigOverviewRouter);
+app.use('/jig/dashboard', jigDashboardRouter);
 
 //* MOLD ROUTES
 let moldSettingRouter = require('./routes/mold/setting');
