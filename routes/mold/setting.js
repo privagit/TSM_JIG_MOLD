@@ -219,21 +219,20 @@ router.post('/maintenace/pm/checkfile/upload', async (req, res) => {
 router.put('/maintenace/inspect/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
-        let { MoldID, PmTopicID } = req.body;
+        let { MoldID, InspectionID } = req.body;
         let getMoldInspect = await pool.request().query(`SELECT PmID, MoldID, PmTopic FROM [Mold].[MasterPm] WHERE MoldID = ${MoldID};`);
-
         if(getMoldInspect.recordset.length){
             let PmID = getMoldInspect.recordset[0].PmID;
             let PmTopic = JSON.parse(getMoldInspect.recordset[0].PmTopic);
-            if(PmTopic.find(v=>v==PmTopicID)){
-                PmTopic = PmTopic.filter(v=>v!=PmTopicID);
+            if(PmTopic.find(v=>v==InspectionID)){
+                PmTopic = PmTopic.filter(v=>v!=InspectionID);
             } else{
-                PmTopic.push(PmTopicID);
+                PmTopic.push(InspectionID);
             }
             let updateMoldInspect = `UPDATE [Mold].[MasterPm] SET PmTopic = N'[${PmTopic}]' WHERE PmID = ${PmID};`;
             await pool.request().query(updateMoldInspect);
         } else {
-            let insertMoldInspect = `INSERT INTO [Mold].[MasterPm](MoldID, PmTopic) VALUES(${MoldID}, N'[${PmTopicID}]');`;
+            let insertMoldInspect = `INSERT INTO [Mold].[MasterPm](MoldID, PmTopic) VALUES(${MoldID}, N'[${InspectionID}]');`;
             await pool.request().query(insertMoldInspect);
         }
         res.json({ message: 'Success' });
