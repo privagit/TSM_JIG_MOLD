@@ -300,9 +300,9 @@ router.post("/jig/chart", async (req, res) => {
         // ChartType: {1:Cost}, {2:ProblemCount}, {3:RepairTime}
         if(ChartType == 1){ // Cost
             var repair = await pool.request().query(`SELECT MONTH(b.UsedDate) AS M,
-            SUM(CASE WHEN b.Reuse = 0 OR b.Reuse IS NULL THEN (b.UnitPrice * b.Qty) ELES 0 END) AS Cost
-            FROM [Em].[RepairCheck] a
-            LEFT JOIN [Em].[RepairCost] b ON a.RepairCheckID = b.RepairCheckID
+            SUM(CASE WHEN b.Reuse = 0 OR b.Reuse IS NULL THEN (b.UnitPrice * b.Qty) ELSE 0 END) AS Cost
+            FROM [Jig].[RepairCheck] a
+            LEFT JOIN [Jig].[RepairCost] b ON a.RepairCheckID = b.RepairCheckID
             WHERE YEAR(b.UsedDate) = ${year} AND a.JigID = ${JigID}
             GROUP BY MONTH(b.UsedDate);
             `);
@@ -310,7 +310,7 @@ router.post("/jig/chart", async (req, res) => {
         }
         else if(ChartType == 2){ // ProblemCount
             var repair = await pool.request().query(`SELECT MONTH(a.RequestTime) AS M, COUNT(a.RepairCheckID) AS CountProblem
-            FROM [Em].[RepairCheck] a
+            FROM [Jig].[RepairCheck] a
             WHERE YEAR(a.RequestTime) = ${year} AND a.JigID = ${JigID}
             GROUP BY MONTH(a.RequestTime)
             `);
@@ -318,7 +318,7 @@ router.post("/jig/chart", async (req, res) => {
         }
         else if(ChartType == 3){ // Repair Time
             var repair = await pool.request().query(`SELECT MONTH(a.RequestTime) AS M, SUM(DATEDIFF(MINUTE, a.StartTime, a.EndTime)) AS RepairTime
-            FROM [Em].[RepairCheck] a
+            FROM [Jig].[RepairCheck] a
             WHERE YEAR(a.RequestTime) = ${year} AND a.JigID = ${JigID}
             GROUP BY MONTH(a.RequestTime)
             `);

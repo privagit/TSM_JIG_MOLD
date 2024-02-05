@@ -193,7 +193,7 @@ router.put('/request/tooling/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { JigCreationID, ExamResult, Reason, Project } = req.body;
-        let updateConfirmTarget = `UPDATE [Jig].[JigCreation] SET ExamResult = ${ExamResult}, Reason = '${Reason}', Project = N'${Project}'
+        let updateConfirmTarget = `UPDATE [Jig].[JigCreation] SET ExamResult = ${ExamResult}, Reason = N'${Reason}', Project = N'${Project}'
         WHERE JigCreationID = ${JigCreationID};
         `;
         await pool.request().query(updateConfirmTarget);

@@ -17,7 +17,7 @@ router.post('/repair-issue', async (req, res) => {
         FROM [Jig].[RepairCheck] a
         LEFT JOIN [Jig].[MasterJig] b ON b.JigID = a.JigID
         WHERE MONTH(a.RequestTime) = ${month} AND YEAR(a.RequestTime) = ${year}
-        ORDER BY a.RequestTime
+        ORDER BY a.RequestTime DESC
         `);
 
         //* Filter Status
