@@ -152,7 +152,7 @@ router.post('/maintenace', async (req, res) => {
         FROM [Mold].[MasterPm] a
         WHERE a.MoldID = ${MoldID};
         `);
-        res.json(maintenance.receiveCheck);
+        res.json(maintenance.recordset);
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -192,7 +192,7 @@ router.post('/maintenace/pm/checkfile/upload', async (req, res) => {
         } else {
             try {
                 let pool = await sql.connect(config);
-                let ImagePath = (req.file) ? "/mold_pm_checkfile/" + req.file.filename : "";
+                let ImagePath = (req.file) ? "/mold/pm_checkfile/" + req.file.filename : "";
                 let { MoldID } = req.body;
                 let updatePmCheckfile = `DECLARE @PmID INT;
                 SET @PmID = (SELECT PmID FROM [Mold].[MasterPm] WHERE MoldID = ${MoldID});
@@ -993,7 +993,7 @@ router.post('/skill/technician/skill/train', async (req, res) => { //TODO: EditU
             try {
                 let pool = await sql.connect(config);
                 let { UserID, SkillID, Score } = req.body;
-                let reqUserID = req.session.UserID;
+                let reqUserID = req.session?.UserID || 0;
                 let FilePath = "/mold/tech_skill/" + req.file.filename;
                 let insertFilePath = `
                 INSERT INTO [Mold].[MasterTechSkill](UserID, SkillID, Score, FilePath, UpdatedAt, UpdatedUser) VALUES(${UserID}, ${SkillID}, ${Score}, '${FilePath}', GETDATE(), ${reqUserID || 0});

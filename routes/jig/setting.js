@@ -5,7 +5,7 @@ const sql = require('mssql');
 const multer = require('multer');
 const path = require('path');
 
-
+//? UseIn มีอะไรบ้าง
 //* ========== Jig Setting ==========
 // Jig
 router.post('/jig', async (req, res) => {
@@ -30,7 +30,7 @@ router.put('/jig/edit', async (req, res) => {
         let pool = await sql.connect(config);
         let { JigID, PartCode, PartName, Asset, UseIn, Status } = req.body;
         let updateJig = `UPDATE [Jig].[MasterJig] SET PartCode = N'${PartCode}', PartName = N'${PartName}', Asset = N'${Asset}',
-        UseIn = '${UseIn}', Status = ${Status}
+        UseIn = N'${UseIn}', Status = ${Status}
         WHERE JigID = ${JigID};
         `;
         await pool.request().query(updateJig);
@@ -1187,8 +1187,7 @@ router.post('/skill/technician/skill/train', async (req, res) => { //TODO: EditU
             try {
                 let pool = await sql.connect(config);
                 let { UserID, SkillID, Score } = req.body;
-                console.log(req.session)
-                let reqUserID = req.session.UserID || 0;
+                let reqUserID = req.session?.UserID || 0;
                 let FilePath = "/jig/tech_skill/" + req.file.filename;
                 let insertFilePath = `
                 INSERT INTO [Jig].[MasterTechSkill](UserID, SkillID, Score, FilePath, UpdatedAt, UpdatedUser) VALUES(${UserID}, ${SkillID}, ${Score}, '${FilePath}', GETDATE(), ${reqUserID || 0});
