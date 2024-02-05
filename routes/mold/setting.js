@@ -980,7 +980,7 @@ router.put('/skill/technician/image/upload', async (req, res) => {
                 console.log(req.files);
                 let pool = await sql.connect(config);
                 let { UserID } = req.body;
-                let ImagePath = (req.file) ? "/mold_technician/" + req.file.filename : ""
+                let ImagePath = (req.file) ? "/mold/technician/" + req.file.filename : ""
                 let insertFilePath = `
                 DECLARE @UserID INT;
                 SELECT @UserID = UserID FROM [Mold].[MasterTechnician] WHERE UserID = ${UserID};
