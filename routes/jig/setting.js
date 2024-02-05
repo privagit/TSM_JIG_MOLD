@@ -5,15 +5,15 @@ const sql = require('mssql');
 const multer = require('multer');
 const path = require('path');
 
-
+//? UseIn มีอะไรบ้าง
 //* ========== Jig Setting ==========
 // Jig
-router.post('/jig', async (req, res) => { //TODO: UseIn
+router.post('/jig', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let jig = await pool.request().query(`
         SELECT a.JigID, a.JigTypeID, b.JigType, a.CustomerID, c.CustomerName, a.JigNo,
-        a.PartCode, a.PartName, a.ToolingNo, a.Section, a.Active, a.Location, a.Status,
+        a.PartCode, a.PartName, a.ToolingNo, a.Section, a.Active, a.UseIn, a.Status,
         a.Asset, a.Revision
         FROM [Jig].[MasterJig] a
         LEFT JOIN [Jig].[MasterJigType] b ON b.JigTypeID = a.JigTypeID AND b.Active = 1
@@ -28,9 +28,9 @@ router.post('/jig', async (req, res) => { //TODO: UseIn
 router.put('/jig/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
-        let { JigID, PartCode, PartName, Asset, Location, Status } = req.body;
+        let { JigID, PartCode, PartName, Asset, UseIn, Status } = req.body;
         let updateJig = `UPDATE [Jig].[MasterJig] SET PartCode = N'${PartCode}', PartName = N'${PartName}', Asset = N'${Asset}',
-        Location = N'${Location}', Status = ${Status}
+        UseIn = N'${UseIn}', Status = ${Status}
         WHERE JigID = ${JigID};
         `;
         await pool.request().query(updateJig);
@@ -520,12 +520,12 @@ router.put('/maintenace/inspect/edit', async (req, res) => { // select PM Topic 
         if (getJigInspect.recordset.length) {
             let PmID = getJigInspect.recordset[0].PmID;
             let PmTopic = JSON.parse(getJigInspect.recordset[0].PmTopic);
-            if(PmTopic.includes(PmTopicID)){
+            if(PmTopic.find(v=>v==PmTopicID)){
                 PmTopic = PmTopic.filter(v=>v!=PmTopicID);
             } else{
                 PmTopic.push(PmTopicID);
             }
-            let updateJigInspect = `UPDATE [Jig].[MasterPm] SET PmTopic = N'${PmTopic}' WHERE PmID = ${PmID};`;
+            let updateJigInspect = `UPDATE [Jig].[MasterPm] SET PmTopic = N'[${PmTopic}]' WHERE PmID = ${PmID};`;
             await pool.request().query(updateJigInspect);
         } else {
             let insertJigInspect = `INSERT INTO [Jig].[MasterPm](JigID, PmTopic) VALUES(${JigID}, N'[${PmTopicID}]');`;
@@ -1190,7 +1190,7 @@ router.post('/skill/technician/skill/train', async (req, res) => { //TODO: EditU
             try {
                 let pool = await sql.connect(config);
                 let { UserID, SkillID, Score } = req.body;
-                let reqUserID = req.session.UserID;
+                let reqUserID = req.session?.UserID || 0;
                 let FilePath = "/jig/tech_skill/" + req.file.filename;
                 let insertFilePath = `
                 INSERT INTO [Jig].[MasterTechSkill](UserID, SkillID, Score, FilePath, UpdatedAt, UpdatedUser) VALUES(${UserID}, ${SkillID}, ${Score}, '${FilePath}', GETDATE(), ${reqUserID || 0});
@@ -1362,4 +1362,3 @@ module.exports = router;
  *       500:
  *         description: Internal Server Error
  */
-

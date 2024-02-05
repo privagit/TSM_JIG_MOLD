@@ -152,7 +152,7 @@ router.post('/maintenace', async (req, res) => {
         FROM [Mold].[MasterPm] a
         WHERE a.MoldID = ${MoldID};
         `);
-        res.json(maintenance.receiveCheck);
+        res.json(maintenance.recordset);
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -192,7 +192,7 @@ router.post('/maintenace/pm/checkfile/upload', async (req, res) => {
         } else {
             try {
                 let pool = await sql.connect(config);
-                let ImagePath = (req.file) ? "/mold_pm_checkfile/" + req.file.filename : "";
+                let ImagePath = (req.file) ? "/mold/pm_checkfile/" + req.file.filename : "";
                 let { MoldID } = req.body;
                 let updatePmCheckfile = `DECLARE @PmID INT;
                 SET @PmID = (SELECT PmID FROM [Mold].[MasterPm] WHERE MoldID = ${MoldID});
@@ -219,21 +219,21 @@ router.post('/maintenace/pm/checkfile/upload', async (req, res) => {
 router.put('/maintenace/inspect/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
-        let { MoldID, PmTopicID } = req.body;
+        let { MoldID, InspectionID } = req.body;
         let getMoldInspect = await pool.request().query(`SELECT PmID, MoldID, PmTopic FROM [Mold].[MasterPm] WHERE MoldID = ${MoldID};`);
 
         if(getMoldInspect.recordset.length){
             let PmID = getMoldInspect.recordset[0].PmID;
-            let PmTopic = JSON.parse(getJigInspect.recordset[0].PmTopic);
-            if(PmTopic.includes(PmTopicID)){
-                PmTopic = PmTopic.filter(v=>v!=PmTopicID);
+            let PmTopic = JSON.parse(getMoldInspect.recordset[0].PmTopic);
+            if(PmTopic.find(v=>v==InspectionID)){
+                PmTopic = PmTopic.filter(v=>v!=InspectionID);
             } else{
-                PmTopic.push(PmTopicID);
+                PmTopic.push(InspectionID);
             }
-            let updateMoldInspect = `UPDATE [Mold].[MasterPm] SET PmTopic = N'${PmTopic}' WHERE PmID = ${PmID};`;
+            let updateMoldInspect = `UPDATE [Mold].[MasterPm] SET PmTopic = N'[${PmTopic}]' WHERE PmID = ${PmID};`;
             await pool.request().query(updateMoldInspect);
         } else {
-            let insertMoldInspect = `INSERT INTO [Mold].[MasterPm](MoldID, PmTopic) VALUES(${MoldID}, N'[${PmTopicID}]');`;
+            let insertMoldInspect = `INSERT INTO [Mold].[MasterPm](MoldID, PmTopic) VALUES(${MoldID}, N'[${InspectionID}]');`;
             await pool.request().query(insertMoldInspect);
         }
         res.json({ message: 'Success' });
@@ -673,7 +673,7 @@ router.delete('/sparepart/location/delete', async (req, res) => {
 router.post('/sparepart/supplier', async (req, res) => {
     try {
         let pool = await sql.connect(config);
-        let suppliers = await pool.request().query(`SELECT a.SupplierID, a.SupplierName FROM [Jig].[MasterSupplier] a WHERE a.Active = 1;`);
+        let suppliers = await pool.request().query(`SELECT a.SupplierID, a.SupplierName FROM [Mold].[MasterSupplier] a WHERE a.Active = 1;`);
         res.json(suppliers.recordset);
     } catch (err) {
         console.log(req.url, err);
@@ -684,7 +684,7 @@ router.post('/sparepart/supplier/add', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { SupplierName } = req.body;
-        let insertSupplier = `INSERT INTO [Jig].[MasterSupplier](SupplierName, Active) VALUES(N'${SupplierName}', 1);`;
+        let insertSupplier = `INSERT INTO [Mold].[MasterSupplier](SupplierName, Active) VALUES(N'${SupplierName}', 1);`;
         await pool.request().query(insertSupplier);
         res.json({ message: `Success` });
     } catch (err) {
@@ -696,7 +696,7 @@ router.put('/sparepart/supplier/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { SupplierID, SupplierName } = req.body;
-        let updateSupplier = `UPDATE [Jig].[MasterSupplier] SET SupplierName = N'${SupplierName}' WHERE SupplierID = ${SupplierID};`;
+        let updateSupplier = `UPDATE [Mold].[MasterSupplier] SET SupplierName = N'${SupplierName}' WHERE SupplierID = ${SupplierID};`;
         await pool.request().query(updateSupplier);
         res.json({ message: `Success` });
     } catch (err) {
@@ -708,7 +708,7 @@ router.delete('/sparepart/supplier/delete', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { SupplierID } = req.body;
-        let deleteSupplier = `UPDATE [Jig].[MasterSupplier] SET Active = 0 WHERE SupplierID = ${SupplierID};`;
+        let deleteSupplier = `UPDATE [Mold].[MasterSupplier] SET Active = 0 WHERE SupplierID = ${SupplierID};`;
         await pool.request().query(deleteSupplier);
         res.json({ message: `Success` });
     } catch (err) {
@@ -960,7 +960,7 @@ router.put('/skill/technician/image/upload', async (req, res) => {
                 console.log(req.files);
                 let pool = await sql.connect(config);
                 let { UserID } = req.body;
-                let ImagePath = (req.file) ? "/mold_technician/" + req.file.filename : ""
+                let ImagePath = (req.file) ? "/mold/technician/" + req.file.filename : ""
                 let insertFilePath = `
                 DECLARE @UserID INT;
                 SELECT @UserID = UserID FROM [Mold].[MasterTechnician] WHERE UserID = ${UserID};
@@ -994,8 +994,8 @@ router.post('/skill/technician/skill/train', async (req, res) => { //TODO: EditU
             try {
                 let pool = await sql.connect(config);
                 let { UserID, SkillID, Score } = req.body;
-                let reqUserID = req.session.UserID;
-                let FilePath = "/mold_tech_skill/" + req.file.filename;
+                let reqUserID = req.session?.UserID || 0;
+                let FilePath = "/mold/tech_skill/" + req.file.filename;
                 let insertFilePath = `
                 INSERT INTO [Mold].[MasterTechSkill](UserID, SkillID, Score, FilePath, UpdatedAt, UpdatedUser) VALUES(${UserID}, ${SkillID}, ${Score}, '${FilePath}', GETDATE(), ${reqUserID || 0});
 
