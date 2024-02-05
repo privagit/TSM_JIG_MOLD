@@ -721,6 +721,7 @@ const storageTechnicianImage = multer.diskStorage({
     destination: path.join(__dirname, '../../public/mold/technician'),
     filename: (req, file, cb) => {
         let { EmployeeID } = req.query;
+        console.log(EmployeeID)
         let uploadDate = new Date();
         let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth()+1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
         const ext = file.mimetype.split('/')[1];
@@ -958,7 +959,7 @@ router.put('/skill/technician/image/upload', async (req, res) => {
             try {
                 let pool = await sql.connect(config);
                 let { UserID } = req.body;
-                let ImagePath = (req.file) ? "/mold_technician/" + req.file.filename : ""
+                let ImagePath = (req.file) ? "/mold/technician/" + req.file.filename : ""
                 let insertFilePath = `
                 DECLARE @UserID INT;
                 SELECT @UserID = UserID FROM [Mold].[MasterTechnician] WHERE UserID = ${UserID};
@@ -993,7 +994,7 @@ router.post('/skill/technician/skill/train', async (req, res) => { //TODO: EditU
                 let pool = await sql.connect(config);
                 let { UserID, SkillID, Score } = req.body;
                 let reqUserID = req.session.UserID;
-                let FilePath = "/mold_tech_skill/" + req.file.filename;
+                let FilePath = "/mold/tech_skill/" + req.file.filename;
                 let insertFilePath = `
                 INSERT INTO [Mold].[MasterTechSkill](UserID, SkillID, Score, FilePath, UpdatedAt, UpdatedUser) VALUES(${UserID}, ${SkillID}, ${Score}, '${FilePath}', GETDATE(), ${reqUserID || 0});
 
