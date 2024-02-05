@@ -1014,8 +1014,8 @@ router.post('/skill/technician/skill/train', async (req, res) => { //TODO: EditU
             try {
                 let pool = await sql.connect(config);
                 let { UserID, SkillID, Score } = req.body;
-                let reqUserID = req.session.UserID;
-                let FilePath = "/mold_tech_skill/" + req.file.filename;
+                let reqUserID = req.session?.UserID || 0;
+                let FilePath = "/mold/tech_skill/" + req.file.filename;
                 let insertFilePath = `
                 INSERT INTO [Mold].[MasterTechSkill](UserID, SkillID, Score, FilePath, UpdatedAt, UpdatedUser) VALUES(${UserID}, ${SkillID}, ${Score}, '${FilePath}', GETDATE(), ${reqUserID || 0});
 
