@@ -956,7 +956,6 @@ router.put('/skill/technician/image/upload', async (req, res) => {
             res.status(500).send({ message: `${err}` });
         } else {
             try {
-                console.log(req.files);
                 let pool = await sql.connect(config);
                 let { UserID } = req.body;
                 let ImagePath = (req.file) ? "/mold_technician/" + req.file.filename : ""
