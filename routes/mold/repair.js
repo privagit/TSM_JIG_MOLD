@@ -1,19 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const config = require('../../lib/dbconfig').dbconfig_jig;
+const config = require('../../lib/dbconfig').dbconfig_mold;
 const sql = require('mssql');
 const Redis = require('ioredis');
 const redis = new Redis();
 
 
 //* ========= Repair Issue =========
-router.post('/repair-issue', async (req, res) => { //TODO:
+router.post('/repair-issue', async (req, res) => { //TODO: PlanTime, Status
     try {
         let pool = await sql.connect(config);
         let { month, year, Status } = req.body;
 
         let repairIssue = await pool.request().query(`SELECT a.RepairCheckID, b.BasicMold, b.DieNo, a.RequestTime, a.StartTime, a.EndTime, a.Complaint,
-        a.RepairResult, a.ApproveBy, a.RepairNo
+        a.RepairResult, a.ApproveBy, a.ReportNo
         FROM [Mold].[RepairCheck] a
         LEFT JOIN [Mold].[MasterMold] b ON b.MoldID = a.MoldID
         WHERE MONTH(a.RequestTime) = ${month} AND YEAR(a.RequestTime) = ${year}
@@ -138,7 +138,6 @@ router.post('/repair-issue/request/issue', async (req, res) => { //TODO: Socket 
         res.status(500).send({ message: `${err}` });
     }
 })
-//TODO: Plan & Actual Time
 
 // Repair
 router.post('/repair-issue/repair/start', async (req, res) => {
@@ -163,7 +162,7 @@ router.post('/repair-issue/repair/item', async (req, res) => { //TODO:
         let { RepairCheckID } = req.body;
 
         let repair = await pool.request().query(`SELECT a.RepairCheckID, a.RequestTime, a.RepairProblemID, a.RepairTypeID, a.Complaint,
-        a.StartTime, a.EndTime, a.RootCause, a.FixDetail, a.RepairResult,
+        a.StartTime, a.EndTime, a.RootCause, a.DetailOfRepair, a.RepairResult,
         b.FirstName AS RequestSign, c.FirstName AS RepairBy, d.FirstName AS ApproveBy, e.FirstName AS ReceiveBy,
         f.FirstName AS ReceiveApproveBy
         FROM [Mold].[RepairCheck] a
@@ -187,13 +186,26 @@ router.post('/repair-issue/repair/item', async (req, res) => { //TODO:
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/repair-issue/repair/edit', async (req, res) => { //TODO:
+router.post('/repair-issue/repair/process', async (req, res) => { // initial Process (Plan & Actual)
     try {
         let pool = await sql.connect(config);
-        let { RepairCheckID, RootCause, FixDetail, RepairResult } = req.body;
+        let process = await pool.request().query(`SELECT ProcessID, ProcessType, Detail, CostPerHour
+        FROM [Mold].[MasterProcess]
+        WHERE Active = 1 AND ProcessType = 2;
+        `);
+        res.json(process.recordset);
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/repair-issue/repair/edit', async (req, res) => { //TODO: Plan & Actual
+    try {
+        let pool = await sql.connect(config);
+        let { RepairCheckID, PlanStartTime, PlanFinishTime, ActualStartTime, ActualFinishTime, Plan } = req.body;
 
-        let updateRepair = `UPDATE [Mold].[RepairCheck] SET RootCause = N'${RootCause}', FixDetail = N'${FixDetail}',
-        RepairResult = ${RepairResult}
+        //RepairResult 1: Accepted, 2: Rejected, 3: Special Accept
+        let updateRepair = `UPDATE [Mold].[RepairCheck] SET DetailOfRepair = N'${DetailOfRepair}', RepairResult = ${RepairResult}
         WHERE RepairCheckID = ${RepairCheckID};
         `;
         await pool.request().query(updateRepair);
@@ -204,6 +216,24 @@ router.post('/repair-issue/repair/edit', async (req, res) => { //TODO:
         res.status(500).send({ message: `${err}` });
     }
 })
+router.post('/repair-issue/repair/detail/edit', async (req, res) => {
+    try {
+        let pool = await sql.connect(config);
+        let { RepairCheckID, DetailOfRepair, RepairResult } = req.body;
+
+        //RepairResult 1: Accepted, 2: Rejected, 3: Special Accept
+        let updateRepair = `UPDATE [Mold].[RepairCheck] SET DetailOfRepair = N'${DetailOfRepair}', RepairResult = ${RepairResult}
+        WHERE RepairCheckID = ${RepairCheckID};
+        `;
+        await pool.request().query(updateRepair);
+
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+
 // Tech
 router.post('/repair-issue/repair/tech', async (req, res) => {
     try {
@@ -269,7 +299,6 @@ router.delete('/repair-issue/repair/tech/delete', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-
 
 // Service / Parts Cost
 router.post('/repair-issue/service/dropdown/category', async (req, res) => {
