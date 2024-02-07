@@ -25,10 +25,13 @@ router.post('/jig', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
+
+//todo 
 router.put('/jig/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { JigID, PartCode, PartName, Asset, UseIn, Status } = req.body;
+        console.log(req.body)
         let updateJig = `UPDATE [Jig].[MasterJig] SET PartCode = N'${PartCode}', PartName = N'${PartName}', Asset = N'${Asset}',
         UseIn = N'${UseIn}', Status = ${Status}
         WHERE JigID = ${JigID};
