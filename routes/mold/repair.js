@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const config = require('../../lib/dbconfig').dbconfig_jig;
+const config = require('../../lib/dbconfig').dbconfig_mold;
 const sql = require('mssql');
 const Redis = require('ioredis');
 const redis = new Redis();
@@ -13,7 +13,7 @@ router.post('/repair-issue', async (req, res) => { //TODO:
         let { month, year, Status } = req.body;
 
         let repairIssue = await pool.request().query(`SELECT a.RepairCheckID, b.BasicMold, b.DieNo, a.RequestTime, a.StartTime, a.EndTime, a.Complaint,
-        a.RepairResult, a.ApproveBy, a.RepairNo
+        a.RepairResult, a.ApproveBy, a.ReportNo
         FROM [Mold].[RepairCheck] a
         LEFT JOIN [Mold].[MasterMold] b ON b.MoldID = a.MoldID
         WHERE MONTH(a.RequestTime) = ${month} AND YEAR(a.RequestTime) = ${year}
