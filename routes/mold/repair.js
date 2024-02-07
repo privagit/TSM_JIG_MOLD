@@ -109,7 +109,7 @@ router.post('/repair-issue/request/issue', async (req, res) => { //TODO: Socket 
         Complaint, Attachment, OccurTime, RequestBy, RequestTime, Section, ReportNo)
         VALUES(${MoldID}, ${CavityStd}, ${CavityAct}, ${RepairTypeID}, ${RepairProblemID},
         N'${Complaint}', N'${Attachment}', N'${OccurTime}',
-        N'${RequestBy}', '${RequestTime}', '${ReportNo}');
+        N'${RequestBy}', '${RequestTime}', '${Section}', '${ReportNo}');
 
         SELECT SCOPE_IDENTITY() AS RepairCheckID;
         `);
