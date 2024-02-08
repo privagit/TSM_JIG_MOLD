@@ -155,7 +155,7 @@ const storageMoldDrawing = multer.diskStorage({
     }
 });
 const uploadMoldDrawing = multer({ storage: storageMoldDrawing }).single('mold_drawing');
-router.post('/item/upload/hvt', async (req, res) => {
+router.post('/upload/hvt', async (req, res) => {
     uploadHVT(req, res, async (err) => {
         if (err) {
             console.log(req.url, 'Upload ERROR', err);
@@ -175,7 +175,7 @@ router.post('/item/upload/hvt', async (req, res) => {
         }
     })
 })
-router.post('/item/upload/spec', async (req, res) => {
+router.post('/upload/spec', async (req, res) => {
     uploadMoldSpec(req, res, async (err) => {
         if (err) {
             console.log(req.url, 'Upload ERROR', err);
@@ -195,7 +195,7 @@ router.post('/item/upload/spec', async (req, res) => {
         }
     })
 })
-router.post('/item/upload/mold', async (req, res) => {
+router.post('/upload/mold', async (req, res) => {
     uploadMoldPicture(req, res, async (err) => {
         if (err) {
             console.log(req.url, 'Upload ERROR', err);
@@ -215,7 +215,7 @@ router.post('/item/upload/mold', async (req, res) => {
         }
     })
 })
-router.post('/item/upload/drawing', async (req, res) => {
+router.post('/upload/drawing', async (req, res) => {
     uploadMoldDrawing(req, res, async (err) => {
         if (err) {
             console.log(req.url, 'Upload ERROR', err);
@@ -237,7 +237,7 @@ router.post('/item/upload/drawing', async (req, res) => {
 })
 
 //* ===== Sign =====
-router.post('/item/sign/issue', async (req, res) => {
+router.post('/sign/issue', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { DetailID, IssueBy } = req.body;
@@ -256,7 +256,7 @@ router.post('/item/sign/issue', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/item/sign/check', async (req, res) => {
+router.post('/sign/check', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { DetailID, CheckBy } = req.body;
@@ -275,7 +275,7 @@ router.post('/item/sign/check', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/item/sign/approve', async (req, res) => {
+router.post('/sign/approve', async (req, res) => { // Approve => Receive
     try {
         let pool = await sql.connect(config);
         let { DetailID, ApproveBy } = req.body;
@@ -288,6 +288,12 @@ router.post('/item/sign/approve', async (req, res) => {
         let signRepair = `UPDATE [Mold].[SpecificationDetail] SET ApproveBy = ${ApproveBy}, ApproveSignTime = '${curStr}' WHERE DetailID = ${DetailID};`;
         await pool.request().query(signRepair);
 
+        // approve => Receive
+        let insertReceive = `INSERT INTO [Mold].[MoldReceive](MoldSpecID)
+        SELECT MoldSpecID FROM [Mold].[SpecificationDetail] WHERE DetailID = ${DetailID};
+        `;
+        await pool.request().query(insertReceive);
+
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
         console.log(req.url, err);
@@ -296,5 +302,27 @@ router.post('/item/sign/approve', async (req, res) => {
 })
 
 //* ========== Mold Receive Detail ==========
+router.post('/receive', async (req, res) => {
+    try {
+        let pool = await sql.connect(config);
+        let { MoldSpecID } = req.body;
+        let moldReceive = await pool.request().query(`SELECT a.MoldReceiveID, a.MoldSpecID,
+        a.AppearanceInspect, a.MoldStructure, a.Remark, a.ImagePath,
+        b.FirstName AS MoldIssueBy, c.FirstName AS MoldCheckBy, d.FirstName AS MoldApproveBy,
+        e.FirstName AS EnCheckBy, f.FirstName AS EnApproveBy
+        FROM [Mold].[MoldReceive] a
+        LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.MoldIssueBy = b.EmployeeID
+        LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.MoldCheckBy = c.EmployeeID
+        LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.MoldApprovBy = d.EmployeeID
+        LEFT JOIN [TSMolymer_F].[dbo].[User] e ON a.EnCheckBy = e.EmployeeID
+        LEFT JOIN [TSMolymer_F].[dbo].[User] f ON a.EnApprovBy = f.EmployeeID
+        WHERE a.MoldSpecID = ${MoldSpecID};
+        `);
+        res.json(moldReceive.recordset);
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
 
 module.exports = router;
