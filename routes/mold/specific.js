@@ -12,7 +12,12 @@ router.post('/list', async (req, res) => { //TODO:
         let { Status } = req.body;
 
         let moldSpecificList = await pool.request().query(`
-        `);
+        SELECT a.MoldSpecID, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.AxMoldNo,
+        a.Model, a.IssuedDate, a.Status
+        FROM [Mold].[Specification] a
+        LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
+        WHERE Active = 1 
+       `);
 
         res.json(moldSpecificList.recordset);
     } catch (err) {
@@ -24,7 +29,7 @@ router.post('/add', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { CustomerID, PartCode, PartName, AxMoldNo, Model } = req.body;
-
+        console.log(req.body)
         let insertSpecific = `INSERT INTO [Mold].[Specification](CustomerID, PartCode, PartName, AxMoldNo, Model, Active)
         VALUES(${CustomerID}, N'${PartCode}', N'${PartName}', '${AxMoldNo}', N'${Model}', 1);
         `;
@@ -39,8 +44,8 @@ router.post('/add', async (req, res) => {
 router.delete('/delete', async (req, res) => {
     try {
         let pool = await sql.connect(config);
-        let { SpecID } = req.body;
-        let deleteSpecific = `UPDATE [Mold].[Specification] SET Active = 0 WHERE SpecID = ${SpecID};`;
+        let { MoldSpecID } = req.body;
+        let deleteSpecific = `UPDATE [Mold].[Specification] SET Active = 0 WHERE MoldSpecID = ${MoldSpecID};`;
         await pool.request().query(deleteSpecific);
         res.json({ message: 'Success' });
     } catch (err) {
@@ -53,10 +58,10 @@ router.delete('/delete', async (req, res) => {
 router.post('/detail/history', async (req, res) => {
     try {
         let pool = await sql.connect(config);
-        let { SpecID } = req.body;
+        let { MoldSpecID } = req.body;
         let moldDetail = await pool.request().query(`SELECT DetailID, EditTime
         FROM [Mold].[SpecificationDetail]
-        WHERE SpecID = ${SpecID}
+        WHERE MoldSpecID = ${MoldSpecID}
         ORDER BY EditTime DESC;
         `);
         res.json(moldDetail.recordset);
@@ -89,7 +94,7 @@ router.post('/detail', async (req, res) => {
 router.post('/detail/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
-        let { SpecID, MachineSpec, ProductSpec, MoldSpec } = req.body;
+        let { MoldSpecID, MachineSpec, ProductSpec, MoldSpec } = req.body;
         let updateSpecDetail = `INSERT INTO [Mold].[SpecificationDetail](SpecID, MachineSpec, ProductSpec, MoldSpec, EditTime)
         VALUES(${SpecID}, N'${MachineSpec}', N'${ProductSpec}', N'${MoldSpec}', GETDATE());
         `;

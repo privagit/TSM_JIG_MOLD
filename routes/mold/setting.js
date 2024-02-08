@@ -25,12 +25,12 @@ router.post('/mold/specification', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { MoldSpecID } = req.body;
-        let moldSpec = await pool.request().query(`SELECT a.MoldSpeciD, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.AxMoldNo,
+        let moldSpec = await pool.request().query(`SELECT a.MoldSpecID, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.AxMoldNo,
         a.Model, a.IssuedDate, a.Status, a.MachineSpec, a.ProductSpec, a.MoldSpec,
         c.FirstName AS IssueBy, a.IssueSignTime,
         d.FirstName AS CheckBy, a.CheckSignTime,
         e.FirstName AS ApproveBy, a.ApproveSignTime
-        FROM [Mold].[MoldSpecification] a
+        FROM [Mold].[Specification] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.IssuBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = a.CheckBy
