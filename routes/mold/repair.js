@@ -162,23 +162,22 @@ router.post('/repair-issue/repair/item', async (req, res) => { //TODO:
         let { RepairCheckID } = req.body;
 
         let repair = await pool.request().query(`SELECT a.RepairCheckID, a.RequestTime, a.RepairProblemID, a.RepairTypeID, a.Complaint,
-        a.StartTime, a.EndTime, a.RootCause, a.DetailOfRepair, a.RepairResult,
-        b.FirstName AS RequestSign, c.FirstName AS RepairBy, d.FirstName AS ApproveBy, e.FirstName AS ReceiveBy,
-        f.FirstName AS ReceiveApproveBy
+        a.StartTime, a.EndTime, a.DetailOfRepair, a.RepairResult,
+        b.FirstName AS RequestSign, c.FirstName AS RepairBy, d.FirstName AS ApproveBy
         FROM [Mold].[RepairCheck] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.RequestBy = b.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.RepairBy = c.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.ApproveBy = d.EmployeeID
-        LEFT JOIN [TSMolymer_F].[dbo].[User] e ON a.ReceiveBy = e.EmployeeID
-        LEFT JOIN [TSMolymer_F].[dbo].[User] f ON a.ReceiveApproveBy = f.EmployeeID
+
+  
         WHERE a.RepairCheckID = ${RepairCheckID};
         `);
         if(repair.recordset.length){
             repair.recordset[0].RequestSign = !repair.recordset[0].RequestSign ? null: atob(repair.recordset[0].RequestSign);
             repair.recordset[0].RepairBy = !repair.recordset[0].RepairBy ? null: atob(repair.recordset[0].RepairBy);
             repair.recordset[0].ApproveBy = !repair.recordset[0].ApproveBy ? null: atob(repair.recordset[0].ApproveBy);
-            repair.recordset[0].ReceiveBy = !repair.recordset[0].ReceiveBy ? null: atob(repair.recordset[0].ReceiveBy);
-            repair.recordset[0].ReceiveApproveBy = !repair.recordset[0].ReceiveApproveBy ? null: atob(repair.recordset[0].ReceiveApproveBy);
+        
+           
         }
         res.json(repair.recordset);
     } catch (err) {
@@ -334,7 +333,7 @@ router.post('/repair-issue/service', async (req, res) => {
         let { RepairCheckID } = req.body;
 
         let PartsCost = await pool.request().query(`SELECT a.RepairCheckID, a.RepairCheckID, a.SpareID, b.SpareName, a.Qty, a.UnitPrice, a.UsedDate,
-        (a.UnitPrice * a.Qty) AS Amounth, a.Reuse
+        (a.UnitPrice * a.Qty) AS Amounth
         FROM [Mold].[RepairCost] a
         LEFT JOIN [Mold].[MasterSpare] b ON a.SpareID = b.SpareID
         WHERE a.RepairCheckID = ${RepairCheckID};
