@@ -4,6 +4,7 @@ const config = require('../../lib/dbconfig').dbconfig_mold;
 const sql = require('mssql');
 const Redis = require('ioredis');
 const redis = new Redis();
+const multer = require('multer');
 
 //TODO: StartTime, EndTime == ActualTime ??
 //* ========= Repair Issue =========
