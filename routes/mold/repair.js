@@ -7,15 +7,15 @@ const redis = new Redis();
 const multer = require('multer');
 const path = require('path');
 
-//TODO: StartTime, EndTime == ActualTime ??
+//? TODO: StartTime, EndTime == ActualTime ??
 //* ========= Repair Issue =========
-router.post('/repair-issue', async (req, res) => { //TODO: Status
+router.post('/repair-issue', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { month, year, Status } = req.body;
 
         let repairIssue = await pool.request().query(`SELECT a.RepairCheckID, b.BasicMold, b.DieNo, a.RequestTime, a.StartTime, a.EndTime, a.Complaint,
-        a.RepairResult, a.ApproveBy, a.ReportNo, a.PlanStartTime
+        a.RepairResult, a.ApproveBy, a.ReportNo, a.PlanStartTime, a.RepairStatus
         FROM [Mold].[RepairCheck] a
         LEFT JOIN [Mold].[MasterMold] b ON b.MoldID = a.MoldID
         WHERE MONTH(a.RequestTime) = ${month} AND YEAR(a.RequestTime) = ${year}
@@ -23,23 +23,9 @@ router.post('/repair-issue', async (req, res) => { //TODO: Status
         `);
 
         //* Filter Status
-        if(Status){ //* Status: All = null, 1: Issue, 2: Repair, 3: Wait Sign, 4: Complete
-            if(Status == 1){
-                let repairIssueFiltered = repairIssue.recordset.filter(v => !v.StartTime && !v.EndTime);
-                return res.json(repairIssueFiltered);
-            }
-            else if(Status == 2){
-                let repairIssueFiltered = repairIssue.recordset.filter(v => v.StartTime && !v.EndTime);
-                return res.json(repairIssueFiltered);
-            }
-            else if(Status == 3){
-                let repairIssueFiltered = repairIssue.recordset.filter(v => v.StartTime && v.EndTime && !v.ApproveBy);
-                return res.json(repairIssueFiltered);
-            }
-            else if(Status == 4){
-                let repairIssueFiltered = repairIssue.recordset.filter(v => v.StartTime && v.EndTime && v.ApproveBy);
-                return res.json(repairIssueFiltered);
-            }
+        if(Status){ //* Status: All = null, 1: Issue, 2: Plan, 3: Repair, 4: Wait Sign, 5: Complete
+            let repairIssueFiltered = repairIssue.recordset.filter(v => v.RepairStatus == Status);
+            return res.json(repairIssueFiltered);
         }
 
         res.json(repairIssue.recordset);
@@ -48,11 +34,11 @@ router.post('/repair-issue', async (req, res) => { //TODO: Status
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/repair-issue/dropdown/mold', async (req, res) => { //TODO:
+router.post('/repair-issue/dropdown/mold', async (req, res) => {
     try {
         let pool = await sql.connect(config);
-        let jigs = await pool.request().query(`SELECT a.MoldID, a.BasicMold, a.DieNo, a.MoldName FROM [Mold].[MasterMold] a WHERE a.Active = 1;`);
-        res.json(jigs.recordset);
+        let molds = await pool.request().query(`SELECT a.MoldID, a.BasicMold, a.DieNo, a.MoldName FROM [Mold].[MasterMold] a WHERE a.Active = 1;`);
+        res.json(molds.recordset);
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -108,10 +94,10 @@ router.post('/repair-issue/request/issue', async (req, res) => { //TODO: Socket 
 
 
         let issueRepair = await pool.request().query(`INSERT INTO [Mold].[RepairCheck](MoldID, CavityStd, CavityAct, RepairTypeID, RepairProblemID,
-        Complaint, Attachment, OccurTime, RequestBy, RequestTime, Section, ReportNo)
+        Complaint, Attachment, OccurTime, RequestBy, RequestTime, Section, ReportNo, RepairStatus)
         VALUES(${MoldID}, ${CavityStd}, ${CavityAct}, ${RepairTypeID}, ${RepairProblemID},
         N'${Complaint}', N'${Attachment}', N'${OccurTime}',
-        N'${RequestBy}', '${RequestTime}', '${Section}', '${ReportNo}');
+        N'${RequestBy}', '${RequestTime}', '${Section}', '${ReportNo}', 1);
 
         SELECT SCOPE_IDENTITY() AS RepairCheckID;
         `);
@@ -149,7 +135,7 @@ router.post('/repair-issue/repair/start', async (req, res) => {
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${(cur.getMonth()+1).toString().padStart(2,'0')}-${(cur.getDate()).toString().padStart(2,'0')} ${cur.getHours().toString().padStart(2,'0')}:${cur.getMinutes().toString().padStart(2,'0')}`;
-        let startRepair = `UPDATE [Mold].[RepairCheck] SET StartTime = '${curStr}' WHERE RepairCheckID = ${RepairCheckID};`;
+        let startRepair = `UPDATE [Mold].[RepairCheck] SET StartTime = '${curStr}', RepairStatus = 3 WHERE RepairCheckID = ${RepairCheckID};`;
         await pool.request().query(startRepair);
 
         res.json({ message: 'Success', StartTime: curStr });
@@ -445,7 +431,7 @@ router.post('/repair-issue/sign/repair', async (req, res) => { //TODO: socket io
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signRepair = `UPDATE [Mold].[RepairCheck] SET RepairBy = ${RepairBy}, EndTime = '${curStr}' WHERE RepairCheckID = ${RepairCheckID};`;
+        let signRepair = `UPDATE [Mold].[RepairCheck] SET RepairBy = ${RepairBy}, EndTime = '${curStr}', RepairStatus = 4 WHERE RepairCheckID = ${RepairCheckID};`;
         await pool.request().query(signRepair);
 
         // Socket io
@@ -528,6 +514,16 @@ router.post('/repair-issue/sign/injection', async (req, res) => {
         let signRequest = `UPDATE [Mold].[RepairCheck] SET InjCheckBy = ${InjCheckBy}, InjCheckTime = '${curStr}' WHERE RepairCheckID = ${RepairCheckID};`;
         await pool.request().query(signRequest);
 
+        // Complete Status
+        let getSign = await pool.request().query(`SELECT a.InjCheckBy, a.QcCheckBy, a.MoldCheckBy
+        FROM [Mold].[RepairCheck] a
+        WHERE a.RepairCheckID = ${RepairCheckID};
+        `);
+        if(getSign.recordset[0].InjCheckBy && getSign.recordset[0].QcCheckBy && getSign.recordset[0].MoldCheckBy){
+            let updateComplete = `UPDATE [Mold].[RepairCheck] SET RepairStatus = 5 WHERE RepairCheckID = ${RepairCheckID};`;
+            await pool.request().query(updateComplete);
+        }
+
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
         console.log(req.url, err);
@@ -546,6 +542,16 @@ router.post('/repair-issue/sign/qc', async (req, res) => {
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
         let signRepair = `UPDATE [Mold].[RepairCheck] SET QcCheckBy = ${QcCheckBy}, QcCheckTime = '${curStr}' WHERE RepairCheckID = ${RepairCheckID};`;
         await pool.request().query(signRepair);
+
+        // Complete Status
+        let getSign = await pool.request().query(`SELECT a.InjCheckBy, a.QcCheckBy, a.MoldCheckBy
+        FROM [Mold].[RepairCheck] a
+        WHERE a.RepairCheckID = ${RepairCheckID};
+        `);
+        if(getSign.recordset[0].InjCheckBy && getSign.recordset[0].QcCheckBy && getSign.recordset[0].MoldCheckBy){
+            let updateComplete = `UPDATE [Mold].[RepairCheck] SET RepairStatus = 5 WHERE RepairCheckID = ${RepairCheckID};`;
+            await pool.request().query(updateComplete);
+        }
 
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
@@ -566,6 +572,16 @@ router.post('/repair-issue/sign/mold', async (req, res) => {
         let signRepair = `UPDATE [Mold].[RepairCheck] SET MoldCheckBy = ${MoldCheckBy}, MoldCheckTime = '${curStr}' WHERE RepairCheckID = ${RepairCheckID};`;
         await pool.request().query(signRepair);
 
+        // Complete Status
+        let getSign = await pool.request().query(`SELECT a.InjCheckBy, a.QcCheckBy, a.MoldCheckBy
+        FROM [Mold].[RepairCheck] a
+        WHERE a.RepairCheckID = ${RepairCheckID};
+        `);
+        if(getSign.recordset[0].InjCheckBy && getSign.recordset[0].QcCheckBy && getSign.recordset[0].MoldCheckBy){
+            let updateComplete = `UPDATE [Mold].[RepairCheck] SET RepairStatus = 5 WHERE RepairCheckID = ${RepairCheckID};`;
+            await pool.request().query(updateComplete);
+        }
+
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
         console.log(req.url, err);
@@ -574,3 +590,10 @@ router.post('/repair-issue/sign/mold', async (req, res) => {
 })
 
 module.exports = router;
+
+// Repair Status
+// 1: Issue     => Issue Repair
+//TODO 2: Plan      =>
+// 3: Repair    => Start Repair
+// 4: Wait Sign => Sign Repair (Wait Inj,Qc,Mold Sign)
+// 5: Complete  => Sign Inj,Qc,Mold
