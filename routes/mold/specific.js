@@ -10,12 +10,12 @@ router.post('/list', async (req, res) => { //TODO:
     try {
         let pool = await sql.connect(config);
         let { Status } = req.body;
-
         let moldSpecificList = await pool.request().query(`
         SELECT a.MoldSpecID, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.AxMoldNo,
-        a.Model, a.IssuedDate, a.Status
+        a.Model, a.IssuedDate, a.Status, c.DetailID
         FROM [Mold].[Specification] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
+        LEFT JOIN [Mold].[SpecificationDetail] c ON c.MoldSpecID = a.MoldSpecID
         WHERE Active = 1 
        `);
 
@@ -80,9 +80,9 @@ router.post('/detail', async (req, res) => {
         c.FirstName AS CheckBy, a.CheckSignTime,
         d.FirstName AS ApproveBy, a.ApproveSignTime
         FROM [Mold].[SpecificationDetail] a
-        LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmpployeeID = a.IssueBy
-        LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmpployeeID = a.CheckBy
-        LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmpployeeID = a.ApproveBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.IssueBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.CheckBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = a.ApproveBy
         WHERE a.DetailID = ${DetailID};
         `);
         res.json(moldDetail.recordset);
@@ -95,8 +95,8 @@ router.post('/detail/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { MoldSpecID, MachineSpec, ProductSpec, MoldSpec } = req.body;
-        let updateSpecDetail = `INSERT INTO [Mold].[SpecificationDetail](SpecID, MachineSpec, ProductSpec, MoldSpec, EditTime)
-        VALUES(${SpecID}, N'${MachineSpec}', N'${ProductSpec}', N'${MoldSpec}', GETDATE());
+        let updateSpecDetail = `INSERT INTO [Mold].[SpecificationDetail](MoldSpecID, MachineSpec, ProductSpec, MoldSpec, EditTime)
+        VALUES(${MoldSpecID}, N'${MachineSpec}', N'${ProductSpec}', N'${MoldSpec}', GETDATE());
         `;
         await pool.request().query(updateSpecDetail);
         res.json({ message: 'Success' });
