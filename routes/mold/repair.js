@@ -150,7 +150,7 @@ router.post('/repair-issue/repair/item', async (req, res) => {
         let { RepairCheckID } = req.body;
 
         let repair = await pool.request().query(`SELECT a.RepairCheckID, a.RequestTime, a.RepairProblemID, a.RepairTypeID, a.Complaint,
-        a.StartTime, a.EndTime, a.DetailOfRepair, a.RepairResult, a.OccurTime, a.Attachment, a.RepairImagePath,
+        a.StartTime, a.EndTime, a.DetailOfRepair, a.RepairResult, a.OccurTime, a.Attachment,
         a.PlanStartTime, a.PlanFinishTime, a.ActualStartTime, a.ActualFinishTime, a.PlanActualArr,
         b.FirstName AS RequestBy, c.FirstName AS RepairBy, d.FirstName AS ApproveBy,
         e.FirstName AS InjCheckBy, f.FirstName AS QcCheckBy, g.FirstName AS MoldCheckBy
@@ -163,6 +163,10 @@ router.post('/repair-issue/repair/item', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[User] g ON a.MoldCheckBy = g.EmployeeID
         WHERE a.RepairCheckID = ${RepairCheckID};
         `);
+        let repairImage = await pool.request().query(`SELECT a.ImageNo, a.ImagePath
+        FROM [Mold].[RepairImage] a
+        WHERE a.RepairCheckID = ${RepairCheckID} AND a.Active = 1;
+        `);
         if(repair.recordset.length){
             repair.recordset[0].RequestBy = !repair.recordset[0].RequestBy ? null: atob(repair.recordset[0].RequestBy);
             repair.recordset[0].RepairBy = !repair.recordset[0].RepairBy ? null: atob(repair.recordset[0].RepairBy);
@@ -170,6 +174,18 @@ router.post('/repair-issue/repair/item', async (req, res) => {
             repair.recordset[0].InjCheckBy = !repair.recordset[0].InjCheckBy ? null: atob(repair.recordset[0].InjCheckBy);
             repair.recordset[0].QcCheckBy = !repair.recordset[0].QcCheckBy ? null: atob(repair.recordset[0].QcCheckBy);
             repair.recordset[0].MoldCheckBy = !repair.recordset[0].MoldCheckBy ? null: atob(repair.recordset[0].MoldCheckBy);
+
+            let maxImageNo = repairImage.recordset.reduce((max, obj) => obj.ImageNo > max ? obj.ImageNo : max, 1);
+            let tempImage = [];
+            for(let i = 1; i <= maxImageNo; i++){
+                let imageFiltered = repairImage.recordset.filter(v => v.ImageNo == i);
+                if(imageFiltered.length){
+                    tempImage.push({ ImageNo: i, ImagePath: imageFiltered[0].ImagePath });
+                } else{
+                    tempImage.push({ ImageNo: i, ImagePath: null });
+                }
+            }
+            repair.recordset[0].RepairImage = tempImage;
         }
         res.json(repair.recordset);
     } catch (err) {
@@ -226,14 +242,12 @@ router.post('/repair-issue/repair/detail/edit', async (req, res) => {
 const storageRepairImage = multer.diskStorage({
     destination: path.join(__dirname, '../../public/mold/repair'),
     filename: (req, file, cb) => {
-        let uploadDate = new Date();
-        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth()+1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
         const ext = file.mimetype.split('/')[1];
-        cb(null, `${uploadDateStr}` + '.' + ext);
+        cb(null, Date.now() + '.' + ext);
     }
 });
 const uploadRepairImage = multer({ storage: storageRepairImage }).single('repair_image');
-router.post('/repair-issue/repair/image/upload', async (req, res) => {
+router.post('/repair-issue/repair/image/upload', async (req, res) => { //TODO: Max 8 Img
     uploadRepairImage(req, res, async (err) => {
         if (err) {
             console.log(req.url, 'Upload ERROR', err);
@@ -241,11 +255,13 @@ router.post('/repair-issue/repair/image/upload', async (req, res) => {
         } else {
             try {
                 let pool = await sql.connect(config);
-                let { RepairCheckID } = req.body;
+                let { RepairCheckID, ImageNo } = req.body;
                 let ImagePath = (req.file) ? "/mold/repair/" + req.file.filename : ""
-
-                let updateImage = `UPDATE [Mold].[RepairCheck] SET RepairImagePath = '${ImagePath}' WHERE RepairCheckID = ${RepairCheckID};`;
-                await pool.request().query(updateImage);
+                // ImageNo 0-7
+                let insertImage = `UPDATE [Mold].[RepairImage] SET Active = 0 WHERE RepairCheckID = ${RepairCheckID} AND ImageNo = ${ImageNo};
+                INSERT INTO [Mold].[RepairImage] (RepairCheckID, ImageNo, ImagePath, Active) VALUES(${RepairCheckID}, ${ImageNo}, '${ImagePath}', 1);
+                `;
+                await pool.request().query(insertImage);
 
                 res.header('Access-Control-Allow-Origin', req.headers.origin);
                 res.header('Access-Control-Allow-Credentials', true);
@@ -256,6 +272,18 @@ router.post('/repair-issue/repair/image/upload', async (req, res) => {
             }
         }
     })
+})
+router.delete('/repair-issue/repair/image/delete', async (req, res) => {
+    try {
+        let pool = await sql.connect(config);
+        let { RepairCheckID, ImageNo } = req.body;
+        let updateImage = `UPDATE [Mold].[RepairImage] SET Active = 0 WHERE RepairCheckID = ${RepairCheckID} AND ImageNo = ${ImageNo}`;
+        await pool.request().query(updateImage);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
 })
 
 // Tech
@@ -358,7 +386,7 @@ router.post('/repair-issue/service', async (req, res) => {
         let { RepairCheckID } = req.body;
 
         let PartsCost = await pool.request().query(`SELECT a.RepairCheckID, a.RepairCostID, a.SpareID, b.SpareName, a.Qty, a.UnitPrice, a.UsedDate,
-        (a.UnitPrice * a.Qty) AS Amounth
+        (a.UnitPrice * a.Qty) AS Amounth, a.Reuse
         FROM [Mold].[RepairCost] a
         LEFT JOIN [Mold].[MasterSpare] b ON a.SpareID = b.SpareID
         WHERE a.RepairCheckID = ${RepairCheckID};
