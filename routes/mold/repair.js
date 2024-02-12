@@ -273,6 +273,18 @@ router.post('/repair-issue/repair/image/upload', async (req, res) => { //TODO: M
         }
     })
 })
+router.delete('/repair-issue/repair/image/delete', async (req, res) => {
+    try {
+        let pool = await sql.connect(config);
+        let { RepairCheckID, ImageNo } = req.body;
+        let updateImage = `UPDATE [Mold].[RepairImage] SET Active = 0 WHERE RepairCheckID = ${RepairCheckID} AND ImageNo = ${ImageNo}`;
+        await pool.request().query(updateImage);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
 
 // Tech
 router.post('/repair-issue/repair/tech', async (req, res) => {
