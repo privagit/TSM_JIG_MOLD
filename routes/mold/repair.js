@@ -244,7 +244,7 @@ router.post('/repair-issue/repair/image/upload', async (req, res) => {
                 let { RepairCheckID } = req.body;
                 let ImagePath = (req.file) ? "/mold/repair/" + req.file.filename : ""
 
-                let updateImage = `UPDATE [Em].[RepairCheck] SET RepairImagePath = '${ImagePath}' WHERE RepairCheckID = ${RepairCheckID};`;
+                let updateImage = `UPDATE [Mold].[RepairCheck] SET RepairImagePath = '${ImagePath}' WHERE RepairCheckID = ${RepairCheckID};`;
                 await pool.request().query(updateImage);
 
                 res.header('Access-Control-Allow-Origin', req.headers.origin);
@@ -357,7 +357,7 @@ router.post('/repair-issue/service', async (req, res) => {
         let pool = await sql.connect(config);
         let { RepairCheckID } = req.body;
 
-        let PartsCost = await pool.request().query(`SELECT a.RepairCheckID, a.RepairCheckID, a.SpareID, b.SpareName, a.Qty, a.UnitPrice, a.UsedDate,
+        let PartsCost = await pool.request().query(`SELECT a.RepairCheckID, a.RepairCostID, a.SpareID, b.SpareName, a.Qty, a.UnitPrice, a.UsedDate,
         (a.UnitPrice * a.Qty) AS Amounth
         FROM [Mold].[RepairCost] a
         LEFT JOIN [Mold].[MasterSpare] b ON a.SpareID = b.SpareID
