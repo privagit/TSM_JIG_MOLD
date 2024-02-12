@@ -12,7 +12,12 @@ router.post('/list', async (req, res) => { //TODO: Status, query
         let pool = await sql.connect(config);
         let { Status } = req.body;
         let receiveList = await pool.request().query(`
-
+        SELECT a.MoldSpecID, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.AxMoldNo,
+        a.Model, a.IssuedDate, a.Status, c.DetailID
+        FROM [Mold].[Specification] a
+        LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
+        LEFT JOIN [Mold].[SpecificationDetail] c ON c.MoldSpecID = a.MoldSpecID
+        WHERE Active = 1 
         `);
         res.json(receiveList.recordset);
     } catch (err) {
