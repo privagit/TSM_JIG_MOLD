@@ -386,7 +386,7 @@ router.post('/repair-issue/service', async (req, res) => {
         let { RepairCheckID } = req.body;
 
         let PartsCost = await pool.request().query(`SELECT a.RepairCheckID, a.RepairCostID, a.SpareID, b.SpareName, a.Qty, a.UnitPrice, a.UsedDate,
-        (a.UnitPrice * a.Qty) AS Amounth, a.Reuse
+        (a.UnitPrice * a.Qty) AS Amounth
         FROM [Mold].[RepairCost] a
         LEFT JOIN [Mold].[MasterSpare] b ON a.SpareID = b.SpareID
         WHERE a.RepairCheckID = ${RepairCheckID};
