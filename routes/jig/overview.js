@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const config = require('../../lib/dbconfig').dbconfig_jig;
-const sql = require('mssql');
 const Redis = require('ioredis');
 const redis = new Redis();
+const { getPool } = require('../../middlewares/pool-manager');
 
 const whereClauseAnd = async (columns) => {
     try {
@@ -24,7 +24,7 @@ const whereClauseAnd = async (columns) => {
 //* ========= overview ==========
 router.post('/plan', async (req, res) => { //TODO: Location, Status
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { JigTypeID, Section, PlanFilter,  } = req.body;
 
         let filterString = await whereClauseAnd([{ column: 'a.JigTypeID', value: JigTypeID }, { column: 'a.Section', value: Section }]);
@@ -84,7 +84,7 @@ router.post('/plan', async (req, res) => { //TODO: Location, Status
 })
 router.post('/jig/detail', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { JigID } = req.body;
         var detail = await pool.request().query(`SELECT a.JigNo, a.PartCode, a.PartName, c.JigType, b.CustomerName
         FROM [Jig].[MasterJig] a
@@ -101,7 +101,7 @@ router.post('/jig/detail', async (req, res) => {
 
 router.post('/pm/history', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { JigID } = req.body;
         var historys = await pool.request().query(`SELECT a.PlanDate, a.PmStart, a.PmPlanID, a.PmPlanNo
         FROM [Jig].[PmPlan] a
@@ -115,7 +115,7 @@ router.post('/pm/history', async (req, res) => {
 })
 router.post('/pm/start', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { PmPlanID } = req.body;
         let startPredict = `UPDATE [Jig].[PmPlan] SET PmStart = GETDATE() WHERE PmPlanID = ${PmPlanID};`;
         await pool.request().query(startPredict);
@@ -127,7 +127,7 @@ router.post('/pm/start', async (req, res) => {
 })
 router.post('/pm/topic', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { JigID } = req.body;
         let pm = await pool.request().query(`SELECT a.JigID, a.Week, a.ImagePath, a.PmTopic
         FROM [Jig].[MasterPm] a
@@ -147,7 +147,7 @@ router.post('/pm/topic', async (req, res) => {
 })
 router.post('/pm/checksheet', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { PmPlanID } = req.body;
         var checksheet = await pool.request().query(`SELECT a.PmPlanID, a.PmStart, a.PmEnd, a.PmResult, a.JigStatus, a.PmPlanNo, a.Remark,
         b.FirstName AS ConfirmBy, a.ConfirmTime, c.FirstName AS ApproveBy, a.ApproveTime
@@ -164,7 +164,7 @@ router.post('/pm/checksheet', async (req, res) => {
 })
 router.post('/pm/sign', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { PmPlanID, ItemNo, EmployeeID } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${EmployeeID};`);
@@ -210,7 +210,7 @@ router.post('/pm/sign', async (req, res) => {
 
 router.post('/technician', async (req, res) => { //TODO PM, Repair ?
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let maintenance = await pool.request().query(`WITH cte AS (
             SELECT b.UserID, b.FirstName, b.LastName,
             COUNT(a.RepairCheckID) AS CntYear,
@@ -254,7 +254,7 @@ router.post('/technician', async (req, res) => { //TODO PM, Repair ?
 // Jig Data
 router.post("/jig/specification", async (req, res) => { //TODO: ReceiveDate, Asset, UseIn
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { JigID } = req.body;
         let specification = await pool.request().query(`SELECT a.JigNo, a.PartCode, a.PartName, b.CustomerName, c.JigType, a.Asset
         FROM [Jig].[MasterJig] a
@@ -271,7 +271,7 @@ router.post("/jig/specification", async (req, res) => { //TODO: ReceiveDate, Ass
 // Repair History
 router.post("/jig/repair/history", async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { JigID, year } = req.body;
         let repairHistory = await pool.request().query(`SELECT a.RepairCheckID, b.RepairType, c.RepairProblem,
         CASE WHEN COUNT(DISTINCT e.SpareName) = 1 THEN MIN(e.SpareName)
@@ -295,7 +295,7 @@ router.post("/jig/repair/history", async (req, res) => {
 });
 router.post("/jig/chart", async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { ChartType, year, JigID } = req.body
         // ChartType: {1:Cost}, {2:ProblemCount}, {3:RepairTime}
         if(ChartType == 1){ // Cost
@@ -332,7 +332,7 @@ router.post("/jig/chart", async (req, res) => {
 });
 router.post("/jig/plan", async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { JigID } = req.body;
         // PlanFilter 1: All Plan, 2: Today Plan
         let jigPlan = await pool.request().query(`

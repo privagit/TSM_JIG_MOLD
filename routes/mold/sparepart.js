@@ -2,11 +2,12 @@ const express = require('express');
 const router = express.Router();
 const config = require('../../lib/dbconfig').dbconfig_mold;
 const sql = require('mssql');
+const { getPool } = require('../../middlewares/pool-manager');
 
 //* ========= Spare Part ==========
 router.post('/dropdown/category', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let category = await pool.request().query(`SELECT a.SpareCategoryID, a.Category
         FROM [Mold].[MasterSpareCategory] a
         WHERE a.Active = 1;
@@ -20,7 +21,7 @@ router.post('/dropdown/category', async (req, res) => {
 
 router.post('/dropdown/supplier', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let suppliers = await pool.request().query(`SELECT a.SupplierID, a.SupplierName
         FROM [Mold].[MasterSupplier] a
         WHERE a.Active = 1;
@@ -34,7 +35,7 @@ router.post('/dropdown/supplier', async (req, res) => {
 
 router.post('/spare-part', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { SpareCategoryID, month, year } = req.body;
 
         let spares = await pool.request()
@@ -82,7 +83,7 @@ router.post('/spare-part', async (req, res) => {
 
 router.post('/spare-part/restock', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { SpareID, month, year, ReceiveDate, RestockType, SupplierID, PrNo, PoNo, InvoiceNo, Qty, Price, ReceiveBy } = req.body;
 
         //* Restock: increase Received
@@ -145,7 +146,7 @@ router.post('/spare-part/restock', async (req, res) => {
 
 router.post('/spare-part/history', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { SpareID, month, year } = req.body;
         let restocks = await pool.request().query(`SELECT a.RestockSpareID, a.ReceiveDate
 		FROM [Mold].[SpareRestock] a
@@ -162,7 +163,7 @@ router.post('/spare-part/history', async (req, res) => {
 
 router.post('/spare-part/history/item', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RestockSpareID } = req.body;
 
         //* Restock: increase Received
@@ -186,7 +187,7 @@ router.post('/spare-part/history/item', async (req, res) => {
 
 router.post('/spare-part/user/check', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { ReceiveBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ReceiveBy};`);
