@@ -31,7 +31,6 @@ router.put('/jig/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);
         let { JigID, PartCode, PartName, Asset, UseIn, Status } = req.body;
-        console.log(req.body)
         let updateJig = `UPDATE [Jig].[MasterJig] SET PartCode = N'${PartCode}', PartName = N'${PartName}', Asset = N'${Asset}',
         UseIn = N'${UseIn}', Status = ${Status}
         WHERE JigID = ${JigID};
@@ -598,6 +597,7 @@ router.delete('/maintenace/pm/topic/delete', async (req, res) => {
 // Repair Type
 router.post('/repair/type', async (req, res) => {
     try {
+        console.log(config)
         let pool = await sql.connect(config);
         let repairType = await pool.request().query(`SELECT a.RepairTypeID, a.RepairType
         FROM [Jig].[MasterRepairType] a

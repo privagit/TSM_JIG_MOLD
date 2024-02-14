@@ -349,6 +349,8 @@ router.delete('/maintenace/process/delete', async (req, res) => {
 // Repair Type
 router.post('/repair/type', async (req, res) => {
     try {
+        console.log(config)
+        
         let pool = await sql.connect(config);
         let repairType = await pool.request().query(`SELECT a.RepairTypeID, a.RepairType
         FROM [Mold].[MasterRepairType] a

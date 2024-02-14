@@ -5,7 +5,6 @@ const sql = require('mssql');
 const multer = require('multer');
 const path = require('path');
 
-
 //* ========== Receive List ==========
 router.post('/list', async (req, res) => { //TODO: Status, query
     try {

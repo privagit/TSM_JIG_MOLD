@@ -186,7 +186,7 @@ router.post('/upload/spec', async (req, res) => {
                 let { DetailID } = req.body;
                 let updateHVT = `UPDATE [Mold].[SpecificationDetail] SET MoldSpecFile = N'${ImagePath}' WHERE DetailID = ${DetailID};`;
                 await pool.request().query(updateHVT);
-                res.json({ message: 'Success' });
+                res.json({ message: 'Success', fileName: ImagePath });
             } catch (err) {
                 console.log(req.url, 'DB ERROR', err);
                 res.status(500).send({ message: `${err}` });
