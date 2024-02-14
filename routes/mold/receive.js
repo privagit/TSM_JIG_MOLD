@@ -4,11 +4,12 @@ const config = require('../../lib/dbconfig').dbconfig_mold;
 const sql = require('mssql');
 const multer = require('multer');
 const path = require('path');
+const { getPool } = require('../../middlewares/pool-manager');
 
 //* ========== Receive List ==========
 router.post('/list', async (req, res) => { //TODO: Status, query
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { Status } = req.body;
         let receiveList = await pool.request().query(`
 
@@ -21,7 +22,7 @@ router.post('/list', async (req, res) => { //TODO: Status, query
 })
 router.post('/receive', async (req, res) => { //TODO: insert
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { MoldSpecID, MoldID } = req.body;
 
     } catch (err) {
@@ -31,7 +32,7 @@ router.post('/receive', async (req, res) => { //TODO: insert
 })
 router.post('/takeout', async (req, res) => { //TODO: insert
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { MoldSpecID, MoldID } = req.body;
 
     } catch (err) {
@@ -43,7 +44,7 @@ router.post('/takeout', async (req, res) => { //TODO: insert
 //* ========== Specification Detail ==========
 router.post('/specification/detail/history', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { MoldID } = req.body;
         let moldDetail = await pool.request().query(`SELECT c.DetailID, c.EditTime
         FROM [Mold].[MasterMold] a
@@ -59,7 +60,7 @@ router.post('/specification/detail/history', async (req, res) => {
 })
 router.post('/specification/detail', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { DetailID } = req.body;
         let moldDetail = await pool.request().query(`SELECT a.MachineSpec, a.ProductSpec, a.MoldSpec,
         a.hvtPicture, a.MoldSpecFile, a.MoldPicture, a.MoldDrawing1, a.MoldDrawing2,
@@ -82,7 +83,7 @@ router.post('/specification/detail', async (req, res) => {
 //* ========== Receive Detail ==========
 router.post('/receive/detail', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { MoldID } = req.body;
         let moldReceive = await pool.request().query(`SELECT a.MoldReceiveID, a.MoldSpecID,
         a.AppearanceInspect, a.MoldStructure, a.Remark, a.ImagePath,

@@ -2,10 +2,12 @@ const express = require('express');
 const router = express.Router();
 const config = require('../../lib/dbconfig').dbconfig_jig;
 const sql = require('mssql');
+const { getPool } = require('../../middlewares/pool-manager');
+
 
 const UpdateOrder = async (Planning_No, PlanDate, OrderStatus, ItemID) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let date = new Date(PlanDate);
 
         let sheet = await pool.request().query(`SELECT D1,D2,D3,D4,D5,D6,D7,D8,D9,D10,D11,D12,D13,D14,D15,D16,D17,D18,D19,D20,D21,D22,D23,D24,D25,D26,D27,D28,D29,D30,D31
@@ -36,7 +38,7 @@ const UpdateOrder = async (Planning_No, PlanDate, OrderStatus, ItemID) => {
 //* Jig
 router.post('/jig', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { ProductionDate, Shift, ZoneID, MachineID, Status } = req.body;
       
         let selectJigs = await pool.request().query(`SELECT row_number() over(order by a.PrepareID desc) as 'index',
@@ -82,7 +84,7 @@ router.post('/jig', async (req, res) => {
 })
 router.post('/jig/edit', async (req, res) => { //TODO: test
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { PrepareID, Status, Remark, Tube, DailyCheck, Dummy } = req.body;
         let UserID = req.session.UserID;
         // status 0 = issue, 1 = ready, 2 = reject
@@ -141,7 +143,7 @@ router.post('/jig/edit', async (req, res) => { //TODO: test
 })
 router.post('/jig/confirm', async (req, res) => { //TODO: test
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { ProductionDate, Shift, ZoneID, MachineID, Status } = req.body;
         let selectJigs = await pool.request().query(`SELECT row_number() over(order by a.PrepareID desc) as 'index',
         a.PrepareID, e.MachineID, e.MachineNo, e.ZoneID, a.JigNo, c.FirstName AS PrepareBy, a.Status, d.FirstName AS InstallBy, a.InstallStatus,
@@ -185,7 +187,7 @@ router.post('/jig/confirm', async (req, res) => { //TODO: test
 })
 router.post('/jig/confirm/edit', async (req, res) => { //TODO: test
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { PrepareID } = req.body;
         let UserID = req.session.UserID;
 
@@ -255,7 +257,7 @@ router.post('/jig/confirm/edit', async (req, res) => { //TODO: test
 //* Daily Check Sheet
 router.post('/daily', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { JigID } = req.body;
         let dailyCheckSheet = await pool.request().query(`
         `);
@@ -274,20 +276,143 @@ router.post('/daily', async (req, res) => {
 //* Torque Check Sheet
 router.post('/torque', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
-        let { JigID } = req.body;
-        let torqueCheckSheet = await pool.request().query(`
+        let pool = await getPool('JigPool', config);
+        let { JigID, month, year } = req.body;
+        let torqueStd = await pool.request().query(`SELECT a.TorqueNo, a.Spec, a.ToleranceMin, a.ToleranceMax, a.Model, a.ProcessFileNo, a.UseScrew
+        FROM [Jig].[MasterTorqueCheck] a
+        WHERE a.JigID = ${JigID};
         `);
-        torqueCheckSheet.recordset.forEach(item => {
-            item.CheckBy = atob(item.CheckBy || '');
-            item.ApprveBy = atob(item.ApprveBy || '');
-        })
+        let torqueCheckMonth = await pool.request().query(`SELECT b.FirstName AS CheckBy, a.CheckTime, c.FirstName AS ApproveBy, a.ApproveTime
+        FROM [Jig].[TorqueMonth] a
+        LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.CheckBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.ApproveBy
+        WHERE a.JigID = ${JigID} AND MONTH(a.CheckMonth) = ${month} AND YEAR(a.CheckMonth) = ${year};
+        `);
+        let torqueCheckSheet = await pool.request().query(`SELECT b.DailyTorqueID, b.CheckDate, b.CheckTime, b.OrderNo, b.Lot, b.ScrewEndWear, b.ActualTorque, b.Remark
+        FROM [Jig].[TorqueMonth] a
+        LEFT JOIN [Jig].[TorqueDaily] b ON b.MonthTorqueID = a.MonthTorqueID
+        WHERE a.JigID = ${JigID} AND MONTH(a.CheckMonth) = ${month} AND YEAR(a.CheckMonth) = ${year};
+        `);
+        let std = {
+            TorqueNo: null,
+            Spec: null,
+            ToleranceMin: null,
+            ToleranceMax: null,
+            Model: null,
+            ProcessFileNo: null,
+            UseScrew: null
+        }
+        let sign = {
+            CheckBy: null,
+            CheckTime: null,
+            ApproveBy: null,
+            ApproveTime: null
+        }
+        if(torqueStd.recordset.length){
+            std.TorqueNo = torqueStd.recordset[0].TorqueNo;
+            std.Spec = torqueStd.recordset[0].Spec;
+            std.ToleranceMin = torqueStd.recordset[0].ToleranceMin;
+            std.ToleranceMax = torqueStd.recordset[0].ToleranceMax;
+            std.Model = torqueStd.recordset[0].Model;
+            std.ProcessFileNo = torqueStd.recordset[0].ProcessFileNo;
+            std.UseScrew = torqueStd.recordset[0].UseScrew;
+        }
+        if(torqueCheckMonth.recordset.length){
+            sign.CheckBy = atob(torqueCheckMonth.recordset[0].CheckBy || '');
+            sign.ApproveBy = atob(torqueCheckMonth.recordset[0].ApproveBy || '');
+            sign.CheckTime = torqueCheckMonth.recordset[0].CheckTime;
+            sign.ApproveTime = torqueCheckMonth.recordset[0].ApproveTime;
+        }
 
-        res.json(torqueCheckSheet.recordset);
+        res.json({ std, sign, checkSheet: torqueCheckSheet.recordset });
     } catch (err) {
         console.log('/support/jig', err);
         res.status(500).send({ message: `${err}` });
     }
 })
+router.post('/torque/add', async (req, res) => {
+    try {
+        let pool = await getPool('JigPool', config);
+        let { MonthTorqueID, CheckDate, OrderNo, Lot, ScrewEndWear, ActualTorque, CheckTime, Remark } = req.body;
+        let insertTorqueCheck = `INSERT INTO [Jig].[TorqueDaily](MonthTorqueID, CheckDate, CheckTime, OrderNo, Lot, ScrewEndWear, ActualTorque, Remark)
+        VALUES(${MonthTorqueID}, '${CheckDate}', '${CheckTime}', N'${OrderNo}', N'${Lot}', ${ScrewEndWear}, ${ActualTorque}, N'${Remark}');
+        `;
+        await pool.request().query(insertTorqueCheck);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log('/support/jig', err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/torque/sign/check', async (req, res) => {
+    try {
+        let pool = await getPool('JigPool', config);
+        let { MonthTorqueID, CheckBy } = req.body;
+
+        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${CheckBy};`);
+        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
+
+        let cur = new Date();
+        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
+        let signCheck = `UPDATE [Jig].[TorqueMonth] SET CheckBy = ${CheckBy}, CheckTime = '${curStr}' WHERE MonthTorqueID = ${MonthTorqueID};`;
+        await pool.request().query(signCheck);
+
+        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/torque/sign/approve', async (req, res) => {
+    try {
+        let pool = await getPool('JigPool', config);
+        let { MonthTorqueID, ApproveBy } = req.body;
+
+        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ApproveBy};`);
+        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
+
+        let cur = new Date();
+        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
+        let signCheck = `UPDATE [Jig].[TorqueMonth] SET ApproveBy = ${ApproveBy}, CheckTime = '${curStr}' WHERE MonthTorqueID = ${MonthTorqueID};`;
+        await pool.request().query(signCheck);
+
+        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
 
 module.exports = router;
+
+const config_mold = require('../../lib/dbconfig').dbconfig_mold;
+let testMold = async () => {
+    try {
+        let pool_mold = new sql.ConnectionPool(config_mold);
+        // let pool_mold = await sql.connect(config_mold);
+        await pool_mold.connect();
+        let data = await pool_mold.request().query(`SELECT * FROM [Mold].[MasterMold]`);
+    } catch (err) {
+        console.log(err);
+    }
+}
+
+let testJig = async () => {
+    try {
+        let pool = new sql.ConnectionPool(config);
+        await pool.connect();
+        let data = await pool.request().query(`SELECT * FROM [Jig].[MasterJig]`);
+    } catch (err) {
+        console.log(err);
+    }
+}
+
+let main = async () => {
+    try {
+        await testMold();
+        await testJig();
+    } catch (err) {
+        console.log(err);
+    }
+}
+main()

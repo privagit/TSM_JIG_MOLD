@@ -48,12 +48,20 @@ app.use('/jig/prepare', jigPrepareRouter);
 //* MOLD ROUTES
 let moldSettingRouter = require('./routes/mold/setting');
 let moldSparepartRouter = require('./routes/mold/sparepart');
-let moldRepairRouter = require('./routes/mold/repair'); //TODO
+let moldRepairRouter = require('./routes/mold/repair'); //TODO: ReportNo.
+let moldPlanConfirmRouter = require('./routes/mold/planconfirm'); //TODO
 let moldSpecificRouter = require('./routes/mold/specific'); //TODO
+let moldReceiveRouter = require('./routes/mold/receive'); //TODO
+let moldRunPlanRouter = require('./routes/mold/runplan'); //TODO
+// let moldPrepareRouter = require('./routes/mold/prepare');
 app.use('/mold/setting', moldSettingRouter);
 app.use('/mold/sparepart', moldSparepartRouter);
 app.use('/mold/repair', moldRepairRouter);
-app.use('/mold/specific', moldSpecificRouter);
+app.use('/mold/plan-confirm', moldPlanConfirmRouter);
+app.use('/mold/specification', moldSpecificRouter);
+app.use('/mold/receive', moldReceiveRouter);
+app.use('/mold/run-plan', moldRunPlanRouter);
+// app.use('/mold/prepare', moldPrepareRouter);
 
 // Swagger definition
 const swaggerOptions = {
