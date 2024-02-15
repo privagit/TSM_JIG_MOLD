@@ -10,7 +10,7 @@ router.post('/list', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { Status, month, year } = req.body;
-
+        console.log(req.body)
         let moldSpecificList = await pool.request().query(`
         SELECT a.MoldSpecID, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.AxMoldNo, a.Model, a.IssuedDate, a.Status
         FROM [Mold].[Specification] a

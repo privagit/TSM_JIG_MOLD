@@ -44,7 +44,7 @@ router.post('/', async (req, res) => { //TODO: PlanTime, From, To, WarrantyShot
             AcceptStatus, RequestBy, AcceptBy, AcceptReason, AcceptTime, RequestTime
         FROM [tbsum]
         `);
-        if(Status){
+        if(Status){ //todo Accept = 1, Reject = 2 หรือ Status 1: Issue, 2: Cancel, 3: Reject, 4: Accept
             let planConfirmFiltered = planConfirm.recordset.filter(v => v.AcceptStatus == Status);
             return res.json(planConfirmFiltered);
         }
@@ -64,13 +64,12 @@ router.post('/confirm', async (req, res) => { //
             AcceptBy = ${AcceptBy}, AcceptTime = GETDATE() WHERE PmPlanID = ${PmPlanID}
             `;
             await pool.request().query(updateStatusPmPlan);
-        } else{ // Repair
+        } else{ // Repair PlanType == 3
             let updateStatusRepairPlan = `UPDATE [Mold].[RepairCheck] SET AcceptStatus = ${AcceptStatus}, AcceptReason = N'${AcceptReason}',
             AcceptBy = ${AcceptBy}, AcceptTime = GETDATE() WHERE RepairCheckID = ${RepairCheckID}
             `;
             await pool.request().query(updateStatusRepairPlan);
         }
-        await pool.request().query(updateStatusPmPlan);
         res.json({ message: 'Success' });
     } catch (err) {
         console.log(req.url, err);

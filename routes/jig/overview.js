@@ -25,7 +25,7 @@ const whereClauseAnd = async (columns) => {
 router.post('/plan', async (req, res) => { //TODO: Location, Status
     try {
         let pool = await getPool('JigPool', config);
-        let { JigTypeID, Section, PlanFilter,  } = req.body;
+        let { JigTypeID, Section, PlanFilter  } = req.body;
 
         let filterString = await whereClauseAnd([{ column: 'a.JigTypeID', value: JigTypeID }, { column: 'a.Section', value: Section }]);
 
