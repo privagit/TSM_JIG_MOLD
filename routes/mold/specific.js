@@ -1,27 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const config = require('../../lib/dbconfig').dbconfig_mold;
+const sql = require('mssql');
 const multer = require('multer');
 const path = require('path');
-const { getPool } = require('../../middlewares/pool-manager');
 
 //* ========== Mold Specific List ==========
-router.post('/list', async (req, res) => {
+router.post('/list', async (req, res) => { //TODO:
     try {
-        let pool = await getPool('MoldPool', config);
-        let { Status, month, year } = req.body;
+        let pool = await sql.connect(config);
+        let { Status } = req.body;
 
         let moldSpecificList = await pool.request().query(`
-        SELECT a.MoldSpecID, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.AxMoldNo, a.Model, a.IssuedDate, a.Status
-        FROM [Mold].[Specification] a
-        LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
-        WHERE Active = 1 AND MONTH(a.IssuedDate) = ${month} AND YEAR(a.IssuedDate) = ${year};
         `);
-
-        if(Status){
-            let moldSpecificListFiltered = moldSpecificList.recordset.filter(v => v.Status == Status);
-            return res.json(moldSpecificListFiltered);
-        }
 
         res.json(moldSpecificList.recordset);
     } catch (err) {
@@ -31,7 +22,7 @@ router.post('/list', async (req, res) => {
 })
 router.post('/add', async (req, res) => {
     try {
-        let pool = await getPool('MoldPool', config);
+        let pool = await sql.connect(config);
         let { CustomerID, PartCode, PartName, AxMoldNo, Model } = req.body;
 
         // insert Specific
@@ -48,7 +39,7 @@ router.post('/add', async (req, res) => {
 })
 router.delete('/delete', async (req, res) => {
     try {
-        let pool = await getPool('MoldPool', config);
+        let pool = await sql.connect(config);
         let { SpecID } = req.body;
         let deleteSpecific = `UPDATE [Mold].[Specification] SET Active = 0 WHERE SpecID = ${SpecID};`;
         await pool.request().query(deleteSpecific);
@@ -62,11 +53,11 @@ router.delete('/delete', async (req, res) => {
 //* ========== Mold Specific Detail ==========
 router.post('/detail/history', async (req, res) => {
     try {
-        let pool = await getPool('MoldPool', config);
-        let { MoldSpecID } = req.body;
+        let pool = await sql.connect(config);
+        let { SpecID } = req.body;
         let moldDetail = await pool.request().query(`SELECT DetailID, EditTime
         FROM [Mold].[SpecificationDetail]
-        WHERE MoldSpecID = ${MoldSpecID}
+        WHERE SpecID = ${SpecID}
         ORDER BY EditTime DESC;
         `);
         res.json(moldDetail.recordset);
@@ -77,11 +68,8 @@ router.post('/detail/history', async (req, res) => {
 })
 router.post('/detail', async (req, res) => {
     try {
-        let pool = await getPool('MoldPool', config);
+        let pool = await sql.connect(config);
         let { DetailID } = req.body;
-
-        if(!DetailID) return res.json([]);
-
         let moldDetail = await pool.request().query(`SELECT a.MachineSpec, a.ProductSpec, a.MoldSpec,
         a.hvtPicture, a.MoldSpecFile, a.MoldPicture, a.MoldDrawing1, a.MoldDrawing2,
         b.FirstName AS IssueBy, a.IssueSignTime,
@@ -101,10 +89,10 @@ router.post('/detail', async (req, res) => {
 })
 router.post('/detail/edit', async (req, res) => {
     try {
-        let pool = await getPool('MoldPool', config);
-        let { MoldSpecID, MachineSpec, ProductSpec, MoldSpec } = req.body;
-        let updateSpecDetail = `INSERT INTO [Mold].[SpecificationDetail](MoldSpecID, MachineSpec, ProductSpec, MoldSpec, EditTime)
-        VALUES(${MoldSpecID}, N'${MachineSpec}', N'${ProductSpec}', N'${MoldSpec}', GETDATE());
+        let pool = await sql.connect(config);
+        let { SpecID, MachineSpec, ProductSpec, MoldSpec } = req.body;
+        let updateSpecDetail = `INSERT INTO [Mold].[SpecificationDetail](SpecID, MachineSpec, ProductSpec, MoldSpec, EditTime)
+        VALUES(${SpecID}, N'${MachineSpec}', N'${ProductSpec}', N'${MoldSpec}', GETDATE());
         `;
         await pool.request().query(updateSpecDetail);
         res.json({ message: 'Success' });
@@ -170,7 +158,7 @@ router.post('/upload/hvt', async (req, res) => {
             res.status(500).send({ message: `${err}` });
         } else {
             try {
-                let pool = await getPool('MoldPool', config);
+                let pool = await sql.connect(config);
                 let ImagePath = (req.file) ? "/mold/specification/hvt/" + req.file.filename : "";
                 let { DetailID } = req.body;
                 let updateHVT = `UPDATE [Mold].[SpecificationDetail] SET hvtPicture = N'${ImagePath}' WHERE DetailID = ${DetailID};`;
@@ -190,7 +178,7 @@ router.post('/upload/spec', async (req, res) => {
             res.status(500).send({ message: `${err}` });
         } else {
             try {
-                let pool = await getPool('MoldPool', config);
+                let pool = await sql.connect(config);
                 let ImagePath = (req.file) ? "/mold/specification/spec/" + req.file.filename : "";
                 let { DetailID } = req.body;
                 let updateHVT = `UPDATE [Mold].[SpecificationDetail] SET MoldSpecFile = N'${ImagePath}' WHERE DetailID = ${DetailID};`;
@@ -210,7 +198,7 @@ router.post('/upload/mold', async (req, res) => {
             res.status(500).send({ message: `${err}` });
         } else {
             try {
-                let pool = await getPool('MoldPool', config);
+                let pool = await sql.connect(config);
                 let ImagePath = (req.file) ? "/mold/specification/mold/" + req.file.filename : "";
                 let { DetailID } = req.body;
                 let updateHVT = `UPDATE [Mold].[SpecificationDetail] SET MoldPicture = N'${ImagePath}' WHERE DetailID = ${DetailID};`;
@@ -230,7 +218,7 @@ router.post('/upload/drawing', async (req, res) => {
             res.status(500).send({ message: `${err}` });
         } else {
             try {
-                let pool = await getPool('MoldPool', config);
+                let pool = await sql.connect(config);
                 let ImagePath = (req.file) ? "/mold/specification/drawing/" + req.file.filename : "";
                 let { DetailID, DrawingNo } = req.body;
                 let updateDrawing = `UPDATE [Mold].[SpecificationDetail] SET MoldDrawing${DrawingNo} = N'${ImagePath}' WHERE DetailID = ${DetailID};`;
@@ -245,10 +233,9 @@ router.post('/upload/drawing', async (req, res) => {
 })
 
 //* ===== Sign =====
-//TODO: เอา Sign ไว้ใน Specification
 router.post('/sign/issue', async (req, res) => {
     try {
-        let pool = await getPool('MoldPool', config);
+        let pool = await sql.connect(config);
         let { DetailID, IssueBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${IssueBy};`);
@@ -267,7 +254,7 @@ router.post('/sign/issue', async (req, res) => {
 })
 router.post('/sign/check', async (req, res) => {
     try {
-        let pool = await getPool('MoldPool', config);
+        let pool = await sql.connect(config);
         let { DetailID, CheckBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${CheckBy};`);
@@ -286,7 +273,7 @@ router.post('/sign/check', async (req, res) => {
 })
 router.post('/sign/approve', async (req, res) => { // Approve => Receive
     try {
-        let pool = await getPool('MoldPool', config);
+        let pool = await sql.connect(config);
         let { DetailID, ApproveBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ApproveBy};`);
@@ -313,7 +300,7 @@ router.post('/sign/approve', async (req, res) => { // Approve => Receive
 //* ========== Mold Receive Detail ==========
 router.post('/receive', async (req, res) => {
     try {
-        let pool = await getPool('MoldPool', config);
+        let pool = await sql.connect(config);
         let { MoldSpecID } = req.body;
         let moldReceive = await pool.request().query(`SELECT a.MoldReceiveID, a.MoldSpecID,
         a.AppearanceInspect, a.MoldStructure, a.Remark, a.ImagePath,

@@ -1,16 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const config = require('../../lib/dbconfig').dbconfig_jig;
+const sql = require('mssql');
 const multer = require('multer');
 const path = require('path');
-const { getPool } = require('../../middlewares/pool-manager');
 
 //? UseIn มีอะไรบ้าง
 //* ========== Jig Setting ==========
 // Jig
 router.post('/jig', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let jig = await pool.request().query(`
         SELECT a.JigID, a.JigTypeID, b.JigType, a.CustomerID, c.CustomerName, a.JigNo,
         a.PartCode, a.PartName, a.ToolingNo, a.Section, a.Active, a.UseIn, a.Status,
@@ -27,7 +27,7 @@ router.post('/jig', async (req, res) => {
 })
 router.put('/jig/edit', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { JigID, PartCode, PartName, Asset, UseIn, Status } = req.body;
         let updateJig = `UPDATE [Jig].[MasterJig] SET PartCode = N'${PartCode}', PartName = N'${PartName}', Asset = N'${Asset}',
         UseIn = N'${UseIn}', Status = ${Status}
@@ -43,7 +43,7 @@ router.put('/jig/edit', async (req, res) => {
 // Jig Type
 router.post('/jig/type', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let jigType = await pool.request().query(`
         SELECT JigTypeID, JigType
         FROM [Jig].[MasterJigType]
@@ -57,7 +57,7 @@ router.post('/jig/type', async (req, res) => {
 })
 router.post('/jig/type/add', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { JigType } = req.body;
         let insertJigType = `INSERT INTO [Jig].[MasterJigType](JigType, Active)
         VALUES(N'${JigType}', 1);
@@ -71,7 +71,7 @@ router.post('/jig/type/add', async (req, res) => {
 })
 router.put('/jig/type/edit', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { JigTypeID, JigType } = req.body;
         let updateJigType = `UPDATE [Jig].[MasterJigType] SET JigType = N'${JigType}'
         WHERE JigTypeID = ${JigTypeID};
@@ -85,7 +85,7 @@ router.put('/jig/type/edit', async (req, res) => {
 })
 router.delete('/jig/type/delete', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { JigTypeID } = req.body;
         let deleteJigType = `UPDATE [Jig].[MasterJigType] SET Active = 0 WHERE JigTypeID = ${JigTypeID};`;
         await pool.request().query(deleteJigType);
@@ -101,7 +101,7 @@ router.delete('/jig/type/delete', async (req, res) => {
 // Evaluation Topic
 router.post('/evaluation/topic', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let evalTopic = await pool.request().query(`
         SELECT a.EvalTopicID, a.EvalTopic
         FROM [Jig].[MasterEvalTopic] a
@@ -115,7 +115,7 @@ router.post('/evaluation/topic', async (req, res) => {
 })
 router.post('/evaluation/topic/add', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { EvalTopic } = req.body;
         let insertEvalTopic = `INSERT INTO [Jig].[MasterEvalTopic](EvalTopic, Active)
         VALUES(N'${EvalTopic}', 1);
@@ -129,7 +129,7 @@ router.post('/evaluation/topic/add', async (req, res) => {
 })
 router.put('/evaluation/topic/edit', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { EvalTopicID, EvalTopic } = req.body;
         let updateEvalTopic = `UPDATE [Jig].[MasterEvalTopic] SET EvalTopic = N'${EvalTopic}'
         WHERE EvalTopicID = ${EvalTopicID};
@@ -143,7 +143,7 @@ router.put('/evaluation/topic/edit', async (req, res) => {
 })
 router.delete('/evaluation/topic/delete', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { EvalTopicID } = req.body;
         let deleteEvalTopic = `UPDATE [Jig].[MasterEvalTopic] SET Active = 0 WHERE EvalTopicID = ${EvalTopicID};`;
         await pool.request().query(deleteEvalTopic);
@@ -156,7 +156,7 @@ router.delete('/evaluation/topic/delete', async (req, res) => {
 // Evaluation Detail
 router.post('/evaluation/detail', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { EvalTopicID } = req.body;
         let evalDetail = await pool.request().query(`
         SELECT a.EvalDetailID, a.EvalTopicID, a.EvalDetail
@@ -171,7 +171,7 @@ router.post('/evaluation/detail', async (req, res) => {
 })
 router.post('/evaluation/detail/add', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { EvalTopicID, EvalDetail } = req.body;
         let insertEvalDetail = `INSERT INTO [Jig].[MasterEvalDetail](EvalTopicID, EvalDetail, Active)
         VALUES(${EvalTopicID}, N'${EvalDetail}', 1);
@@ -185,7 +185,7 @@ router.post('/evaluation/detail/add', async (req, res) => {
 })
 router.put('/evaluation/detail/edit', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { EvalDetailID, EvalDetail } = req.body;
         let updateEvalDetail = `UPDATE [Jig].[MasterEvalDetail] SET EvalDetail = N'${EvalDetail}'
         WHERE EvalDetailID = ${EvalDetailID};
@@ -199,7 +199,7 @@ router.put('/evaluation/detail/edit', async (req, res) => {
 })
 router.delete('/evaluation/detail/delete', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { EvalDetailID } = req.body;
         let deleteEvalDetail = `UPDATE [Jig].[MasterEvalDetail] SET Active = 0 WHERE EvalDetailID = ${EvalDetailID};`;
         await pool.request().query(deleteEvalDetail);
@@ -212,7 +212,7 @@ router.delete('/evaluation/detail/delete', async (req, res) => {
 // Evaluation Criteria
 router.post('/evaluation/criteria', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { EvalDetailID } = req.body;
         let evalCriteria = await pool.request().query(`
         SELECT a.EvalCriteriaID, a.EvalDetailID, a.EvalCriteria
@@ -227,7 +227,7 @@ router.post('/evaluation/criteria', async (req, res) => {
 })
 router.post('/evaluation/criteria/add', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { EvalDetailID, EvalCriteria } = req.body;
         let insertEvalCriteria = `INSERT INTO [Jig].[MasterEvalCriteria](EvalDetailID, EvalCriteria, Active)
         VALUES(${EvalDetailID}, N'${EvalCriteria}', 1);
@@ -241,7 +241,7 @@ router.post('/evaluation/criteria/add', async (req, res) => {
 })
 router.put('/evaluation/criteria/edit', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { EvalCriteriaID, EvalCriteria } = req.body;
         let updateEvalCriteria = `UPDATE [Jig].[MasterEvalCriteria] SET EvalCriteria = N'${EvalCriteria}'
         WHERE EvalCriteriaID = ${EvalCriteriaID};
@@ -255,7 +255,7 @@ router.put('/evaluation/criteria/edit', async (req, res) => {
 })
 router.delete('/evaluation/criteria/delete', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { EvalCriteriaID } = req.body;
         let deleteEvalCriteria = `UPDATE [Jig].[MasterEvalCriteria] SET Active = 0 WHERE EvalCriteriaID = ${EvalCriteriaID};`;
         await pool.request().query(deleteEvalCriteria);
@@ -271,7 +271,7 @@ router.delete('/evaluation/criteria/delete', async (req, res) => {
 // Torque
 router.post('/torque/check', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { JigID } = req.body;
         let torqueCheck = await pool.request().query(`
         SELECT a.TorqueCheckID, a.JigID, a.TorqueNo, a.Spec, a.UseScrew,
@@ -287,7 +287,7 @@ router.post('/torque/check', async (req, res) => {
 })
 router.put('/torque/check/edit', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { JigID, TorqueNo, Spec, ToleranceMin, ToleranceMax, Model, ProcessFileNo, UseScrew } = req.body;
         let updateTorqueCheck = `
         DECLARE @TorqueCheckID INT;
@@ -315,7 +315,7 @@ router.put('/torque/check/edit', async (req, res) => {
 // Daily CheckPoint
 router.post('/daily/checkpoint', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { JigID } = req.body;
         let dailyCheckpoint = await pool.request().query(`
         SELECT a.DailyCheckPointID, a.JigID, a.DailyCheckPoint, a.DailyCheckPointNo
@@ -331,7 +331,7 @@ router.post('/daily/checkpoint', async (req, res) => {
 })
 router.post('/daily/checkpoint/add', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { JigID, DailyCheckPoint, DailyCheckPointNo } = req.body;
         let insertDailyCheckpoint = `INSERT INTO [Jig].[MasterDailyCheckPoint](JigID, DailyCheckPoint, DailyCheckPointNo, Active)
         VALUES(${JigID}, N'${DailyCheckPoint}', ${DailyCheckPointNo}, 1);
@@ -345,7 +345,7 @@ router.post('/daily/checkpoint/add', async (req, res) => {
 })
 router.put('/daily/checkpoint/edit', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { DailyCheckPointID, DailyCheckPoint, DailyCheckPointNo } = req.body;
         let updateDailyCheckpoint = `UPDATE [Jig].[MasterDailyCheckPoint] SET DailyCheckPoint = N'${DailyCheckPoint}', DailyCheckPointNo = ${DailyCheckPointNo}
         WHERE DailyCheckPointID = ${DailyCheckPointID};
@@ -359,7 +359,7 @@ router.put('/daily/checkpoint/edit', async (req, res) => {
 })
 router.delete('/daily/checkpoint/delete', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { DailyCheckPointID } = req.body;
         let deleteDailyCheckpoint = `UPDATE [Jig].[MasterDailyCheckPoint] SET Active = 0 WHERE DailyCheckPointID = ${DailyCheckPointID};`;
         await pool.request().query(deleteDailyCheckpoint);
@@ -372,7 +372,7 @@ router.delete('/daily/checkpoint/delete', async (req, res) => {
 // Daily CheckPoint Detail
 router.post('/daily/checkpoint/detail', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { DailyCheckPointID } = req.body;
         let dailyCheckpointDetail = await pool.request().query(`
         SELECT a.DailyCheckDetailID, a.DailyCheckDetail, a.DailyCheckDetailNo
@@ -388,7 +388,7 @@ router.post('/daily/checkpoint/detail', async (req, res) => {
 })
 router.post('/daily/checkpoint/detail/add', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { DailyCheckPointID, DailyCheckDetail, DailyCheckDetailNo } = req.body;
         let insertDailyCheckpointDetail = `INSERT INTO [Jig].[MasterDailyCheckDetail](DailyCheckPointID, DailyCheckDetail, DailyCheckDetailNo, Active)
         VALUES(${DailyCheckPointID}, N'${DailyCheckDetail}', ${DailyCheckDetailNo}, 1);
@@ -402,7 +402,7 @@ router.post('/daily/checkpoint/detail/add', async (req, res) => {
 })
 router.put('/daily/checkpoint/detail/edit', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { DailyCheckDetailID, DailyCheckDetail, DailyCheckDetailNo } = req.body;
         let updateDailyCheckpointDetail = `UPDATE [Jig].[MasterDailyCheckDetail] SET DailyCheckDetail = N'${DailyCheckDetail}', DailyCheckDetailNo = ${DailyCheckDetailNo}
         WHERE DailyCheckDetailID = ${DailyCheckDetailID};
@@ -416,7 +416,7 @@ router.put('/daily/checkpoint/detail/edit', async (req, res) => {
 })
 router.delete('/daily/checkpoint/detail/delete', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { DailyCheckDetailID } = req.body;
         let deleteDailyCheckpointDetail = `UPDATE [Jig].[MasterDailyCheckDetail] SET Active = 0 WHERE DailyCheckDetailID = ${DailyCheckDetailID};`;
         await pool.request().query(deleteDailyCheckpointDetail);
@@ -444,7 +444,7 @@ const uploadPmImage = multer({ storage: storagePmImage }).single('pm_checkfile')
 
 router.post('/maintenace', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { JigID } = req.body;
         let maintenance = await pool.request().query(`SELECT a.PmID, a.JigID, a.Week, a.ImagePath, a.PmTopic
         FROM [Jig].[MasterPm] a
@@ -458,7 +458,7 @@ router.post('/maintenace', async (req, res) => {
 })
 router.post('/maintenace/pm/edit', async (req, res) => { // edit PM Week
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { JigID, Week } = req.body;
         let updatePm = `DECLARE @PmID INT;
         SET @PmID = (SELECT PmID FROM [Jig].[MasterPm] WHERE JigID = ${JigID});
@@ -486,7 +486,7 @@ router.post('/maintenace/pm/checkfile/upload', async (req, res) => { // Upload P
             res.status(500).send({ message: `${err}` });
         } else {
             try {
-                let pool = await getPool('JigPool', config);
+                let pool = await sql.connect(config);
                 let ImagePath = (req.file) ? "/jig/pm_checkfile/" + req.file.filename : "";
                 let { JigID } = req.body;
                 let updatePmCheckfile = `DECLARE @PmID INT;
@@ -512,7 +512,7 @@ router.post('/maintenace/pm/checkfile/upload', async (req, res) => { // Upload P
 })
 router.put('/maintenace/inspect/edit', async (req, res) => { // select PM Topic to use
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { JigID, PmTopicID } = req.body;
         let getJigInspect = await pool.request().query(`SELECT PmID, JigID, PmTopic FROM [Jig].[MasterPm] WHERE JigID = ${JigID};`);
         if(getJigInspect.recordset.length){
@@ -538,7 +538,7 @@ router.put('/maintenace/inspect/edit', async (req, res) => { // select PM Topic 
 // PM Topic
 router.post('/maintenace/pm/topic', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let pmTopic = await pool.request().query(`
         SELECT a.PmTopicID, a.Topic, a.TopicType, a.StandardValue
         FROM [Jig].[MasterPmTopic] a
@@ -552,7 +552,7 @@ router.post('/maintenace/pm/topic', async (req, res) => {
 })
 router.post('/maintenace/pm/topic/add', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { Topic, TopicType, StandardValue } = req.body;
         let insertInspection = `INSERT INTO [Jig].[MasterPmTopic](Topic, TopicType, StandardValue, Active)
         VALUES(N'${Topic}', ${TopicType}, ${StandardValue}, 1);
@@ -566,7 +566,7 @@ router.post('/maintenace/pm/topic/add', async (req, res) => {
 })
 router.put('/maintenace/pm/topic/edit', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { PmTopicID, Topic, TopicType, StandardValue } = req.body;
         let updatePmTopic = `UPDATE [Jig].[MasterPmTopic] SET Topic = N'${Topic}', TopicType = ${TopicType}, StandardValue = ${StandardValue}
         WHERE PmTopicID = ${PmTopicID};
@@ -580,7 +580,7 @@ router.put('/maintenace/pm/topic/edit', async (req, res) => {
 })
 router.delete('/maintenace/pm/topic/delete', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { PmTopicID } = req.body;
         let deletePmTopic = `UPDATE [Jig].[MasterPmTopic] SET Active = 0 WHERE PmTopicID = ${PmTopicID};`;
         await pool.request().query(deletePmTopic);
@@ -595,7 +595,7 @@ router.delete('/maintenace/pm/topic/delete', async (req, res) => {
 // Repair Type
 router.post('/repair/type', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let repairType = await pool.request().query(`SELECT a.RepairTypeID, a.RepairType
         FROM [Jig].[MasterRepairType] a
         WHERE a.Active = 1;
@@ -608,7 +608,7 @@ router.post('/repair/type', async (req, res) => {
 })
 router.post('/repair/type/add', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { RepairType } = req.body;
         let insertRepairType = `INSERT INTO [Jig].[MasterRepairType](RepairType, Active) VALUES(N'${RepairType}', 1);`;
         await pool.request().query(insertRepairType);
@@ -620,7 +620,7 @@ router.post('/repair/type/add', async (req, res) => {
 })
 router.put('/repair/type/edit', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { RepairTypeID, RepairType } = req.body;
         let updateRepairType = `UPDATE [Jig].[MasterRepairType] SET RepairType = N'${RepairType}' WHERE RepairTypeID = ${RepairTypeID};`;
         await pool.request().query(updateRepairType);
@@ -632,7 +632,7 @@ router.put('/repair/type/edit', async (req, res) => {
 })
 router.delete('/repair/type/delete', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { RepairTypeID } = req.body;
         let deleteRepairType = `UPDATE [Jig].[MasterRepairType] SET Active = 0 WHERE RepairTypeID = ${RepairTypeID};`;
         await pool.request().query(deleteRepairType);
@@ -645,7 +645,7 @@ router.delete('/repair/type/delete', async (req, res) => {
 // Repair Problem
 router.post('/repair/problem', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { RepairTypeID } = req.body;
         let repairProblem = await pool.request().query(`SELECT a.RepairProblemID, a.RepairTypeID, a.RepairProblem
         FROM [Jig].[MasterRepairProblem] a
@@ -659,7 +659,7 @@ router.post('/repair/problem', async (req, res) => {
 })
 router.post('/repair/problem/add', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { RepairTypeID, RepairProblem } = req.body;
         let insertRepairProblem = `INSERT INTO [Jig].[MasterRepairProblem](RepairTypeID, RepairProblem, Active) VALUES(${RepairTypeID}, N'${RepairProblem}', 1);`;
         await pool.request().query(insertRepairProblem);
@@ -671,7 +671,7 @@ router.post('/repair/problem/add', async (req, res) => {
 })
 router.put('/repair/problem/edit', async (req, res) => { //* Change to insert new Record
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { RepairProblemID, RepairProblem } = req.body;
         let problemEdit = `DECLARE @RepairTypeID INT;
         SELECT @RepairTypeID = RepairTypeID FROM [Jig].[MasterRepairProblem] WHERE RepairProblemID = ${RepairProblemID};
@@ -690,7 +690,7 @@ router.put('/repair/problem/edit', async (req, res) => { //* Change to insert ne
 })
 router.delete('/repair/problem/delete', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { RepairProblemID } = req.body;
         let deleteRepairProblem = `UPDATE [Jig].[MasterRepairProblem] SET Active = 0 WHERE RepairProblemID = ${RepairProblemID};`;
         await pool.request().query(deleteRepairProblem);
@@ -706,7 +706,7 @@ router.delete('/repair/problem/delete', async (req, res) => {
 // Spare Part
 router.post('/sparepart', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { SpareCategoryID } = req.body;
         if (SpareCategoryID) {
             var sparepart = await pool.request().query(`SELECT a.SpareID, a.SpareName, a.AxCode, a.SpareLocationID, a.SpareCategoryID, a.Min, a.Max, a.Price, b.Category, c.Location
@@ -731,7 +731,7 @@ router.post('/sparepart', async (req, res) => {
 })
 router.post('/sparepart/add', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { SpareName, AxCode, SpareLocationID, SpareCategoryID, Min, Max, Price } = req.body;
         let insertSparepart = `INSERT INTO [Jig].[MasterSpare](SpareName, AxCode, SpareLocationID, SpareCategoryID, Min, Max, Price, Active)
         VALUES(N'${SpareName}', N'${AxCode}', ${SpareLocationID}, ${SpareCategoryID}, ${Min}, ${Max}, ${Price}, 1);
@@ -745,7 +745,7 @@ router.post('/sparepart/add', async (req, res) => {
 })
 router.put('/sparepart/edit', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { SpareID, SpareName, AxCode, SpareLocationID, Min, Max, Price } = req.body;
         let updateSparepart = `UPDATE [Jig].[MasterSpare] SET SpareName = N'${SpareName}', AxCode = N'${AxCode}', SpareLocationID = ${SpareLocationID},
         Min = ${Min}, Max = ${Max}, Price = ${Price} WHERE SpareID = ${SpareID};`;
@@ -758,7 +758,7 @@ router.put('/sparepart/edit', async (req, res) => {
 })
 router.delete('/sparepart/delete', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { SpareID } = req.body;
         let deleteSparepart = `UPDATE [Jig].[MasterSpare] SET Active = 0 WHERE SpareID = ${SpareID};`;
         await pool.request().query(deleteSparepart);
@@ -771,7 +771,7 @@ router.delete('/sparepart/delete', async (req, res) => {
 // Sparepart Category
 router.post('/sparepart/category', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let category = await pool.request().query(`SELECT SpareCategoryID, Category FROM [Jig].[MasterSpareCategory] WHERE Active = 1;`);
         res.json(category.recordset);
     } catch (err) {
@@ -781,7 +781,7 @@ router.post('/sparepart/category', async (req, res) => {
 })
 router.post('/sparepart/category/add', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { Category } = req.body;
         let insertCategory = `INSERT INTO [Jig].[MasterSpareCategory](Category, Active) VALUES(N'${Category}', 1);`;
         await pool.request().query(insertCategory);
@@ -793,7 +793,7 @@ router.post('/sparepart/category/add', async (req, res) => {
 })
 router.put('/sparepart/category/edit', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { SpareCategoryID, Category } = req.body;
         let updateCategory = `UPDATE [Jig].[MasterSpareCategory] SET Category = N'${Category}' WHERE SpareCategoryID = ${SpareCategoryID};`;
         await pool.request().query(updateCategory);
@@ -805,7 +805,7 @@ router.put('/sparepart/category/edit', async (req, res) => {
 })
 router.delete('/sparepart/category/delete', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { SpareCategoryID } = req.body;
         let deleteCategory = `UPDATE [Jig].[MasterSpareCategory] SET Active = 0 WHERE SpareCategoryID = ${SpareCategoryID};`;
         await pool.request().query(deleteCategory);
@@ -818,7 +818,7 @@ router.delete('/sparepart/category/delete', async (req, res) => {
 // Sparepart Location
 router.post('/sparepart/location', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let location = await pool.request().query(`SELECT a.SpareLocationID, a.Location FROM [Jig].[MasterSpareLocation] a WHERE a.Active = 1;`);
         res.json(location.recordset);
     } catch (err) {
@@ -828,7 +828,7 @@ router.post('/sparepart/location', async (req, res) => {
 })
 router.post('/sparepart/location/add', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { Location } = req.body;
         let insertLocation = `INSERT INTO [Jig].[MasterSpareLocation](Location, Active) VALUES(N'${Location}', 1);`;
         await pool.request().query(insertLocation);
@@ -840,7 +840,7 @@ router.post('/sparepart/location/add', async (req, res) => {
 })
 router.put('/sparepart/location/edit', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { SpareLocationID, Location } = req.body;
         let updateLocation = `UPDATE [Jig].[MasterSpareLocation] SET Location = N'${Location}' WHERE SpareLocationID = ${SpareLocationID};`;
         await pool.request().query(updateLocation);
@@ -852,7 +852,7 @@ router.put('/sparepart/location/edit', async (req, res) => {
 })
 router.delete('/sparepart/location/delete', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { SpareLocationID } = req.body;
         let deleteLocation = `UPDATE [Jig].[MasterSpareLocation] SET Active = 0 WHERE SpareLocationID = ${SpareLocationID};`;
         await pool.request().query(deleteLocation);
@@ -865,7 +865,7 @@ router.delete('/sparepart/location/delete', async (req, res) => {
 // Sparepart Supplier
 router.post('/sparepart/supplier', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let suppliers = await pool.request().query(`SELECT a.SupplierID, a.SupplierName FROM [Jig].[MasterSupplier] a WHERE a.Active = 1;`);
         res.json(suppliers.recordset);
     } catch (err) {
@@ -875,7 +875,7 @@ router.post('/sparepart/supplier', async (req, res) => {
 })
 router.post('/sparepart/supplier/add', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { SupplierName } = req.body;
         let insertSupplier = `INSERT INTO [Jig].[MasterSupplier](SupplierName, Active) VALUES(N'${SupplierName}', 1);`;
         await pool.request().query(insertSupplier);
@@ -887,7 +887,7 @@ router.post('/sparepart/supplier/add', async (req, res) => {
 })
 router.put('/sparepart/supplier/edit', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { SupplierID, SupplierName } = req.body;
         let updateSupplier = `UPDATE [Jig].[MasterSupplier] SET SupplierName = N'${SupplierName}' WHERE SupplierID = ${SupplierID};`;
         await pool.request().query(updateSupplier);
@@ -899,7 +899,7 @@ router.put('/sparepart/supplier/edit', async (req, res) => {
 })
 router.delete('/sparepart/supplier/delete', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { SupplierID } = req.body;
         let deleteSupplier = `UPDATE [Jig].[MasterSupplier] SET Active = 0 WHERE SupplierID = ${SupplierID};`;
         await pool.request().query(deleteSupplier);
@@ -938,7 +938,7 @@ const uploadTechnicianSkill = multer({ storage: storageTechnicianSkill }).single
 // Skill
 router.post('/skill', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let skill = await pool.request().query(`SELECT a.SkillID, a.Skill
         FROM [Jig].[MasterSkill] a
         WHERE a.Active = 1;
@@ -951,7 +951,7 @@ router.post('/skill', async (req, res) => {
 })
 router.post('/skill/add', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { Skill } = req.body;
         let insertSkill = `INSERT INTO [Jig].[MasterSkill](Skill, Active) VALUES(N'${Skill}', 1);`;
         await pool.request().query(insertSkill);
@@ -963,7 +963,7 @@ router.post('/skill/add', async (req, res) => {
 })
 router.put('/skill/edit', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { SkillID, Skill } = req.body;
         let updateSkill = `UPDATE [Jig].[MasterSkill] SET Skill = N'${Skill}' WHERE SkillID = ${SkillID};`;
         await pool.request().query(updateSkill);
@@ -975,7 +975,7 @@ router.put('/skill/edit', async (req, res) => {
 })
 router.delete('/skill/delete', async (req, res) => { //TODO: change %
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { SkillID } = req.body;
         let deleteSkill = `UPDATE [Jig].[MasterSkill] SET Active = 0 WHERE SkillID = ${SkillID};`;
         await pool.request().query(deleteSkill);
@@ -989,7 +989,7 @@ router.delete('/skill/delete', async (req, res) => { //TODO: change %
 // Get Position from User Where Department Jig
 router.post('/skill/position', async (req, res) => { // Where DepartmentID ของ EM ID = 16
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
 
         //todo edit DepartmentID to 16
         let position = await pool.request().query(`SELECT DISTINCT b.PositionID, b.PositionName
@@ -1005,7 +1005,7 @@ router.post('/skill/position', async (req, res) => { // Where DepartmentID ข�
 })
 router.post('/skill/position/skill', async (req, res) => { //* initial Skill by Position
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { PositionID } = req.body;
         let positionSkill = await pool.request().query(`SELECT a.PositionSkillID, a.PositionID, a.UsedSkill
         FROM [Jig].[MasterPositionSkill] a
@@ -1032,7 +1032,7 @@ router.post('/skill/position/skill', async (req, res) => { //* initial Skill by 
 })
 router.put('/skill/position/edit', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { PositionID, UsedSkill } = req.body;
 
         let updatePositionSkill = `DECLARE @PositionSkillID INT;
@@ -1058,7 +1058,7 @@ router.put('/skill/position/edit', async (req, res) => {
 // Technician Skill
 router.post('/skill/technician', async (req, res) => { // Where DepartmentID = 16
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let skill = await pool.request().query(`SELECT a.UserID, a.FirstName, c.PositionID, c.PositionName, c.PositionLevel, b.DepartmentID, b.DepartmentName,
         d.ImagePath, d.SkillScore, a.EmployeeID
         FROM [TSMolymer_F].[dbo].[User] a
@@ -1078,7 +1078,7 @@ router.post('/skill/technician', async (req, res) => { // Where DepartmentID = 1
 })
 router.post('/skill/technician/skill', async (req, res) => { //* get Tech Skill
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { PositionID, UserID } = req.body;
         let PositionSkill = await pool.request().query(`SELECT a.PositionSkillID, a.PositionID, a.UsedSkill, a.TotalUsedSkill
         FROM [TSM_Jig].[Jig].[MasterPositionSkill] a
@@ -1114,7 +1114,7 @@ router.post('/skill/technician/skill', async (req, res) => { //* get Tech Skill
 })
 router.post('/skill/technician/skill/item/history', async (req, res) => { //* get Tech Skill History (date, file)
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { UserID, SkillID } = req.body;
 
         let TechSkill = await pool.request().query(`SELECT a.TechSkillID, a.UpdatedAt, a.FilePath, a.Score
@@ -1130,7 +1130,7 @@ router.post('/skill/technician/skill/item/history', async (req, res) => { //* ge
 })
 router.post('/skill/technician/skill/item', async (req, res) => { //* get Tech Skill which selected
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { TechSkillID } = req.body;
         let TechSkill = await pool.request().query(`SELECT a.TechSkillID, b.SkillID, b.Skill, a.UpdatedAt, a.Score, a.FilePath
         FROM [TSM_Jig].[Jig].[MasterTechSkill] a
@@ -1151,7 +1151,7 @@ router.put('/skill/technician/image/upload', async (req, res) => {
         } else {
             try {
                 console.log(req.files);
-                let pool = await getPool('JigPool', config);
+                let pool = await sql.connect(config);
                 let { UserID } = req.body;
                 let ImagePath = (req.file) ? "/jig/technician/" + req.file.filename : ""
                 let insertFilePath = `
@@ -1185,7 +1185,7 @@ router.post('/skill/technician/skill/train', async (req, res) => { //TODO: EditU
             res.status(500).send({ message: `${err}` });
         } else {
             try {
-                let pool = await getPool('JigPool', config);
+                let pool = await sql.connect(config);
                 let { UserID, SkillID, Score } = req.body;
                 let reqUserID = req.session?.UserID || 0;
                 let FilePath = "/jig/tech_skill/" + req.file.filename;
@@ -1231,7 +1231,7 @@ router.post('/skill/technician/skill/train', async (req, res) => { //TODO: EditU
 //* ========== Document Control ==========
 router.post('/docctrl', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let DocCtrl = await pool.request().query(`SELECT DocumentID, DocumentCtrlNo, DocumentName
         FROM [Jig].[MasterDocumentCtrl];
         `);
@@ -1243,7 +1243,7 @@ router.post('/docctrl', async (req, res) => {
 })
 router.post('/docctrl/item', async (req, res) => {
     try {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { DocumentName } = req.body;
         let DocCtrl = await pool.request().query(`SELECT DocumentID, DocumentCtrlNo, DocumentName
         FROM [Jig].[MasterDocumentCtrl]
@@ -1258,7 +1258,7 @@ router.post('/docctrl/item', async (req, res) => {
 router.put('/docctrl/edit', async (req, res) => {
     try
     {
-        let pool = await getPool('JigPool', config);
+        let pool = await sql.connect(config);
         let { DocumentName, DocumentCtrlNo } = req.body;
         console.log(req.body)
         let updateDocCrtl = `
