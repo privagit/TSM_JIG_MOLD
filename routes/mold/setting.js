@@ -25,12 +25,12 @@ router.post('/mold/specification', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldSpecID } = req.body;
-        let moldSpec = await pool.request().query(`SELECT a.MoldSpeciD, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.AxMoldNo,
+        let moldSpec = await pool.request().query(`SELECT a.MoldSpecID, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.AxMoldNo,
         a.Model, a.IssuedDate, a.Status, a.MachineSpec, a.ProductSpec, a.MoldSpec,
         c.FirstName AS IssueBy, a.IssueSignTime,
         d.FirstName AS CheckBy, a.CheckSignTime,
         e.FirstName AS ApproveBy, a.ApproveSignTime
-        FROM [Mold].[MoldSpecification] a
+        FROM [Mold].[Specification] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.IssuBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = a.CheckBy
@@ -241,8 +241,7 @@ router.put('/maintenace/inspect/edit', async (req, res) => {
         let pool = await getPool('MoldPool', config);
         let { MoldID, InspectionID } = req.body;
         let getMoldInspect = await pool.request().query(`SELECT PmID, MoldID, PmTopic FROM [Mold].[MasterPm] WHERE MoldID = ${MoldID};`);
-
-        if (getMoldInspect.recordset.length) {
+        if(getMoldInspect.recordset.length){
             let PmID = getMoldInspect.recordset[0].PmID;
             let PmTopic = JSON.parse(getMoldInspect.recordset[0].PmTopic);
             if(PmTopic.find(v=>v==InspectionID)){
@@ -742,6 +741,7 @@ const storageTechnicianImage = multer.diskStorage({
     destination: path.join(__dirname, '../../public/mold/technician'),
     filename: (req, file, cb) => {
         let { EmployeeID } = req.query;
+        console.log(EmployeeID)
         let uploadDate = new Date();
         let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth() + 1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
         const ext = file.mimetype.split('/')[1];

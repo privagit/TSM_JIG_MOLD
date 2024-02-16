@@ -397,10 +397,12 @@ router.post('/repair-issue/service', async (req, res) => {
         let pool = await getPool('MoldPool', config);
         let { RepairCheckID } = req.body;
 
-        let PartsCost = await pool.request().query(`SELECT a.RepairCheckID, a.RepairCostID, a.SpareID, b.SpareName, a.Qty, a.UnitPrice, a.UsedDate,
-        (a.UnitPrice * a.Qty) AS Amounth, a.Reuse
+        let PartsCost = await pool.request().query(`SELECT a.RepairCheckID, a.RepairCostID, a.SpareID, b.SpareName,
+        c.Category, b.SpareCategoryID, a.Qty, a.UnitPrice, a.UsedDate,
+        (a.UnitPrice * a.Qty) AS Amounth
         FROM [Mold].[RepairCost] a
         LEFT JOIN [Mold].[MasterSpare] b ON a.SpareID = b.SpareID
+        LEFT JOIN [Mold].[MasterSpareCategory] c ON b.SpareCategoryID = c.SpareCategoryID
         WHERE a.RepairCheckID = ${RepairCheckID};
         `);
 

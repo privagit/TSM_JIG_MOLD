@@ -6,7 +6,6 @@ const multer = require('multer');
 const path = require('path');
 const { getPool } = require('../../middlewares/pool-manager');
 
-
 //* ========== Receive List ==========
 router.post('/list', async (req, res) => { //TODO: Status, query
     try {

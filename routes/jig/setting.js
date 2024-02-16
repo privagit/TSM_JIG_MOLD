@@ -25,6 +25,8 @@ router.post('/jig', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
+
+//todo 
 router.put('/jig/edit', async (req, res) => {
     try {
         let pool = await sql.connect(config);

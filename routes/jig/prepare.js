@@ -40,6 +40,7 @@ router.post('/jig', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { ProductionDate, Shift, ZoneID, MachineID, Status } = req.body;
+      
         let selectJigs = await pool.request().query(`SELECT row_number() over(order by a.PrepareID desc) as 'index',
         a.PrepareID, e.MachineID, e.MachineNo, e.ZoneID, f.JigNo, c.FirstName AS PrepareBy, a.Status, d.FirstName AS InstallBy, a.InstallStatus,
         a.Shift, CONVERT(VARCHAR, a.PrepareDateTime, 23) AS PrepareDate, CONVERT(VARCHAR(5), a.PrepareDateTime, 108) AS PrepareTime,
