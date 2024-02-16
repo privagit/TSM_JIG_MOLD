@@ -102,9 +102,9 @@ router.post('/detail', async (req, res) => {
 router.post('/detail/edit', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
-        let { SpecID, MachineSpec, ProductSpec, MoldSpec } = req.body;
-        let updateSpecDetail = `INSERT INTO [Mold].[SpecificationDetail](SpecID, MachineSpec, ProductSpec, MoldSpec, EditTime)
-        VALUES(${SpecID}, N'${MachineSpec}', N'${ProductSpec}', N'${MoldSpec}', GETDATE());
+        let { MoldSpecID, MachineSpec, ProductSpec, MoldSpec } = req.body;
+        let updateSpecDetail = `INSERT INTO [Mold].[SpecificationDetail](MoldSpecID, MachineSpec, ProductSpec, MoldSpec, EditTime)
+        VALUES(${MoldSpecID}, N'${MachineSpec}', N'${ProductSpec}', N'${MoldSpec}', GETDATE());
         `;
         await pool.request().query(updateSpecDetail);
         res.json({ message: 'Success' });

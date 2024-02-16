@@ -14,6 +14,7 @@ router.post('/', async (req, res) => { //TODO: PlanTime, From, To, WarrantyShot
             CONVERT(NVARCHAR(5), a.PlanStartTime, 108) AS FromTime,
             CONVERT(NVARCHAR(5), a.PlanFinishTime, 108) AS ToTime,
             b.BasicMold, b.DieNo, 3 AS PlanType, NULL AS ActualShot, NULL AS WarningShot, NULL AS DangerShot,
+            a.RepairStatus,
             a.AcceptStatus, c.FirstName AS RequestBy, d.FirstName AS AcceptBy, a.AcceptReason, a.AcceptTime, a.RequestTime
             FROM [Mold].[RepairCheck] a
             LEFT JOIN [Mold].[MasterMold] b ON b.MoldID = a.MoldID
@@ -65,8 +66,9 @@ router.post('/confirm', async (req, res) => { //
             `;
             await pool.request().query(updateStatusPmPlan);
         } else{ // Repair
+            let RepairStatus = AcceptStatus == 1 ? 2 : 1; // if Accept => RepairStatus = Plan(2), if Reject => RepairStatus = Issue(1)
             let updateStatusRepairPlan = `UPDATE [Mold].[RepairCheck] SET AcceptStatus = ${AcceptStatus}, AcceptReason = N'${AcceptReason}',
-            AcceptBy = ${AcceptBy}, AcceptTime = GETDATE() WHERE RepairCheckID = ${RepairCheckID}
+            AcceptBy = ${AcceptBy}, AcceptTime = GETDATE(), RepairStatus = ${RepairStatus} WHERE RepairCheckID = ${RepairCheckID}
             `;
             await pool.request().query(updateStatusRepairPlan);
         }
