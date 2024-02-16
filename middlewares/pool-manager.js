@@ -12,18 +12,18 @@ module.exports = {
             const close = pool.close.bind(pool);
             pool.close = (...args) => {
                 pools.delete(name);
-                return close(...args);
-            }
+                    return close(...args);
+                }
             pools.set(name, pool.connect());
         }
         return pools.get(name);
-    },
-    /**
-     * Closes all the pools and removes them from the store
-     *
-     * @return {Promise<mssql.ConnectionPool[]>}
-     */
-    closeAllPool: () => Promise.all(Array.from(pools.values()).map((connect) => {
-        return connect.then((pool) => pool.close());
-    })),
+       },
+       /**
+        * Closes all the pools and removes them from the store
+        *
+        * @return {Promise<mssql.ConnectionPool[]>}
+        */
+       closeAllPool: () => Promise.all(Array.from(pools.values()).map((connect) => {
+            return connect.then((pool) => pool.close());
+       })),
 };

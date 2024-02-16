@@ -7,6 +7,7 @@ const multer = require('multer');
 const path = require('path');
 const { getPool } = require('../../middlewares/pool-manager');
 
+// Repair Request(Repair Overview) ==> Submit Plan(PM Plan) ==> Confirm Plan(Planning) ==> Start Repair(Repair Overview)
 //? TODO: StartTime, EndTime == ActualTime ??
 //* ========= Repair Issue =========
 router.post('/repair-issue', async (req, res) => {
@@ -144,7 +145,7 @@ router.post('/repair-issue/repair/start', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/repair-issue/repair/item', async (req, res) => {
+router.post('/repair-issue/repair/item', async (req, res) => { //TODO: Process
     try {
         let pool = await getPool('MoldPool', config);
         let { RepairCheckID } = req.body;
@@ -193,7 +194,7 @@ router.post('/repair-issue/repair/item', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/repair-issue/repair/process', async (req, res) => { // initial Process (Plan & Actual)
+router.post('/repair-issue/repair/process', async (req, res) => { //TODO: get from Plan, initial Process (Plan & Actual)
     try {
         let pool = await getPool('MoldPool', config);
         let process = await pool.request().query(`SELECT ProcessID, ProcessType, Detail, CostPerHour
@@ -206,15 +207,26 @@ router.post('/repair-issue/repair/process', async (req, res) => { // initial Pro
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/repair-issue/repair/plan-actual/edit', async (req, res) => {
+router.post('/repair-issue/repair/plan-actual/edit', async (req, res) => { //TODO: Edit Proecss
     try {
         let pool = await getPool('MoldPool', config);
-        let { RepairCheckID, PlanStartTime, PlanFinishTime, ActualStartTime, ActualFinishTime, PlanActualArr } = req.body;
-        let updateRepair = `UPDATE [Mold].[RepairCheck] SET PlanStartTime = '${PlanStartTime}', PlanFinishTime = '${PlanFinishTime}',
-        ActualStartTime = '${ActualStartTime}', ActualFinishTime = '${ActualFinishTime}', PlanActualArr = '${PlanActualArr}'
+        let { RepairCheckID, ActualStartTime, ActualFinishTime, RepairProcess } = req.body;
+
+        // update repair
+        let updateRepair = `UPDATE [Mold].[RepairCheck] SET ActualStartTime = '${ActualStartTime}', ActualFinishTime = '${ActualFinishTime}'
         WHERE RepairCheckID = ${RepairCheckID};
         `;
         await pool.request().query(updateRepair);
+
+        // update Repair Process
+        let updateStatement = [];
+        for(let item of RepairProcess){
+            let updateRepairProcess = `UPDATE [Mold].[RepairProcess] SET StartTime = '${item.StartTime}', FinishTime = '${item.FinishTime}' WHERE RepairProcessID = ${item.RepairProcessID};`;
+            updateStatement.push(updateRepairProcess);
+        }
+        if(updateStatement.length){
+            await pool.request().query(updateStatement.join(''));
+        }
         res.json({ message: 'Success' });
     } catch (err) {
         console.log(req.url, err);
@@ -623,7 +635,7 @@ module.exports = router;
 
 // Repair Status
 // 1: Issue     => Issue Repair
-//TODO 2: Plan      =>
+//TODO 2: Plan      => Plan ที่ PM Plan
 // 3: Repair    => Start Repair
 // 4: Wait Sign => Sign Repair (Wait Inj,Qc,Mold Sign)
 // 5: Complete  => Sign Inj,Qc,Mold
