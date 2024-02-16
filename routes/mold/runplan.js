@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const config = require('../../lib/dbconfig').dbconfig_mold;
-const sql = require('mssql');
+const { getPool } = require('../../middlewares/pool-manager');
 
 
 //* ========== Machine Run Plan ==========
 router.post('/', async (req, res) => { //TODO: Map Bom BasicMold to MasterMold
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { month, year } = req.body;
 
         let machines = await pool.request().query(`SELECT d.EmMachineID, c.MachineID, c.MachineNo, c.MCSize, c.ZoneID, MAX(b.D1) AS D1, MAX(b.D2) AS D2, MAX(b.D3) AS D3, MAX(b.D4) AS D4,

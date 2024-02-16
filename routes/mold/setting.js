@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const config = require('../../lib/dbconfig').dbconfig_mold;
-const sql = require('mssql');
 const multer = require('multer');
 const path = require('path');
+const { getPool } = require('../../middlewares/pool-manager');
 
 //* ========== Mold Setting ==========
 router.post('/mold', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let mold = await pool.request().query(`SELECT a.MoldID, a.MoldControlNo, a.BasicMold, a.DieNo, a.MoldName, a.CustomerID, b.CustomerName,
         a.CustomerAssetNo, a.Cavity, a.RawMaterial, a.ReceivedDate, a.LastProduction, a.Status, a.MoldSpecID
         FROM [Mold].[MasterMold] a
@@ -23,7 +23,7 @@ router.post('/mold', async (req, res) => {
 })
 router.post('/mold/specification', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { MoldSpecID } = req.body;
         let moldSpec = await pool.request().query(`SELECT a.MoldSpeciD, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.AxMoldNo,
         a.Model, a.IssuedDate, a.Status, a.MachineSpec, a.ProductSpec, a.MoldSpec,
@@ -50,7 +50,7 @@ router.post('/mold/specification', async (req, res) => {
 })
 router.post('/mold/receive', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { MoldSpecID } = req.body;
         let moldReceive = await pool.request().query(`SELECT a.MoldReceiveID, a.BasicMold, a.DieNo, a.MoldCounterNo, a.PartName, a.MaterialGrade,
         a.GuaranteeShot, a.MoldWeight, a.Cavity, a.MoldSize, a.MoldType, a.Model, a.CustomerMoldWarranty,
@@ -79,7 +79,7 @@ router.post('/mold/receive', async (req, res) => {
 //* ========== Receive ==========
 router.post('/receive', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let receiveCheck = await pool.request().query(`SELECT ReceiveCheckID, InspectionDetail, Description FROM [Mold].[MasterReceiveCheck] WHERE Active = 1;`);
         res.json(receiveCheck.recordset);
     } catch (err) {
@@ -89,7 +89,7 @@ router.post('/receive', async (req, res) => {
 })
 router.post('/receive/add', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { InspectionDetail, Description } = req.body;
         let insertReceiveCheck = `INSERT INTO [Mold].[MasterReceiveCheck](InspectionDetail, Description, Active)
         VALUES(N'${InspectionDetail}', N'${Description}', 1);
@@ -103,7 +103,7 @@ router.post('/receive/add', async (req, res) => {
 })
 router.put('/receive/edit', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { ReceiveCheckID, InspectionDetail, Description } = req.body;
         let updateReceiveCheck = `UPDATE [Mold].[MasterReceiveCheck] SET InspectionDetail = N'${InspectionDetail}', Description = N'${Description}'
         WHERE ReceiveCheckID = ${ReceiveCheckID};
@@ -117,7 +117,7 @@ router.put('/receive/edit', async (req, res) => {
 })
 router.delete('/receive/delete', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { ReceiveCheckID } = req.body;
         let deleteReceiveCheck = `UPDATE [Mold].[MasterReceiveCheck] SET Active = 0 WHERE ReceiveCheckID = ${ReceiveCheckID};`;
         await pool.request().query(deleteReceiveCheck);
@@ -145,7 +145,7 @@ const uploadPmImage = multer({ storage: storagePmImage }).single('pm_checkfile')
 
 router.post('/maintenace', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { MoldID } = req.body;
         console.log('object :>> ', `SELECT a.PmID, a.MoldID, a.WarningShot, a.DangerShot, a.WarrantyShot,
         a.AlertPercent, a.AlertWarrantyPercent, a.ImagePath, a.PmTopic
@@ -165,7 +165,7 @@ router.post('/maintenace', async (req, res) => {
 })
 router.post('/maintenace/pm/edit', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { MoldID, WarningShot, DangerShot, WarrantyShot, AlertPercent, AlertWarrantyPercent } = req.body;
         console.log('object :>> ', `DECLARE @PmID INT;
         SET @PmID = (SELECT PmID FROM [Mold].[MasterPm] WHERE MoldID = ${MoldID});
@@ -211,7 +211,7 @@ router.post('/maintenace/pm/checkfile/upload', async (req, res) => {
             res.status(500).send({ message: `${err}` });
         } else {
             try {
-                let pool = await sql.connect(config);
+                let pool = await getPool('MoldPool', config);
                 let ImagePath = (req.file) ? "/mold/pm_checkfile/" + req.file.filename : "";
                 let { MoldID } = req.body;
                 let updatePmCheckfile = `DECLARE @PmID INT;
@@ -238,7 +238,7 @@ router.post('/maintenace/pm/checkfile/upload', async (req, res) => {
 })
 router.put('/maintenace/inspect/edit', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { MoldID, InspectionID } = req.body;
         let getMoldInspect = await pool.request().query(`SELECT PmID, MoldID, PmTopic FROM [Mold].[MasterPm] WHERE MoldID = ${MoldID};`);
 
@@ -266,7 +266,7 @@ router.put('/maintenace/inspect/edit', async (req, res) => {
 // Inspection
 router.post('/maintenace/inspection', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let inspection = await pool.request().query(`SELECT InspectionID, Detail, Description FROM [Mold].[MasterInspectionDetail] WHERE Active = 1;`);
         res.json(inspection.recordset);
     } catch (err) {
@@ -276,7 +276,7 @@ router.post('/maintenace/inspection', async (req, res) => {
 })
 router.post('/maintenace/inspection/add', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { Detail, Description } = req.body;
         let insertInspection = `INSERT INTO [Mold].[MasterInspectionDetail](Detail, Description, Active)
         VALUES(N'${Detail}', N'${Description}', 1);
@@ -290,7 +290,7 @@ router.post('/maintenace/inspection/add', async (req, res) => {
 })
 router.put('/maintenace/inspection/edit', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { InspectionID, Detail, Description } = req.body;
         let updateInspect = `UPDATE [Mold].[MasterInspectionDetail] SET Detail = N'${Detail}', Description = N'${Description}' WHERE InspectionID = ${InspectionID};`;
         await pool.request().query(updateInspect);
@@ -302,7 +302,7 @@ router.put('/maintenace/inspection/edit', async (req, res) => {
 })
 router.delete('/maintenace/inspection/delete', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { InspectionID } = req.body;
         let deleteInspect = `UPDATE [Mold].[MasterInspectionDetail] SET Active = 0 WHERE InspectionID = ${InspectionID};`;
         await pool.request().query(deleteInspect);
@@ -315,7 +315,7 @@ router.delete('/maintenace/inspection/delete', async (req, res) => {
 // Process
 router.post('/maintenace/process', async (req, res) => { // ProcessType = 1
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let process = await pool.request().query(`SELECT ProcessID, Detail, CostPerHour FROM [Mold].[MasterProcess]
         WHERE Active = 1 AND ProcessType = 1;
         `);
@@ -327,7 +327,7 @@ router.post('/maintenace/process', async (req, res) => { // ProcessType = 1
 })
 router.post('/maintenace/process/add', async (req, res) => { //ProcessType = 1
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { Detail, CostPerHour } = req.body;
         let insertProcess = `INSERT INTO [Mold].[MasterProcess](Detail, CostPerHour, ProcessType, Active)
         VALUES(N'${Detail}', ${CostPerHour}, 1, 1);
@@ -342,7 +342,7 @@ router.post('/maintenace/process/add', async (req, res) => { //ProcessType = 1
 })
 router.put('/maintenace/process/edit', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { ProcessID, Detail, CostPerHour } = req.body;
         let updateProcess = `UPDATE [Mold].[MasterProcess] SET Detail = N'${Detail}', CostPerHour = ${CostPerHour} WHERE ProcessID = ${ProcessID};`;
         await pool.request().query(updateProcess);
@@ -354,7 +354,7 @@ router.put('/maintenace/process/edit', async (req, res) => {
 })
 router.delete('/maintenace/process/delete', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { ProcessID } = req.body;
         let deleteProcess = `UPDATE [Mold].[MasterProcess] SET Active = 0 WHERE ProcessID = ${ProcessID};`;
         await pool.request().query(deleteProcess);
@@ -370,7 +370,7 @@ router.delete('/maintenace/process/delete', async (req, res) => {
 // Repair Type
 router.post('/repair/type', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let repairType = await pool.request().query(`SELECT a.RepairTypeID, a.RepairType
         FROM [Mold].[MasterRepairType] a
         WHERE a.Active = 1;
@@ -383,7 +383,7 @@ router.post('/repair/type', async (req, res) => {
 })
 router.post('/repair/type/add', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairType } = req.body;
         let insertRepairType = `INSERT INTO [Mold].[MasterRepairType](RepairType, Active) VALUES(N'${RepairType}', 1);`;
         await pool.request().query(insertRepairType);
@@ -395,7 +395,7 @@ router.post('/repair/type/add', async (req, res) => {
 })
 router.put('/repair/type/edit', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairTypeID, RepairType } = req.body;
         let updateRepairType = `UPDATE [Mold].[MasterRepairType] SET RepairType = N'${RepairType}' WHERE RepairTypeID = ${RepairTypeID};`;
         await pool.request().query(updateRepairType);
@@ -407,7 +407,7 @@ router.put('/repair/type/edit', async (req, res) => {
 })
 router.delete('/repair/type/delete', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairTypeID } = req.body;
         let deleteRepairType = `UPDATE [Mold].[MasterRepairType] SET Active = 0 WHERE RepairTypeID = ${RepairTypeID};`;
         await pool.request().query(deleteRepairType);
@@ -420,7 +420,7 @@ router.delete('/repair/type/delete', async (req, res) => {
 // Repair Problem
 router.post('/repair/problem', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairTypeID } = req.body;
         let repairProblem = await pool.request().query(`SELECT a.RepairProblemID, a.RepairTypeID, a.RepairProblem
         FROM [Mold].[MasterRepairProblem] a
@@ -434,7 +434,7 @@ router.post('/repair/problem', async (req, res) => {
 })
 router.post('/repair/problem/add', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairTypeID, RepairProblem } = req.body;
         let insertRepairProblem = `INSERT INTO [Mold].[MasterRepairProblem](RepairTypeID, RepairProblem, Active) VALUES(${RepairTypeID}, N'${RepairProblem}', 1);`;
         await pool.request().query(insertRepairProblem);
@@ -446,7 +446,7 @@ router.post('/repair/problem/add', async (req, res) => {
 })
 router.put('/repair/problem/edit', async (req, res) => { //* Change to insert new Record
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairProblemID, RepairProblem } = req.body;
         let problemEdit = `DECLARE @RepairTypeID INT;
         SELECT @RepairTypeID = RepairTypeID FROM [Mold].[MasterRepairProblem] WHERE RepairProblemID = ${RepairProblemID};
@@ -465,7 +465,7 @@ router.put('/repair/problem/edit', async (req, res) => { //* Change to insert ne
 })
 router.delete('/repair/problem/delete', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairProblemID } = req.body;
         let deleteRepairProblem = `UPDATE [Mold].[MasterRepairProblem] SET Active = 0 WHERE RepairProblemID = ${RepairProblemID};`;
         await pool.request().query(deleteRepairProblem);
@@ -478,7 +478,7 @@ router.delete('/repair/problem/delete', async (req, res) => {
 // Repair Process
 router.post('/repair/process', async (req, res) => { // ProcessType = 2
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let process = await pool.request().query(`SELECT ProcessID, Detail, CostPerHour FROM [Mold].[MasterProcess]
         WHERE Active = 1 AND ProcessType = 2;
         `);
@@ -490,7 +490,7 @@ router.post('/repair/process', async (req, res) => { // ProcessType = 2
 })
 router.post('/repair/process/add', async (req, res) => { // ProcessType = 2
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { Detail, CostPerHour } = req.body;
         let insertProcess = `INSERT INTO [Mold].[MasterProcess](Detail, CostPerHour, ProcessType, Active)
         VALUES(N'${Detail}', ${CostPerHour}, 2, 1);
@@ -505,7 +505,7 @@ router.post('/repair/process/add', async (req, res) => { // ProcessType = 2
 })
 router.put('/repair/process/edit', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { ProcessID, Detail, CostPerHour } = req.body;
         let updateProcess = `UPDATE [Mold].[MasterProcess] SET Detail = N'${Detail}', CostPerHour = ${CostPerHour} WHERE ProcessID = ${ProcessID};`;
         await pool.request().query(updateProcess);
@@ -517,7 +517,7 @@ router.put('/repair/process/edit', async (req, res) => {
 })
 router.delete('/repair/process/delete', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { ProcessID } = req.body;
         let deleteProcess = `UPDATE [Mold].[MasterProcess] SET Active = 0 WHERE ProcessID = ${ProcessID};`;
         await pool.request().query(deleteProcess);
@@ -533,7 +533,7 @@ router.delete('/repair/process/delete', async (req, res) => {
 // Spare Part
 router.post('/sparepart', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { SpareCategoryID } = req.body;
         if (SpareCategoryID) {
             var sparepart = await pool.request().query(`SELECT a.SpareID, a.SpareName, a.AxCode, a.SpareLocationID, a.SpareCategoryID, a.Min, a.Max, a.Price, b.Category, c.Location
@@ -558,7 +558,7 @@ router.post('/sparepart', async (req, res) => {
 })
 router.post('/sparepart/add', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { SpareName, AxCode, SpareLocationID, SpareCategoryID, Min, Max, Price } = req.body;
         let insertSparepart = `INSERT INTO [Mold].[MasterSpare](SpareName, AxCode, SpareLocationID, SpareCategoryID, Min, Max, Price, Active)
         VALUES(N'${SpareName}', N'${AxCode}', ${SpareLocationID}, ${SpareCategoryID}, ${Min}, ${Max}, ${Price}, 1);
@@ -572,7 +572,7 @@ router.post('/sparepart/add', async (req, res) => {
 })
 router.put('/sparepart/edit', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { SpareID, SpareName, AxCode, SpareLocationID, Min, Max, Price } = req.body;
         let updateSparepart = `UPDATE [Mold].[MasterSpare] SET SpareName = N'${SpareName}', AxCode = N'${AxCode}', SpareLocationID = ${SpareLocationID},
         Min = ${Min}, Max = ${Max}, Price = ${Price} WHERE SpareID = ${SpareID};`;
@@ -585,7 +585,7 @@ router.put('/sparepart/edit', async (req, res) => {
 })
 router.delete('/sparepart/delete', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { SpareID } = req.body;
         let deleteSparepart = `UPDATE [Mold].[MasterSpare] SET Active = 0 WHERE SpareID = ${SpareID};`;
         await pool.request().query(deleteSparepart);
@@ -598,7 +598,7 @@ router.delete('/sparepart/delete', async (req, res) => {
 // Sparepart Category
 router.post('/sparepart/category', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let category = await pool.request().query(`SELECT SpareCategoryID, Category FROM [Mold].[MasterSpareCategory] WHERE Active = 1;`);
         res.json(category.recordset);
     } catch (err) {
@@ -608,7 +608,7 @@ router.post('/sparepart/category', async (req, res) => {
 })
 router.post('/sparepart/category/add', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { Category } = req.body;
         let insertCategory = `INSERT INTO [Mold].[MasterSpareCategory](Category, Active) VALUES(N'${Category}', 1);`;
         await pool.request().query(insertCategory);
@@ -620,7 +620,7 @@ router.post('/sparepart/category/add', async (req, res) => {
 })
 router.put('/sparepart/category/edit', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { SpareCategoryID, Category } = req.body;
         let updateCategory = `UPDATE [Mold].[MasterSpareCategory] SET Category = N'${Category}' WHERE SpareCategoryID = ${SpareCategoryID};`;
         await pool.request().query(updateCategory);
@@ -632,7 +632,7 @@ router.put('/sparepart/category/edit', async (req, res) => {
 })
 router.delete('/sparepart/category/delete', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { SpareCategoryID } = req.body;
         let deleteCategory = `UPDATE [Mold].[MasterSpareCategory] SET Active = 0 WHERE SpareCategoryID = ${SpareCategoryID};`;
         await pool.request().query(deleteCategory);
@@ -645,7 +645,7 @@ router.delete('/sparepart/category/delete', async (req, res) => {
 // Sparepart Location
 router.post('/sparepart/location', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let location = await pool.request().query(`SELECT a.SpareLocationID, a.Location FROM [Mold].[MasterSpareLocation] a WHERE a.Active = 1;`);
         res.json(location.recordset);
     } catch (err) {
@@ -655,7 +655,7 @@ router.post('/sparepart/location', async (req, res) => {
 })
 router.post('/sparepart/location/add', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { Location } = req.body;
         let insertLocation = `INSERT INTO [Mold].[MasterSpareLocation](Location, Active) VALUES(N'${Location}', 1);`;
         await pool.request().query(insertLocation);
@@ -667,7 +667,7 @@ router.post('/sparepart/location/add', async (req, res) => {
 })
 router.put('/sparepart/location/edit', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { SpareLocationID, Location } = req.body;
         let updateLocation = `UPDATE [Mold].[MasterSpareLocation] SET Location = N'${Location}' WHERE SpareLocationID = ${SpareLocationID};`;
         await pool.request().query(updateLocation);
@@ -679,7 +679,7 @@ router.put('/sparepart/location/edit', async (req, res) => {
 })
 router.delete('/sparepart/location/delete', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { SpareLocationID } = req.body;
         let deleteLocation = `UPDATE [Mold].[MasterSpareLocation] SET Active = 0 WHERE SpareLocationID = ${SpareLocationID};`;
         await pool.request().query(deleteLocation);
@@ -692,7 +692,7 @@ router.delete('/sparepart/location/delete', async (req, res) => {
 // Sparepart Supplier
 router.post('/sparepart/supplier', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let suppliers = await pool.request().query(`SELECT a.SupplierID, a.SupplierName FROM [Mold].[MasterSupplier] a WHERE a.Active = 1;`);
         res.json(suppliers.recordset);
     } catch (err) {
@@ -702,7 +702,7 @@ router.post('/sparepart/supplier', async (req, res) => {
 })
 router.post('/sparepart/supplier/add', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { SupplierName } = req.body;
         let insertSupplier = `INSERT INTO [Mold].[MasterSupplier](SupplierName, Active) VALUES(N'${SupplierName}', 1);`;
         await pool.request().query(insertSupplier);
@@ -714,7 +714,7 @@ router.post('/sparepart/supplier/add', async (req, res) => {
 })
 router.put('/sparepart/supplier/edit', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { SupplierID, SupplierName } = req.body;
         let updateSupplier = `UPDATE [Mold].[MasterSupplier] SET SupplierName = N'${SupplierName}' WHERE SupplierID = ${SupplierID};`;
         await pool.request().query(updateSupplier);
@@ -726,7 +726,7 @@ router.put('/sparepart/supplier/edit', async (req, res) => {
 })
 router.delete('/sparepart/supplier/delete', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { SupplierID } = req.body;
         let deleteSupplier = `UPDATE [Mold].[MasterSupplier] SET Active = 0 WHERE SupplierID = ${SupplierID};`;
         await pool.request().query(deleteSupplier);
@@ -765,7 +765,7 @@ const uploadTechnicianSkill = multer({ storage: storageTechnicianSkill }).single
 // Skill
 router.post('/skill', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let skill = await pool.request().query(`SELECT a.SkillID, a.Skill
         FROM [Mold].[MasterSkill] a
         WHERE a.Active = 1;
@@ -778,7 +778,7 @@ router.post('/skill', async (req, res) => {
 })
 router.post('/skill/add', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { Skill } = req.body;
         let insertSkill = `INSERT INTO [Mold].[MasterSkill](Skill, Active) VALUES(N'${Skill}', 1);`;
         await pool.request().query(insertSkill);
@@ -790,7 +790,7 @@ router.post('/skill/add', async (req, res) => {
 })
 router.put('/skill/edit', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { SkillID, Skill } = req.body;
         let updateSkill = `UPDATE [Mold].[MasterSkill] SET Skill = N'${Skill}' WHERE SkillID = ${SkillID};`;
         await pool.request().query(updateSkill);
@@ -802,7 +802,7 @@ router.put('/skill/edit', async (req, res) => {
 })
 router.delete('/skill/delete', async (req, res) => { //TODO: change %
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { SkillID } = req.body;
         let deleteSkill = `UPDATE [Mold].[MasterSkill] SET Active = 0 WHERE SkillID = ${SkillID};`;
         await pool.request().query(deleteSkill);
@@ -816,7 +816,7 @@ router.delete('/skill/delete', async (req, res) => { //TODO: change %
 // Get Position from User Where Department Mold
 router.post('/skill/position', async (req, res) => { // Where DepartmentID ของ EM ID = 16
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
 
         //todo edit DepartmentID to 16
         let position = await pool.request().query(`SELECT DISTINCT b.PositionID, b.PositionName
@@ -832,7 +832,7 @@ router.post('/skill/position', async (req, res) => { // Where DepartmentID ข�
 })
 router.post('/skill/position/skill', async (req, res) => { //* initial Skill by Position
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { PositionID } = req.body;
         let positionSkill = await pool.request().query(`SELECT a.PositionSkillID, a.PositionID, a.UsedSkill
         FROM [Mold].[MasterPositionSkill] a
@@ -859,7 +859,7 @@ router.post('/skill/position/skill', async (req, res) => { //* initial Skill by 
 })
 router.put('/skill/position/edit', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { PositionID, UsedSkill } = req.body;
 
         let updatePositionSkill = `DECLARE @PositionSkillID INT;
@@ -885,7 +885,7 @@ router.put('/skill/position/edit', async (req, res) => {
 // Technician Skill
 router.post('/skill/technician', async (req, res) => { // Where DepartmentID = 16
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let skill = await pool.request().query(`SELECT a.UserID, a.FirstName, c.PositionID, c.PositionName, c.PositionLevel, b.DepartmentID, b.DepartmentName,
         d.ImagePath, d.SkillScore, a.EmployeeID
         FROM [TSMolymer_F].[dbo].[User] a
@@ -905,7 +905,7 @@ router.post('/skill/technician', async (req, res) => { // Where DepartmentID = 1
 })
 router.post('/skill/technician/skill', async (req, res) => { //* get Tech Skill
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { PositionID, UserID } = req.body;
         let PositionSkill = await pool.request().query(`SELECT a.PositionSkillID, a.PositionID, a.UsedSkill, a.TotalUsedSkill
         FROM [TSM_Mold].[Mold].[MasterPositionSkill] a
@@ -941,7 +941,7 @@ router.post('/skill/technician/skill', async (req, res) => { //* get Tech Skill
 })
 router.post('/skill/technician/skill/item/history', async (req, res) => { //* get Tech Skill History (date, file)
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { UserID, SkillID } = req.body;
 
         let TechSkill = await pool.request().query(`SELECT a.TechSkillID, a.UpdatedAt, a.FilePath, a.Score
@@ -957,7 +957,7 @@ router.post('/skill/technician/skill/item/history', async (req, res) => { //* ge
 })
 router.post('/skill/technician/skill/item', async (req, res) => { //* get Tech Skill which selected
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { TechSkillID } = req.body;
         let TechSkill = await pool.request().query(`SELECT a.TechSkillID, b.SkillID, b.Skill, a.UpdatedAt, a.Score, a.FilePath
         FROM [TSM_Mold].[Mold].[MasterTechSkill] a
@@ -978,7 +978,7 @@ router.put('/skill/technician/image/upload', async (req, res) => {
         } else {
             try {
                 console.log(req.files);
-                let pool = await sql.connect(config);
+                let pool = await getPool('MoldPool', config);
                 let { UserID } = req.body;
                 let ImagePath = (req.file) ? "/mold/technician/" + req.file.filename : ""
                 let insertFilePath = `
@@ -1012,7 +1012,7 @@ router.post('/skill/technician/skill/train', async (req, res) => { //TODO: EditU
             res.status(500).send({ message: `${err}` });
         } else {
             try {
-                let pool = await sql.connect(config);
+                let pool = await getPool('MoldPool', config);
                 let { UserID, SkillID, Score } = req.body;
                 let reqUserID = req.session?.UserID || 0;
                 let FilePath = "/mold/tech_skill/" + req.file.filename;
@@ -1059,7 +1059,7 @@ router.post('/skill/technician/skill/train', async (req, res) => { //TODO: EditU
 //* ========== Document Control ==========
 router.post('/docctrl', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { DocumentName } = req.body;
         let DocCtrl = await pool.request().query(`SELECT DocumentID, DocumentCtrlNo, DocumentName
         FROM [Mold].[MasterDocumentCtrl]
@@ -1072,8 +1072,9 @@ router.post('/docctrl', async (req, res) => {
     }
 })
 router.put('/docctrl/edit', async (req, res) => {
-    try {
-        let pool = await sql.connect(config);
+    try
+    {
+        let pool = await getPool('MoldPool', config);
         let { DocumentID, DocumentName, DocumentCtrlNo } = req.body;
         let updateDocCrtl = `
         DECLARE @DocumentID INT
