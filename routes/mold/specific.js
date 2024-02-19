@@ -86,13 +86,14 @@ router.post('/detail', async (req, res) => {
 
         let moldDetail = await pool.request().query(`SELECT a.MachineSpec, a.ProductSpec, a.MoldSpec,
         a.hvtPicture, a.MoldSpecFile, a.MoldPicture, a.MoldDrawing1, a.MoldDrawing2,
-        b.FirstName AS IssueBy, a.IssueTime,
-        c.FirstName AS CheckBy, a.CheckTime,
-        d.FirstName AS ApproveBy, a.ApproveTime
+        b.FirstName AS IssueBy, s.IssueTime,
+        c.FirstName AS CheckBy, s.CheckTime,
+        d.FirstName AS ApproveBy, s.ApproveTime
         FROM [Mold].[SpecificationDetail] a
-        LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.IssueBy
-        LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.CheckBy
-        LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = a.ApproveBy
+        LEFT JOIN [Mold].[Specification] s ON s.MoldSpecID = a.MoldSpecID
+        LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmpployeeID = s.IssueBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmpployeeID = s.CheckBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmpployeeID = s.ApproveBy
         WHERE a.DetailID = ${DetailID};
         `);
         res.json(moldDetail.recordset);
