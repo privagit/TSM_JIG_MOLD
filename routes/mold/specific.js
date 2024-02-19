@@ -86,9 +86,9 @@ router.post('/detail', async (req, res) => {
 
         let moldDetail = await pool.request().query(`SELECT a.MachineSpec, a.ProductSpec, a.MoldSpec,
         a.hvtPicture, a.MoldSpecFile, a.MoldPicture, a.MoldDrawing1, a.MoldDrawing2,
-        b.FirstName AS IssueBy, a.IssueSignTime,
-        c.FirstName AS CheckBy, a.CheckSignTime,
-        d.FirstName AS ApproveBy, a.ApproveSignTime
+        b.FirstName AS IssueBy, a.IssueTime,
+        c.FirstName AS CheckBy, a.CheckTime,
+        d.FirstName AS ApproveBy, a.ApproveTime
         FROM [Mold].[SpecificationDetail] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.IssueBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.CheckBy
@@ -263,7 +263,7 @@ router.post('/sign/issue', async (req, res) => {
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signRepair = `UPDATE [Mold].[Specification] SET IssueBy = ${IssueBy}, IssueSignTime = '${curStr}' WHERE MoldSpecID = ${MoldSpecID};`;
+        let signRepair = `UPDATE [Mold].[Specification] SET IssueBy = ${IssueBy}, IssueTime = '${curStr}' WHERE MoldSpecID = ${MoldSpecID};`;
         await pool.request().query(signRepair);
 
         res.json({ message: 'Success', Username: !getUser.recordset.length ? null : atob(getUser.recordset[0].FirstName), SignTime: curStr });
@@ -282,7 +282,7 @@ router.post('/sign/check', async (req, res) => {
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signRepair = `UPDATE [Mold].[SpecificationDetail] SET CheckBy = ${CheckBy}, CheckSignTime = '${curStr}' WHERE MoldSpecID = ${MoldSpecID};`;
+        let signRepair = `UPDATE [Mold].[Specification] SET CheckBy = ${CheckBy}, CheckTime = '${curStr}' WHERE MoldSpecID = ${MoldSpecID};`;
         await pool.request().query(signRepair);
 
         res.json({ message: 'Success', Username: !getUser.recordset.length ? null : atob(getUser.recordset[0].FirstName), SignTime: curStr });
@@ -301,7 +301,7 @@ router.post('/sign/approve', async (req, res) => { // Approve => Receive
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signRepair = `UPDATE [Mold].[SpecificationDetail] SET ApproveBy = ${ApproveBy}, ApproveSignTime = '${curStr}' WHERE MoldSpecID = ${MoldSpecID};`;
+        let signRepair = `UPDATE [Mold].[Specification] SET ApproveBy = ${ApproveBy}, ApproveTime = '${curStr}' WHERE MoldSpecID = ${MoldSpecID};`;
         await pool.request().query(signRepair);
 
         // approve => Receive
