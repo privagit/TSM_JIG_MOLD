@@ -4,7 +4,7 @@ const config = require('../../lib/dbconfig').dbconfig_mold;
 const { getPool } = require('../../middlewares/pool-manager');
 
 //* ========== Plan Confirm ==========
-router.post('/', async (req, res) => { //TODO: PlanTime, From, To, WarrantyShot
+router.post('/', async (req, res) => { //TODO: PlanTime, From, To, WarrantyShot, RepairProcess
     try {
         let pool = await getPool('MoldPool', config);
         let { Status } = req.body;
