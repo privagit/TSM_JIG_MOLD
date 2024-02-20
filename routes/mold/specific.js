@@ -92,6 +92,10 @@ router.post('/detail', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = s.ApproveBy
         WHERE a.DetailID = ${DetailID};
         `);
+
+        moldDetail.recordset[0].IssueBy = atob(moldDetail.recordset[0]?.IssueBy || '');
+        moldDetail.recordset[0].CheckBy = atob(moldDetail.recordset[0]?.CheckBy || '');
+        moldDetail.recordset[0].ApproveBy = atob(moldDetail.recordset[0]?.ApproveBy || '');
         res.json(moldDetail.recordset);
     } catch (err) {
         console.log(req.url, err);
@@ -102,13 +106,23 @@ router.post('/detail/edit', async (req, res) => { // Update Spec Status = 2(Wait
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldSpecID, MachineSpec, ProductSpec, MoldSpec } = req.body;
-        let updateSpecDetail = `INSERT INTO [Mold].[SpecificationDetail](MoldSpecID, MachineSpec, ProductSpec, MoldSpec, EditTime,
-            MoldPicture, hvtPicture, MoldDrawing1, MoldDrawing2, MoldSpecFile)
-        SELECT TOP(1) ${MoldSpecID}, N'${MachineSpec}', N'${ProductSpec}', N'${MoldSpec}', GETDATE(),
-        MoldPicture, hvtPicture, MoldDrawing1, MoldDrawing2, MoldSpecFile
+        let updateSpecDetail = `
+        DECLARE @MoldPicture NVARCHAR(255),
+        @hvtPicture NVARCHAR(255),
+        @MoldDrawing1 NVARCHAR(255),
+        @MoldDrawing2 NVARCHAR(255),
+        @MoldSpecFile NVARCHAR(255);
+
+        SELECT TOP(1) @MoldPicture = MoldPicture, @hvtPicture = hvtPicture,
+        @MoldDrawing1 = MoldDrawing1, @MoldDrawing2 = MoldDrawing2, @MoldSpecFile = MoldSpecFile
         FROM [Mold].[SpecificationDetail] a
         WHERE a.MoldSpecID = ${MoldSpecID}
         ORDER BY a.EditTime DESC;
+
+        INSERT INTO [Mold].[SpecificationDetail](MoldSpecID, MachineSpec, ProductSpec, MoldSpec, EditTime,
+            MoldPicture, hvtPicture, MoldDrawing1, MoldDrawing2, MoldSpecFile)
+        VALUES(${MoldSpecID}, N'${MachineSpec}', N'${ProductSpec}', N'${MoldSpec}', GETDATE(),
+            @MoldPicture, @hvtPicture, @MoldDrawing1, @MoldDrawing2, @MoldSpecFile);
 
         UPDATE [Mold].[Specification] SET Status = 2 WHERE MoldSpecID = ${MoldSpecID}; -- Update Status to Wait Approve
         `;
@@ -308,7 +322,7 @@ router.post('/sign/approve', async (req, res) => { // Approve => Receive, Update
         VALUES(${MoldSpecID}, 1);
 
         DECLARE @TakeoutID INT;
-        SET @TakeoutID = (SELECT SCOPE _IDENTITY());
+        SET @TakeoutID = (SELECT SCOPE_IDENTITY());
         INSERT INTO [Mold].[MoldReceive](TakeoutID) VALUES(@TakeoutID);
         `;
         await pool.request().query(insertReceive);
@@ -330,7 +344,7 @@ router.post('/receive/detail', async (req, res) => {
         a.MoldSize, a.CustomerMoldWarranty, a.MoldType, a.Model,
         a.AppearanceInspect, a.MoldStructure, a.Remark, a.ImagePath,
         b.FirstName AS MoldIssueBy, c.FirstName AS MoldCheckBy, d.FirstName AS MoldApproveBy,
-        e.FirstName AS EnCheckBy, f.FirstName AS EnApproveBy
+        e.FirstName AS EnCheckBy, f.FirstName AS EnApproveBy, a.DocumentCtrlNo
         FROM [Mold].[MoldReceive] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.MoldIssueBy = b.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.MoldCheckBy = c.EmployeeID
@@ -358,3 +372,10 @@ router.post('/receive/detail', async (req, res) => {
 })
 
 module.exports = router;
+
+//* Specicification Status
+// 1: Issue
+// 2: Wait Approve => หลังจากแก้ไข Specification Detail
+// 3: Wait Receive => หลังจาก Approve Specification
+// 4: Mold Receive(Wait EN) => หลังจาก Mold Approve Receive
+// 5: Complete => หลังจาก Engineer Approve Receive

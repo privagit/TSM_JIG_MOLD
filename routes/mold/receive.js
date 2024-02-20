@@ -143,7 +143,9 @@ router.post('/takeout', async (req, res) => { // ดูใบ takeout
         let pool = await getPool('MoldPool', config);
         let { TakeoutID } = req.body;
         let takeout = await pool.request().query(`SELECT a.Remark, a.Note, a.TakeoutImagePath, CarNo,
-        b.FirstName AS IssueBy, c.FirstName AS ApproveBy, d.FirstName AS ReceiveBy
+        b.FirstName AS IssueBy, a.IssueTime,
+        c.FirstName AS ApproveBy, a.ApproveTime,
+        d.FirstName AS ReceiveBy, r.ReceiveTime
         FROM [Mold].[MoldTakeout] a
         LEFT JOIN [Mold].[MoldReceive] r ON r.TakeoutID = a.TakeoutID
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.IssueBy = b.EmployeeID
@@ -219,7 +221,7 @@ router.post('/receive/detail', async (req, res) => {
         a.MoldSize, a.MoldType, a.Model,
         a.AppearanceInspect, a.MoldStructure, a.Remark, 
         b.FirstName AS MoldIssueBy, c.FirstName AS MoldCheckBy, d.FirstName AS MoldApproveBy,
-        e.FirstName AS EnCheckBy, f.FirstName AS EnApproveBy
+        e.FirstName AS EnCheckBy, f.FirstName AS EnApproveBy, a.DocumentCtrlNo
         FROM [Mold].[MoldReceive] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.MoldIssueBy = b.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.MoldCheckBy = c.EmployeeID
@@ -434,3 +436,9 @@ router.post('/sign/en/approve', async (req, res) => { // update TakeoutStatus = 
 })
 
 module.exports = router
+
+//* Receive Status
+// 1: Wait Receive => มาจาก New Mold หลังจาก EN Approve Specification
+// 2: Takeout => หลังจากกด Takeout
+// 3: Wait EN => หลังจาก Mold Approve Receive
+// 4: Complete => หลังจาก Engineer Approve Receive
