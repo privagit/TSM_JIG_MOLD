@@ -13,14 +13,14 @@ router.post('/list', async (req, res) => { //TODO: Status, where
         let { Status } = req.body;
         let receiveList = await pool.request().query(`
         WITH NewMold AS (
-            SELECT c.MoldReceiveID, b.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
+            SELECT c.ReceiveID, b.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
             a.IssueTime, a.ReceiveTime, c.MoldApprovBy, c.EnApprovBy
             FROM [Mold].[MoldTakeout] a
             INNER JOIN [Mold].[Specification] b ON b.MoldSpecID = a.MoldSpecID
             LEFT JOIN [Mold].[MoldReceive] c ON c.TakeoutID = a.TakeoutID
             WHERE a.TakeoutType = 1
         ), TakeoutMold AS (
-            SELECT b.MoldReceiveID, a.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
+            SELECT b.ReceiveID, a.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
             a.IssueTime, a.ReceiveTime, b.MoldApprovBy, b.EnApprovBy
             FROM [Mold].[MoldTakeout] a
             LEFT JOIN [Mold].[MoldReceive] b ON b.TakeoutID = a.TakeoutID
@@ -31,7 +31,7 @@ router.post('/list', async (req, res) => { //TODO: Status, where
             UNION ALL
             SELECT * FROM [TakeoutMold]
         )
-        SELECT MoldReceiveID, MoldSpecID, MoldID, TakeoutType, TakeoutStatus, BasicMold, DieNo, MoldControlNo,
+        SELECT ReceiveID, MoldSpecID, MoldID, TakeoutType, TakeoutStatus, BasicMold, DieNo, MoldControlNo,
             IssueTime, ReceiveTime, MoldApprovBy, EnApprovBy
         FROM [tbsum]
         `);
