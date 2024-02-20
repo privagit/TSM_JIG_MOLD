@@ -319,7 +319,7 @@ router.post('/sign/approve', async (req, res) => { // Approve => Receive, Update
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
         let signRepair = `UPDATE [Mold].[Specification] SET ApproveBy = ${ApproveBy}, ApproveTime = '${curStr}', Status = 3 WHERE MoldSpecID = ${MoldSpecID};`;
         await pool.request().query(signRepair);
-
+        
         // approve => Receive
         // Insert Takeout { TakeoutType = 1(New Mold)}
         let insertReceive = `INSERT INTO [Mold].[MoldTakeout](MoldSpecID, TakeoutType)
