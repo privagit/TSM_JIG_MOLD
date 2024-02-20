@@ -75,7 +75,7 @@ router.post('/receive/item', async (req, res) => { //TODO: BasicMold, DieNo, Qty
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.ReceiveBy
         WHERE a.ReceiveID = ${ReceiveID};
         `);
-        receive.recordset[0]?.ReceiveBy = atob(receive.recordset[0]?.ReceiveBy || '');
+        receive.recordset[0].ReceiveBy = atob(receive.recordset[0]?.ReceiveBy || '');
         res.json(receive.recordset);
     } catch (err) {
         console.log(req.url, err);
@@ -151,9 +151,9 @@ router.post('/takeout', async (req, res) => { // ดูใบ takeout
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON r.ReceiveBy = d.EmployeeID
         WHERE a.TakeoutID = ${TakeoutID};
         `);
-        takeout.recordset[0]?.IssueBy = atob(takeout.recordset[0]?.IssueBy || '');
-        takeout.recordset[0]?.ApproveBy = atob(takeout.recordset[0]?.ApproveBy || '');
-        takeout.recordset[0]?.ReceiveBy = atob(takeout.recordset[0]?.ReceiveBy || '');
+        takeout.recordset[0].IssueBy = atob(takeout.recordset[0]?.IssueBy || '');
+        takeout.recordset[0].ApproveBy = atob(takeout.recordset[0]?.ApproveBy || '');
+        takeout.recordset[0].ReceiveBy = atob(takeout.recordset[0]?.ReceiveBy || '');
         // let { MoldID, TakeoutDate, Loation, Remark, Note } = req.body;
         // let insertTakeout = `INSERT INTO [Mold].[MoldTakeout](MoldID, TakeoutDate, Location, Remark, Note)
         // VALUES(${MoldID}, '${TakeoutDate}', N'${Loation}', N'${Remark}', N'${Note}');
@@ -434,3 +434,9 @@ router.post('/sign/en/approve', async (req, res) => { // update TakeoutStatus = 
 })
 
 module.exports = router
+
+//* Receive Status
+// 1: Wait Receive => มาจาก New Mold หลังจาก EN Approve Specification
+// 2: Takeout => หลังจากกด Takeout
+// 3: Wait EN => หลังจาก Mold Approve Receive
+// 4: Complete => หลังจาก Engineer Approve Receive

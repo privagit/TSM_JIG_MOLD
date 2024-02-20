@@ -108,13 +108,23 @@ router.post('/detail/edit', async (req, res) => { // Update Spec Status = 2(Wait
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldSpecID, MachineSpec, ProductSpec, MoldSpec } = req.body;
-        let updateSpecDetail = `INSERT INTO [Mold].[SpecificationDetail](MoldSpecID, MachineSpec, ProductSpec, MoldSpec, EditTime,
-            MoldPicture, hvtPicture, MoldDrawing1, MoldDrawing2, MoldSpecFile)
-        SELECT TOP(1) ${MoldSpecID}, N'${MachineSpec}', N'${ProductSpec}', N'${MoldSpec}', GETDATE(),
-        MoldPicture, hvtPicture, MoldDrawing1, MoldDrawing2, MoldSpecFile
+        let updateSpecDetail = `
+        DECLARE @MoldPicture NVARCHAR(255),
+        @hvtPicture NVARCHAR(255),
+        @MoldDrawing1 NVARCHAR(255),
+        @MoldDrawing2 NVARCHAR(255),
+        @MoldSpecFile NVARCHAR(255);
+
+        SELECT TOP(1) @MoldPicture = MoldPicture, @hvtPicture = hvtPicture,
+        @MoldDrawing1 = MoldDrawing1, @MoldDrawing2 = MoldDrawing2, @MoldSpecFile = MoldSpecFile
         FROM [Mold].[SpecificationDetail] a
         WHERE a.MoldSpecID = ${MoldSpecID}
         ORDER BY a.EditTime DESC;
+
+        INSERT INTO [Mold].[SpecificationDetail](MoldSpecID, MachineSpec, ProductSpec, MoldSpec, EditTime,
+            MoldPicture, hvtPicture, MoldDrawing1, MoldDrawing2, MoldSpecFile)
+        VALUES(${MoldSpecID}, N'${MachineSpec}', N'${ProductSpec}', N'${MoldSpec}', GETDATE(),
+            @MoldPicture, @hvtPicture, @MoldDrawing1, @MoldDrawing2, @MoldSpecFile);
 
         UPDATE [Mold].[Specification] SET Status = 2 WHERE MoldSpecID = ${MoldSpecID}; -- Update Status to Wait Approve
         `;
@@ -364,3 +374,10 @@ router.post('/receive/detail', async (req, res) => {
 })
 
 module.exports = router;
+
+//* Specicification Status
+// 1: Issue
+// 2: Wait Approve => หลังจากแก้ไข Specification Detail
+// 3: Wait Receive => หลังจาก Approve Specification
+// 4: Mold Receive(Wait EN) => หลังจาก Mold Approve Receive
+// 5: Complete => หลังจาก Engineer Approve Receive
