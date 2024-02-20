@@ -79,9 +79,9 @@ router.post('/detail', async (req, res) => {
         d.FirstName AS ApproveBy, s.ApproveTime
         FROM [Mold].[SpecificationDetail] a
         LEFT JOIN [Mold].[Specification] s ON s.MoldSpecID = a.MoldSpecID
-        LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmpployeeID = s.IssueBy
-        LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmpployeeID = s.CheckBy
-        LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmpployeeID = s.ApproveBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = s.IssueBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = s.CheckBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = s.ApproveBy
         WHERE a.DetailID = ${DetailID};
         `);
         res.json(moldDetail.recordset);
