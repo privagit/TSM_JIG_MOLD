@@ -8,10 +8,11 @@ const { getPool } = require('../../middlewares/pool-manager');
 
 
 //* ========== Receive List ==========
-router.post('/list', async (req, res) => { //TODO: Status, where
+// TakeoutStatus : { 1: Wait Receive(New Mold), 2: Takeout, 3: Wait EN, 4: Complete }
+router.post('/list', async (req, res) => { //TODO: where
     try {
         let pool = await getPool('MoldPool', config);
-        let { Status } = req.body;
+        let { TakeoutStatus } = req.body;
         let receiveList = await pool.request().query(`
         WITH NewMold AS (
             SELECT c.ReceiveID, b.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
@@ -36,6 +37,10 @@ router.post('/list', async (req, res) => { //TODO: Status, where
             IssueTime, ReceiveTime, MoldApprovBy, EnApprovBy
         FROM [tbsum]
         `);
+        if(TakeoutStatus){
+            let receiveListFiltered = receiveList.recordset.filter(v => v.TakeoutStatus == TakeoutStatus);
+            return res.json(receiveListFiltered);
+        }
         res.json(receiveList.recordset);
     } catch (err) {
         console.log(req.url, err);
@@ -52,7 +57,7 @@ router.post('/receive', async (req, res) => { //! ???
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/takeout', async (req, res) => { //TODO: CarNo.
+router.post('/takeout', async (req, res) => { //TODO: ดูใบ takeout, CarNo.
     try {
         let pool = await getPool('MoldPool', config);
         let { TakeoutID } = req.body;
@@ -81,7 +86,7 @@ router.post('/takeout', async (req, res) => { //TODO: CarNo.
 })
 
 //* ========== Specification Detail ==========
-router.post('/specification/detail/history', async (req, res) => {
+router.post('/specification/detail/history', async (req, res) => { // ดูอย่างเดียว
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldID } = req.body;
@@ -97,7 +102,7 @@ router.post('/specification/detail/history', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/specification/detail', async (req, res) => {
+router.post('/specification/detail', async (req, res) => { // ดูอย่างเดียว
     try {
         let pool = await getPool('MoldPool', config);
         let { DetailID } = req.body;
@@ -126,7 +131,7 @@ router.post('/receive/detail', async (req, res) => {
         let { ReceiveID } = req.body;
         let moldReceive = await pool.request().query(`SELECT a.ReceiveID, a.TakeoutID,
         a.BasicMold, a.DieNo, a.MoldControlNo, a.PartName, a.MaterialGrade, a.GuaranteeShot, a.MoldWeight, a.Cavity,
-        a.MoldSize, a.CustomerMoldWarranty, a.MoldType, a.Model,
+        a.MoldSize, a.MoldType, a.Model,
         a.AppearanceInspect, a.MoldStructure, a.Remark, a.ImagePath,
         b.FirstName AS MoldIssueBy, c.FirstName AS MoldCheckBy, d.FirstName AS MoldApproveBy,
         e.FirstName AS EnCheckBy, f.FirstName AS EnApproveBy
@@ -159,10 +164,10 @@ router.post('/receive/detail/edit', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { ReceiveID, BasicMold, DieNo, MoldControlNo, PartName, MaterialGrade, GuaranteeShot, MoldWeight, Cavity,
-            MoldSize, CustomerMoldWarranty, MoldType, Model, AppearanceInspect, MoldStructure, Remark } = req.body;
+            MoldSize, MoldType, Model, AppearanceInspect, MoldStructure, Remark } = req.body;
         let updateReceive = `UPDATE [Mold].[Receive] SET BasicMold = N'${BasicMold}', DieNo = N'${DieNo}', MoldControlNo = N'${MoldControlNo}',
         PartName = N'${PartName}', MaterialGrade = N'${MaterialGrade}', GuaranteeShot = N'${GuaranteeShot}', MoldWeight = N'${MoldWeight}',
-        Cavity = N'${Cavity}', MoldSize = N'${MoldSize}', CustomerMoldWarranty = N'${CustomerMoldWarranty}', MoldType = N'${MoldType}',
+        Cavity = N'${Cavity}', MoldSize = N'${MoldSize}', MoldType = N'${MoldType}',
         Model = N'${Model}', AppearanceInspect = N'${AppearanceInspect}', MoldStructure = N'${MoldStructure}', Remark = N'${Remark}'
         WHERE ReceiveID = ${ReceiveID};
         `;
@@ -247,7 +252,7 @@ router.post('/sign/mold/check', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/sign/mold/approve', async (req, res) => {
+router.post('/sign/mold/approve', async (req, res) => { // update TakeoutStatus = 3(Wait EN), if New Mold Update Spec Status = 4(Mold Received)
     try {
         let pool = await getPool('MoldPool', config);
         let { ReceiveID, ApproveBy } = req.body;
@@ -257,10 +262,28 @@ router.post('/sign/mold/approve', async (req, res) => {
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signApprove = `UPDATE [Mold].[MoldReceive] SET ApproveBy = ${ApproveBy}, ApproveSignTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};`;
-        await pool.request().query(signApprove);
+        let signApprove = `UPDATE [Mold].[MoldReceive] SET ApproveBy = ${ApproveBy}, ApproveSignTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};
 
-        
+        DECLARE @TakeoutID INT,
+        @TakeoutType INT,
+        @MoldSpecID INT;
+
+        -- Set Value
+        SELECT @TakeoutID = b.TakeoutID, @TakeoutType = TakeoutType, @MoldSpecID = MoldSpecID
+        FROM [Mold].[MoldReceive] a
+        LEFT JOIN [Mold].[MoldTakeout] b ON b.TakeoutID = a.TakeoutID
+        WHERE ReceiveID = ${ReceiveID};
+
+        -- Update TakeoutStatus = 3(Wait EN)
+        UPDATE [Mold].[MoldTakeout] SET TakeoutStatus = 3 WHERE TakeoutID = @TakeoutID;
+
+        -- Check TakeoutType 1: New Mold
+        IF(@TakeoutType = 1)
+        BEGIN
+            UPDATE [Mold].[Specification] SET Status = 4 MoldSpecID = @MoldSpecID;
+        END;
+        `;
+        await pool.request().query(signApprove);
 
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
@@ -287,7 +310,7 @@ router.post('/sign/en/check', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/sign/en/approve', async (req, res) => {
+router.post('/sign/en/approve', async (req, res) => { // update TakeoutStatus = 4(Complete), if New Mold update SpecStatus = 5(Complete), add to Master
     try {
         let pool = await getPool('MoldPool', config);
         let { ReceiveID, ApproveBy } = req.body;
@@ -297,7 +320,34 @@ router.post('/sign/en/approve', async (req, res) => {
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signApprove = `UPDATE [Mold].[MoldReceive] SET ApproveBy = ${ApproveBy}, ApproveSignTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};`;
+        let signApprove = `UPDATE [Mold].[MoldReceive] SET ApproveBy = ${ApproveBy}, ApproveSignTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};
+
+        DECLARE @TakeoutID INT,
+        @TakeoutType INT,
+        @MoldSpecID INT;
+
+        -- Set Value
+        SELECT @TakeoutID = a.TakeoutID, @TakeoutType = TakeoutType, @MoldSpecID = MoldSpecID
+        FROM [Mold].[MoldReceive] a
+        LEFT JOIN [Mold].[MoldTakeout] b ON b.TakeoutID = a.TakeoutID
+        WHERE ReceiveID = ${ReceiveID};
+
+        -- Update TakeoutStatus = 4(Complete)
+        UPDATE [Mold].[MoldTakeout] SET TakeoutStatus = 4 WHERE TakeoutID = @TakeoutID;
+
+        -- Check TakeoutType 1: New Mold
+        IF(@TakeoutType = 1)
+        BEGIN
+            UPDATE [Mold].[Specification] SET Status = 5 MoldSpecID = @MoldSpecID;
+
+            INSERT INTO [Mold].[MasterMold](MoldControlNo, BasicMold, DieNo, MoldName, CustomerID, Cavity, RawMaterial, ReceivedDate, MoldSpecID, Status, Active)
+            SELECT a.MoldControlNo, a.BasicMold, a.DieNo, a.PartName, c.CustomerID, a.Cavity, a.MaterialGrade, a.ReceiveTime, b.MoldSpecID, 1, 1
+            FROM [Mold].[MoldReceive] a
+            LEFT JOIN [Mold].[MoldTakeout] b ON b.TakeoutID = a.TakeoutID
+            LEFT JOIN [Mold].[Specification] c ON c.MoldSpecID = b.MoldSpecID
+            WHERE a.ReceiveID = ${ReceiveID};
+        END;
+        `;
         await pool.request().query(signApprove);
 
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
