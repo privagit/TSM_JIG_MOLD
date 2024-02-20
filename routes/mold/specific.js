@@ -6,6 +6,7 @@ const path = require('path');
 const { getPool } = require('../../middlewares/pool-manager');
 
 //* ========== Mold Specific List ==========
+// Specific Status: { 1: Issue, 2: Wait Approve, 3: Wait Receive, 4: Mold Received, 5: Complete }
 router.post('/list', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
@@ -16,7 +17,6 @@ router.post('/list', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
         WHERE Active = 1 AND MONTH(a.IssuedDate) = ${month} AND YEAR(a.IssuedDate) = ${year};
         `);
-
         if(Status){
             let moldSpecificListFiltered = moldSpecificList.recordset.filter(v => v.Status == Status);
             return res.json(moldSpecificListFiltered);
@@ -32,8 +32,10 @@ router.post('/add', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { CustomerID, PartCode, PartName, AxMoldNo, Model } = req.body;
-        let insertSpecific = `INSERT INTO [Mold].[Specification](CustomerID, PartCode, PartName, AxMoldNo, Model, Active)
-        VALUES(${CustomerID}, N'${PartCode}', N'${PartName}', '${AxMoldNo}', N'${Model}', 1);
+
+        // insert Specific
+        let insertSpecific = `INSERT INTO [Mold].[Specification](CustomerID, PartCode, PartName, AxMoldNo, Model, Status, Active)
+        VALUES(${CustomerID}, N'${PartCode}', N'${PartName}', '${AxMoldNo}', N'${Model}', 1, 1);
 
         DECLARE @MoldSpecID INT;
         SET @MoldSpecID = (SELECT SCOPE_IDENTITY());
@@ -112,18 +114,19 @@ router.post('/detail', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/detail/edit', async (req, res) => {
+router.post('/detail/edit', async (req, res) => { // Update Spec Status = 2(Wait Approve)
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldSpecID, MachineSpec, ProductSpec, MoldSpec } = req.body;
         let updateSpecDetail = `INSERT INTO [Mold].[SpecificationDetail](MoldSpecID, MachineSpec, ProductSpec, MoldSpec, EditTime,
             MoldPicture, hvtPicture, MoldDrawing1, MoldDrawing2, MoldSpecFile)
-
         SELECT TOP(1) ${MoldSpecID}, N'${MachineSpec}', N'${ProductSpec}', N'${MoldSpec}', GETDATE(),
         MoldPicture, hvtPicture, MoldDrawing1, MoldDrawing2, MoldSpecFile
         FROM [Mold].[SpecificationDetail] a
         WHERE a.MoldSpecID = ${MoldSpecID}
-        ORDER BY a.EditTime DESC
+        ORDER BY a.EditTime DESC;
+
+        UPDATE [Mold].[Specification] SET Status = 2 WHERE MoldSpecID = ${MoldSpecID}; -- Update Status to Wait Approve
         `;
         await pool.request().query(updateSpecDetail);
         res.json({ message: 'Success' });
@@ -302,7 +305,7 @@ router.post('/sign/check', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/sign/approve', async (req, res) => { // Approve => Receive
+router.post('/sign/approve', async (req, res) => { // Approve => Receive, Update Spec Status = 3(Wait Receive)
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldSpecID, ApproveBy } = req.body;
@@ -312,7 +315,7 @@ router.post('/sign/approve', async (req, res) => { // Approve => Receive
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signRepair = `UPDATE [Mold].[Specification] SET ApproveBy = ${ApproveBy}, ApproveTime = '${curStr}' WHERE MoldSpecID = ${MoldSpecID};`;
+        let signRepair = `UPDATE [Mold].[Specification] SET ApproveBy = ${ApproveBy}, ApproveTime = '${curStr}', Status = 3 WHERE MoldSpecID = ${MoldSpecID};`;
         await pool.request().query(signRepair);
 
         // approve => Receive
