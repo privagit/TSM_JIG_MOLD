@@ -83,8 +83,8 @@ router.post('/detail', async (req, res) => {
         let pool = await getPool('MoldPool', config);
         let { DetailID } = req.body;
         if(!DetailID) return res.json([]);
-       
-        let moldDetail = await pool.request().query(`SELECT a.MachineSpec, a.ProductSpec, a.MoldSpec,
+
+        let moldDetail = await pool.request().query(`SELECT a.MachineSpec, a.ProductSpec, a.MoldSpec, a.DocumentCtrlNo,
         a.hvtPicture, a.MoldSpecFile, a.MoldPicture, a.MoldDrawing1, a.MoldDrawing2,
         b.FirstName AS IssueBy, s.IssueTime,
         c.FirstName AS CheckBy, s.CheckTime,
@@ -326,7 +326,7 @@ router.post('/sign/approve', async (req, res) => { // Approve => Receive, Update
         VALUES(${MoldSpecID}, 1);
 
         DECLARE @TakeoutID INT;
-        SET @TakeoutID = (SELECT SCOPE _IDENTITY());
+        SET @TakeoutID = (SELECT SCOPE_IDENTITY());
         INSERT INTO [Mold].[MoldReceive](TakeoutID) VALUES(@TakeoutID);
         `;
         await pool.request().query(insertReceive);

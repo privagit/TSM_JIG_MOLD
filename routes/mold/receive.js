@@ -143,7 +143,9 @@ router.post('/takeout', async (req, res) => { // ดูใบ takeout
         let pool = await getPool('MoldPool', config);
         let { TakeoutID } = req.body;
         let takeout = await pool.request().query(`SELECT a.Remark, a.Note, a.TakeoutImagePath, CarNo,
-        b.FirstName AS IssueBy, c.FirstName AS ApproveBy, d.FirstName AS ReceiveBy
+        b.FirstName AS IssueBy, a.IssueTime,
+        c.FirstName AS ApproveBy, a.ApproveTime,
+        d.FirstName AS ReceiveBy, r.ReceiveTime
         FROM [Mold].[MoldTakeout] a
         LEFT JOIN [Mold].[MoldReceive] r ON r.TakeoutID = a.TakeoutID
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.IssueBy = b.EmployeeID
@@ -191,7 +193,7 @@ router.post('/specification/detail', async (req, res) => { // ดูอย่า
     try {
         let pool = await getPool('MoldPool', config);
         let { DetailID } = req.body;
-        let moldDetail = await pool.request().query(`SELECT a.MachineSpec, a.ProductSpec, a.MoldSpec,
+        let moldDetail = await pool.request().query(`SELECT a.MachineSpec, a.ProductSpec, a.MoldSpec, a.DocumentCtrlNo,
         a.hvtPicture, a.MoldSpecFile, a.MoldPicture, a.MoldDrawing1, a.MoldDrawing2,
         b.FirstName AS IssueBy, a.IssueSignTime,
         c.FirstName AS CheckBy, a.CheckSignTime,
