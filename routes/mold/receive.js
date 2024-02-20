@@ -125,7 +125,7 @@ router.post('/receive/detail', async (req, res) => {
         let { ReceiveID } = req.body;
         let moldReceive = await pool.request().query(`SELECT a.ReceiveID, a.TakeoutID,
         a.BasicMold, a.DieNo, a.MoldControlNo, a.PartName, a.MaterialGrade, a.GuaranteeShot, a.MoldWeight, a.Cavity,
-        a.MoldSize, a.CustomerMoldWarranty, a.MoldType, a.Model,
+        a.MoldSize, a.MoldType, a.Model,
         a.AppearanceInspect, a.MoldStructure, a.Remark, a.ImagePath,
         b.FirstName AS MoldIssueBy, c.FirstName AS MoldCheckBy, d.FirstName AS MoldApproveBy,
         e.FirstName AS EnCheckBy, f.FirstName AS EnApproveBy
@@ -158,10 +158,10 @@ router.post('/receive/detail/edit', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { ReceiveID, BasicMold, DieNo, MoldControlNo, PartName, MaterialGrade, GuaranteeShot, MoldWeight, Cavity,
-            MoldSize, CustomerMoldWarranty, MoldType, Model, AppearanceInspect, MoldStructure, Remark } = req.body;
+            MoldSize, MoldType, Model, AppearanceInspect, MoldStructure, Remark } = req.body;
         let updateReceive = `UPDATE [Mold].[Receive] SET BasicMold = N'${BasicMold}', DieNo = N'${DieNo}', MoldControlNo = N'${MoldControlNo}',
         PartName = N'${PartName}', MaterialGrade = N'${MaterialGrade}', GuaranteeShot = N'${GuaranteeShot}', MoldWeight = N'${MoldWeight}',
-        Cavity = N'${Cavity}', MoldSize = N'${MoldSize}', CustomerMoldWarranty = N'${CustomerMoldWarranty}', MoldType = N'${MoldType}',
+        Cavity = N'${Cavity}', MoldSize = N'${MoldSize}', MoldType = N'${MoldType}',
         Model = N'${Model}', AppearanceInspect = N'${AppearanceInspect}', MoldStructure = N'${MoldStructure}', Remark = N'${Remark}'
         WHERE ReceiveID = ${ReceiveID};
         `;
