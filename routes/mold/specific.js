@@ -97,6 +97,9 @@ router.post('/detail', async (req, res) => {
         WHERE a.DetailID = ${DetailID};
         `);
 
+        moldDetail.recordset[0].IssueBy = atob(moldDetail.recordset[0]?.IssueBy || '');
+        moldDetail.recordset[0].CheckBy = atob(moldDetail.recordset[0]?.CheckBy || '');
+        moldDetail.recordset[0].ApproveBy = atob(moldDetail.recordset[0]?.ApproveBy || '');
         res.json(moldDetail.recordset);
     } catch (err) {
         console.log(req.url, err);
