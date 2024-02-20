@@ -6,6 +6,24 @@ const multer = require('multer');
 const path = require('path');
 const { getPool } = require('../../middlewares/pool-manager');
 
+//* ========== Declare Multer Store ==========
+const storageReceiveImage = multer.diskStorage({
+    destination: path.join(__dirname, '../../public/mold/receive'),
+    filename: (req, file, cb) => {
+        const ext = file.mimetype.split('/')[1];
+        cb(null, Date.now() + '.' + ext);
+    }
+});
+const uploadReceiveImage = multer({ storage: storageReceiveImage }).single('receive');
+
+const storageReceiveDetailImage = multer.diskStorage({
+    destination: path.join(__dirname, '../../public/mold/receive_detail'),
+    filename: (req, file, cb) => {
+        const ext = file.mimetype.split('/')[1];
+        cb(null, Date.now() + '.' + ext);
+    }
+});
+const uploadReceiveDetailImage = multer({ storage: storageReceiveDetailImage }).single('receive_detail');
 
 //* ========== Receive List ==========
 // TakeoutStatus : { 1: Wait Receive(New Mold), 2: Takeout, 3: Wait EN, 4: Complete }
@@ -47,16 +65,78 @@ router.post('/list', async (req, res) => { //TODO: where
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/receive', async (req, res) => { //! ???
+router.post('/receive/item', async (req, res) => { // Modal Receive
     try {
         let pool = await getPool('MoldPool', config);
-        let { MoldSpecID, MoldID } = req.body;
-
+        let { ReceiveID } = req.body;
+        let receive = await pool.request().query(`SELECT a.ReceiveRemark, a.ReceiveImagePath,
+        b.FirstName AS ReceiveBy, a.ReceiveTime
+        FROM [Mold].[MoldReceive] a
+        LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.ReceiveBy
+        WHERE a.ReceiveID = ${ReceiveID};
+        `);
+        receive.recordset[0]?.ReceiveBy = atob(receive.recordset[0]?.ReceiveBy || '');
+        res.json(receive.recordset);
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
     }
 })
+router.post('/receive/item/edit', async (req, res) => { // Modal Receive Edit
+    try {
+        let pool = await getPool('MoldPool', config);
+        let { ReceiveID, ReceiveRemark } = req.body;
+        let updateReceive = `UPDATE [Mold].[MoldReceive] SET ReceiveRemark = N'${ReceiveRemark}' WHERE ReceiveID = ${ReceiveID};`;
+        await pool.request().query(updateReceive);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/receive/item/image/upload', async (req, res) => { // Modal Receive Upload Img
+    uploadReceiveImage(req, res, async (err) => {
+        if (err) {
+            console.log(req.url, 'Upload ERROR', err);
+            res.status(500).send({ message: `${err}` });
+        } else {
+            try {
+                let pool = await getPool('MoldPool', config);
+                let { ReceiveID } = req.body;
+                let ImagePath = (req.file) ? "/mold/receive/" + req.file.filename : ""
+                let updateImagePath = `UPDATE [Mold].[MoldRceive] SET ReceiveImagePath = N'${ImagePath}' WHERE ReceiveID = ${ReceiveID};`;
+                await pool.request().query(updateImagePath);
+
+                res.header('Access-Control-Allow-Origin', req.headers.origin);
+                res.header('Access-Control-Allow-Credentials', true);
+                res.status(200).send({ message: 'Success Upload File' });
+            } catch (err) {
+                console.log(req.url, 'DB ERROR', err);
+                res.status(500).send({ message: `${err}` });
+            }
+        }
+    })
+})
+router.post('/receive/item/sign/receive', async (req, res) => { // Modal Receive Sign ReceiveBy
+    try {
+        let pool = await getPool('MoldPool', config);
+        let { ReceiveID, ReceiveBy } = req.body;
+
+        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ReceiveBy};`);
+        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
+
+        let cur = new Date();
+        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
+        let signReceive = `UPDATE [Mold].[MoldReceive] SET ReceiveBy = ${ReceiveBy}, ReceiveTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};`;
+        await pool.request().query(signReceive);
+
+        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+
 router.post('/takeout', async (req, res) => { //TODO: ดูใบ takeout, CarNo.
     try {
         let pool = await getPool('MoldPool', config);
@@ -178,17 +258,8 @@ router.post('/receive/detail/edit', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-
-const storageReceiveImage = multer.diskStorage({
-    destination: path.join(__dirname, '../../public/mold/receive'),
-    filename: (req, file, cb) => {
-        const ext = file.mimetype.split('/')[1];
-        cb(null, Date.now() + '.' + ext);
-    }
-});
-const uploadReceiveImage = multer({ storage: storageReceiveImage }).single('receive');
 router.post('/receive/detail/image/upload', async (req, res) => {
-    uploadReceiveImage(req, res, async (err) => {
+    uploadReceiveDetailImage(req, res, async (err) => {
         if (err) {
             console.log(req.url, 'Upload ERROR', err);
             res.status(500).send({ message: `${err}` });
@@ -196,7 +267,7 @@ router.post('/receive/detail/image/upload', async (req, res) => {
             try {
                 let pool = await getPool('MoldPool', config);
                 let { ReceiveID, ImageNo } = req.body;
-                let ImagePath = (req.file) ? "/mold/receive/" + req.file.filename : ""
+                let ImagePath = (req.file) ? "/mold/receive_detail/" + req.file.filename : ""
                 // ImageNo 0-7
                 let insertImage = `UPDATE [Mold].[MoldRceiveImage] SET Active = 0 WHERE ReceiveID = ${ReceiveID} AND ImageNo = ${ImageNo};
                 INSERT INTO [Mold].[MoldReceiveImage] (ReceiveID, ImageNo, ImagePath, Active) VALUES(${ReceiveID}, ${ImageNo}, '${ImagePath}', 1);
@@ -356,7 +427,5 @@ router.post('/sign/en/approve', async (req, res) => { // update TakeoutStatus = 
         res.status(500).send({ message: `${err}` });
     }
 })
-
-
 
 module.exports = router
