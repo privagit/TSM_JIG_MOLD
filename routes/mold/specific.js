@@ -67,7 +67,6 @@ router.post('/detail/history', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldSpecID } = req.body;
-        console.log(MoldSpecID)
         let moldDetail = await pool.request().query(`SELECT DetailID, EditTime
         FROM [Mold].[SpecificationDetail]
         WHERE MoldSpecID = ${MoldSpecID}
@@ -83,7 +82,6 @@ router.post('/detail', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { DetailID } = req.body;
-        console.log(DetailID)
         if(!DetailID) return res.json([]);
        
         let moldDetail = await pool.request().query(`SELECT a.MachineSpec, a.ProductSpec, a.MoldSpec,
@@ -98,6 +96,7 @@ router.post('/detail', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = s.ApproveBy
         WHERE a.DetailID = ${DetailID};
         `);
+
         res.json(moldDetail.recordset);
     } catch (err) {
         console.log(req.url, err);
