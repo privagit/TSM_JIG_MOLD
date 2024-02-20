@@ -6,11 +6,31 @@ const multer = require('multer');
 const path = require('path');
 const { getPool } = require('../../middlewares/pool-manager');
 
+//* ========== Declare Multer Store ==========
+const storageReceiveImage = multer.diskStorage({
+    destination: path.join(__dirname, '../../public/mold/receive'),
+    filename: (req, file, cb) => {
+        const ext = file.mimetype.split('/')[1];
+        cb(null, Date.now() + '.' + ext);
+    }
+});
+const uploadReceiveImage = multer({ storage: storageReceiveImage }).single('receive');
+
+const storageReceiveDetailImage = multer.diskStorage({
+    destination: path.join(__dirname, '../../public/mold/receive_detail'),
+    filename: (req, file, cb) => {
+        const ext = file.mimetype.split('/')[1];
+        cb(null, Date.now() + '.' + ext);
+    }
+});
+const uploadReceiveDetailImage = multer({ storage: storageReceiveDetailImage }).single('receive_detail');
+
 //* ========== Receive List ==========
-router.post('/list', async (req, res) => { //TODO: Status, where
+// TakeoutStatus : { 1: Wait Receive(New Mold), 2: Takeout, 3: Wait EN, 4: Complete }
+router.post('/list', async (req, res) => { //TODO: where
     try {
         let pool = await getPool('MoldPool', config);
-        let { Status } = req.body;
+        let { TakeoutStatus } = req.body;
         let receiveList = await pool.request().query(`
         WITH NewMold AS (
             SELECT c.ReceiveID, b.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
@@ -35,34 +55,105 @@ router.post('/list', async (req, res) => { //TODO: Status, where
             IssueTime, ReceiveTime, MoldApprovBy, EnApprovBy
         FROM [tbsum]
         `);
+        if(TakeoutStatus){
+            let receiveListFiltered = receiveList.recordset.filter(v => v.TakeoutStatus == TakeoutStatus);
+            return res.json(receiveListFiltered);
+        }
         res.json(receiveList.recordset);
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/receive', async (req, res) => { //! ???
+router.post('/receive/item', async (req, res) => { //TODO: BasicMold, DieNo, Qty, Location, Modal Receive
     try {
         let pool = await getPool('MoldPool', config);
-        let { MoldSpecID, MoldID } = req.body;
-
+        let { ReceiveID } = req.body;
+        let receive = await pool.request().query(`SELECT a.ReceiveRemark, a.ReceiveImagePath,
+        b.FirstName AS ReceiveBy, a.ReceiveTime
+        FROM [Mold].[MoldReceive] a
+        LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.ReceiveBy
+        WHERE a.ReceiveID = ${ReceiveID};
+        `);
+        receive.recordset[0]?.ReceiveBy = atob(receive.recordset[0]?.ReceiveBy || '');
+        res.json(receive.recordset);
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/takeout', async (req, res) => { //TODO: CarNo.
+router.post('/receive/item/edit', async (req, res) => { // Modal Receive Edit
+    try {
+        let pool = await getPool('MoldPool', config);
+        let { ReceiveID, ReceiveRemark } = req.body;
+        let updateReceive = `UPDATE [Mold].[MoldReceive] SET ReceiveRemark = N'${ReceiveRemark}' WHERE ReceiveID = ${ReceiveID};`;
+        await pool.request().query(updateReceive);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/receive/item/image/upload', async (req, res) => { // Modal Receive Upload Img
+    uploadReceiveImage(req, res, async (err) => {
+        if (err) {
+            console.log(req.url, 'Upload ERROR', err);
+            res.status(500).send({ message: `${err}` });
+        } else {
+            try {
+                let pool = await getPool('MoldPool', config);
+                let { ReceiveID } = req.body;
+                let ImagePath = (req.file) ? "/mold/receive/" + req.file.filename : ""
+                let updateImagePath = `UPDATE [Mold].[MoldRceive] SET ReceiveImagePath = N'${ImagePath}' WHERE ReceiveID = ${ReceiveID};`;
+                await pool.request().query(updateImagePath);
+
+                res.header('Access-Control-Allow-Origin', req.headers.origin);
+                res.header('Access-Control-Allow-Credentials', true);
+                res.status(200).send({ message: 'Success Upload File' });
+            } catch (err) {
+                console.log(req.url, 'DB ERROR', err);
+                res.status(500).send({ message: `${err}` });
+            }
+        }
+    })
+})
+router.post('/receive/item/sign/receive', async (req, res) => { // Modal Receive Sign ReceiveBy
+    try {
+        let pool = await getPool('MoldPool', config);
+        let { ReceiveID, ReceiveBy } = req.body;
+
+        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ReceiveBy};`);
+        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
+
+        let cur = new Date();
+        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
+        let signReceive = `UPDATE [Mold].[MoldReceive] SET ReceiveBy = ${ReceiveBy}, ReceiveTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};`;
+        await pool.request().query(signReceive);
+
+        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+
+//TODO: ReportNo.
+router.post('/takeout', async (req, res) => { // ดูใบ takeout
     try {
         let pool = await getPool('MoldPool', config);
         let { TakeoutID } = req.body;
-        let takeout = await pool.request().query(`SELECT a.Remark, a.Note, a.TakeoutImagePath,
+        let takeout = await pool.request().query(`SELECT a.Remark, a.Note, a.TakeoutImagePath, CarNo,
         b.FirstName AS IssueBy, c.FirstName AS ApproveBy, d.FirstName AS ReceiveBy
         FROM [Mold].[MoldTakeout] a
+        LEFT JOIN [Mold].[MoldReceive] r ON r.TakeoutID = a.TakeoutID
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.IssueBy = b.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.ApproveBy = c.EmployeeID
-        LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.ReceiveBy = d.EmployeeID
+        LEFT JOIN [TSMolymer_F].[dbo].[User] d ON r.ReceiveBy = d.EmployeeID
         WHERE a.TakeoutID = ${TakeoutID};
         `);
+        takeout.recordset[0]?.IssueBy = atob(takeout.recordset[0]?.IssueBy || '');
+        takeout.recordset[0]?.ApproveBy = atob(takeout.recordset[0]?.ApproveBy || '');
+        takeout.recordset[0]?.ReceiveBy = atob(takeout.recordset[0]?.ReceiveBy || '');
         // let { MoldID, TakeoutDate, Loation, Remark, Note } = req.body;
         // let insertTakeout = `INSERT INTO [Mold].[MoldTakeout](MoldID, TakeoutDate, Location, Remark, Note)
         // VALUES(${MoldID}, '${TakeoutDate}', N'${Loation}', N'${Remark}', N'${Note}');
@@ -80,7 +171,7 @@ router.post('/takeout', async (req, res) => { //TODO: CarNo.
 })
 
 //* ========== Specification Detail ==========
-router.post('/specification/detail/history', async (req, res) => {
+router.post('/specification/detail/history', async (req, res) => { // ดูอย่างเดียว
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldID } = req.body;
@@ -96,7 +187,7 @@ router.post('/specification/detail/history', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/specification/detail', async (req, res) => {
+router.post('/specification/detail', async (req, res) => { // ดูอย่างเดียว
     try {
         let pool = await getPool('MoldPool', config);
         let { DetailID } = req.body;
@@ -172,17 +263,8 @@ router.post('/receive/detail/edit', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-
-const storageReceiveImage = multer.diskStorage({
-    destination: path.join(__dirname, '../../public/mold/receive'),
-    filename: (req, file, cb) => {
-        const ext = file.mimetype.split('/')[1];
-        cb(null, Date.now() + '.' + ext);
-    }
-});
-const uploadReceiveImage = multer({ storage: storageReceiveImage }).single('receive');
 router.post('/receive/detail/image/upload', async (req, res) => {
-    uploadReceiveImage(req, res, async (err) => {
+    uploadReceiveDetailImage(req, res, async (err) => {
         if (err) {
             console.log(req.url, 'Upload ERROR', err);
             res.status(500).send({ message: `${err}` });
@@ -190,7 +272,7 @@ router.post('/receive/detail/image/upload', async (req, res) => {
             try {
                 let pool = await getPool('MoldPool', config);
                 let { ReceiveID, ImageNo } = req.body;
-                let ImagePath = (req.file) ? "/mold/receive/" + req.file.filename : ""
+                let ImagePath = (req.file) ? "/mold/receive_detail/" + req.file.filename : ""
                 // ImageNo 0-7
                 let insertImage = `UPDATE [Mold].[MoldRceiveImage] SET Active = 0 WHERE ReceiveID = ${ReceiveID} AND ImageNo = ${ImageNo};
                 INSERT INTO [Mold].[MoldReceiveImage] (ReceiveID, ImageNo, ImagePath, Active) VALUES(${ReceiveID}, ${ImageNo}, '${ImagePath}', 1);
@@ -246,7 +328,7 @@ router.post('/sign/mold/check', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/sign/mold/approve', async (req, res) => {
+router.post('/sign/mold/approve', async (req, res) => { // update TakeoutStatus = 3(Wait EN), if New Mold Update Spec Status = 4(Mold Received)
     try {
         let pool = await getPool('MoldPool', config);
         let { ReceiveID, ApproveBy } = req.body;
@@ -256,10 +338,28 @@ router.post('/sign/mold/approve', async (req, res) => {
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signApprove = `UPDATE [Mold].[MoldReceive] SET ApproveBy = ${ApproveBy}, ApproveSignTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};`;
-        await pool.request().query(signApprove);
+        let signApprove = `UPDATE [Mold].[MoldReceive] SET ApproveBy = ${ApproveBy}, ApproveSignTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};
 
-        
+        DECLARE @TakeoutID INT,
+        @TakeoutType INT,
+        @MoldSpecID INT;
+
+        -- Set Value
+        SELECT @TakeoutID = b.TakeoutID, @TakeoutType = TakeoutType, @MoldSpecID = MoldSpecID
+        FROM [Mold].[MoldReceive] a
+        LEFT JOIN [Mold].[MoldTakeout] b ON b.TakeoutID = a.TakeoutID
+        WHERE ReceiveID = ${ReceiveID};
+
+        -- Update TakeoutStatus = 3(Wait EN)
+        UPDATE [Mold].[MoldTakeout] SET TakeoutStatus = 3 WHERE TakeoutID = @TakeoutID;
+
+        -- Check TakeoutType 1: New Mold
+        IF(@TakeoutType = 1)
+        BEGIN
+            UPDATE [Mold].[Specification] SET Status = 4 MoldSpecID = @MoldSpecID;
+        END;
+        `;
+        await pool.request().query(signApprove);
 
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
@@ -286,7 +386,7 @@ router.post('/sign/en/check', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/sign/en/approve', async (req, res) => {
+router.post('/sign/en/approve', async (req, res) => { // update TakeoutStatus = 4(Complete), if New Mold update SpecStatus = 5(Complete), add to Master
     try {
         let pool = await getPool('MoldPool', config);
         let { ReceiveID, ApproveBy } = req.body;
@@ -296,7 +396,34 @@ router.post('/sign/en/approve', async (req, res) => {
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signApprove = `UPDATE [Mold].[MoldReceive] SET ApproveBy = ${ApproveBy}, ApproveSignTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};`;
+        let signApprove = `UPDATE [Mold].[MoldReceive] SET ApproveBy = ${ApproveBy}, ApproveSignTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};
+
+        DECLARE @TakeoutID INT,
+        @TakeoutType INT,
+        @MoldSpecID INT;
+
+        -- Set Value
+        SELECT @TakeoutID = a.TakeoutID, @TakeoutType = TakeoutType, @MoldSpecID = MoldSpecID
+        FROM [Mold].[MoldReceive] a
+        LEFT JOIN [Mold].[MoldTakeout] b ON b.TakeoutID = a.TakeoutID
+        WHERE ReceiveID = ${ReceiveID};
+
+        -- Update TakeoutStatus = 4(Complete)
+        UPDATE [Mold].[MoldTakeout] SET TakeoutStatus = 4 WHERE TakeoutID = @TakeoutID;
+
+        -- Check TakeoutType 1: New Mold
+        IF(@TakeoutType = 1)
+        BEGIN
+            UPDATE [Mold].[Specification] SET Status = 5 MoldSpecID = @MoldSpecID;
+
+            INSERT INTO [Mold].[MasterMold](MoldControlNo, BasicMold, DieNo, MoldName, CustomerID, Cavity, RawMaterial, ReceivedDate, MoldSpecID, Status, Active)
+            SELECT a.MoldControlNo, a.BasicMold, a.DieNo, a.PartName, c.CustomerID, a.Cavity, a.MaterialGrade, a.ReceiveTime, b.MoldSpecID, 1, 1
+            FROM [Mold].[MoldReceive] a
+            LEFT JOIN [Mold].[MoldTakeout] b ON b.TakeoutID = a.TakeoutID
+            LEFT JOIN [Mold].[Specification] c ON c.MoldSpecID = b.MoldSpecID
+            WHERE a.ReceiveID = ${ReceiveID};
+        END;
+        `;
         await pool.request().query(signApprove);
 
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
@@ -305,7 +432,5 @@ router.post('/sign/en/approve', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-
-
 
 module.exports = router
