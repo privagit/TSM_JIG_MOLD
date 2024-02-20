@@ -65,7 +65,7 @@ router.post('/list', async (req, res) => { //TODO: where
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/receive/item', async (req, res) => { // Modal Receive
+router.post('/receive/item', async (req, res) => { //TODO: BasicMold, DieNo, Qty, Location, Modal Receive
     try {
         let pool = await getPool('MoldPool', config);
         let { ReceiveID } = req.body;
@@ -137,18 +137,23 @@ router.post('/receive/item/sign/receive', async (req, res) => { // Modal Receive
     }
 })
 
-router.post('/takeout', async (req, res) => { //TODO: ดูใบ takeout, CarNo.
+//TODO: ReportNo.
+router.post('/takeout', async (req, res) => { // ดูใบ takeout
     try {
         let pool = await getPool('MoldPool', config);
         let { TakeoutID } = req.body;
-        let takeout = await pool.request().query(`SELECT a.Remark, a.Note, a.TakeoutImagePath,
+        let takeout = await pool.request().query(`SELECT a.Remark, a.Note, a.TakeoutImagePath, CarNo,
         b.FirstName AS IssueBy, c.FirstName AS ApproveBy, d.FirstName AS ReceiveBy
         FROM [Mold].[MoldTakeout] a
+        LEFT JOIN [Mold].[MoldReceive] r ON r.TakeoutID = a.TakeoutID
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.IssueBy = b.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.ApproveBy = c.EmployeeID
-        LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.ReceiveBy = d.EmployeeID
+        LEFT JOIN [TSMolymer_F].[dbo].[User] d ON r.ReceiveBy = d.EmployeeID
         WHERE a.TakeoutID = ${TakeoutID};
         `);
+        takeout.recordset[0]?.IssueBy = atob(takeout.recordset[0]?.IssueBy || '');
+        takeout.recordset[0]?.ApproveBy = atob(takeout.recordset[0]?.ApproveBy || '');
+        takeout.recordset[0]?.ReceiveBy = atob(takeout.recordset[0]?.ReceiveBy || '');
         // let { MoldID, TakeoutDate, Loation, Remark, Note } = req.body;
         // let insertTakeout = `INSERT INTO [Mold].[MoldTakeout](MoldID, TakeoutDate, Location, Remark, Note)
         // VALUES(${MoldID}, '${TakeoutDate}', N'${Loation}', N'${Remark}', N'${Note}');
