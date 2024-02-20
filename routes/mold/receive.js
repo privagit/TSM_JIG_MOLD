@@ -55,7 +55,7 @@ router.post('/list', async (req, res) => { //TODO: where
             IssueTime, ReceiveTime, MoldApprovBy, EnApprovBy
         FROM [tbsum]
         `);
-        if(TakeoutStatus){
+        if (TakeoutStatus) {
             let receiveListFiltered = receiveList.recordset.filter(v => v.TakeoutStatus == TakeoutStatus);
             return res.json(receiveListFiltered);
         }
@@ -75,7 +75,7 @@ router.post('/receive/item', async (req, res) => { //TODO: BasicMold, DieNo, Qty
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.ReceiveBy
         WHERE a.ReceiveID = ${ReceiveID};
         `);
-        receive.recordset[0]?.ReceiveBy = atob(receive.recordset[0]?.ReceiveBy || '');
+        receive.recordset[0].ReceiveBy = atob(receive.recordset[0]?.ReceiveBy || '');
         res.json(receive.recordset);
     } catch (err) {
         console.log(req.url, err);
@@ -123,14 +123,14 @@ router.post('/receive/item/sign/receive', async (req, res) => { // Modal Receive
         let { ReceiveID, ReceiveBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ReceiveBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
+        if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
+        let curStr = `${cur.getFullYear()}-${('00' + (cur.getMonth() + 1)).substr(-2)}-${('00' + cur.getDate()).substr(-2)} ${('00' + cur.getHours()).substr(-2)}:${('00' + cur.getMinutes()).substr(-2)}`;
         let signReceive = `UPDATE [Mold].[MoldReceive] SET ReceiveBy = ${ReceiveBy}, ReceiveTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};`;
         await pool.request().query(signReceive);
 
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
+        res.json({ message: 'Success', Username: !getUser.recordset.length ? null : atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -151,9 +151,9 @@ router.post('/takeout', async (req, res) => { // ดูใบ takeout
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON r.ReceiveBy = d.EmployeeID
         WHERE a.TakeoutID = ${TakeoutID};
         `);
-        takeout.recordset[0]?.IssueBy = atob(takeout.recordset[0]?.IssueBy || '');
-        takeout.recordset[0]?.ApproveBy = atob(takeout.recordset[0]?.ApproveBy || '');
-        takeout.recordset[0]?.ReceiveBy = atob(takeout.recordset[0]?.ReceiveBy || '');
+        takeout.recordset[0].IssueBy = atob(takeout.recordset[0]?.IssueBy || '');
+        takeout.recordset[0].ApproveBy = atob(takeout.recordset[0]?.ApproveBy || '');
+        takeout.recordset[0].ReceiveBy = atob(takeout.recordset[0]?.ReceiveBy || '');
         // let { MoldID, TakeoutDate, Loation, Remark, Note } = req.body;
         // let insertTakeout = `INSERT INTO [Mold].[MoldTakeout](MoldID, TakeoutDate, Location, Remark, Note)
         // VALUES(${MoldID}, '${TakeoutDate}', N'${Loation}', N'${Remark}', N'${Note}');
@@ -217,7 +217,7 @@ router.post('/receive/detail', async (req, res) => {
         let moldReceive = await pool.request().query(`SELECT a.ReceiveID, a.TakeoutID,
         a.BasicMold, a.DieNo, a.MoldControlNo, a.PartName, a.MaterialGrade, a.GuaranteeShot, a.MoldWeight, a.Cavity,
         a.MoldSize, a.MoldType, a.Model,
-        a.AppearanceInspect, a.MoldStructure, a.Remark, a.ImagePath,
+        a.AppearanceInspect, a.MoldStructure, a.Remark, 
         b.FirstName AS MoldIssueBy, c.FirstName AS MoldCheckBy, d.FirstName AS MoldApproveBy,
         e.FirstName AS EnCheckBy, f.FirstName AS EnApproveBy
         FROM [Mold].[MoldReceive] a
@@ -296,14 +296,14 @@ router.post('/sign/mold/issue', async (req, res) => {
         let { ReceiveID, IssueBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${IssueBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
+        if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
+        let curStr = `${cur.getFullYear()}-${('00' + (cur.getMonth() + 1)).substr(-2)}-${('00' + cur.getDate()).substr(-2)} ${('00' + cur.getHours()).substr(-2)}:${('00' + cur.getMinutes()).substr(-2)}`;
         let signIssue = `UPDATE [Mold].[MoldReceive] SET IssueBy = ${IssueBy}, IssueSignTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};`;
         await pool.request().query(signIssue);
 
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
+        res.json({ message: 'Success', Username: !getUser.recordset.length ? null : atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -315,14 +315,14 @@ router.post('/sign/mold/check', async (req, res) => {
         let { ReceiveID, CheckBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${CheckBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
+        if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
+        let curStr = `${cur.getFullYear()}-${('00' + (cur.getMonth() + 1)).substr(-2)}-${('00' + cur.getDate()).substr(-2)} ${('00' + cur.getHours()).substr(-2)}:${('00' + cur.getMinutes()).substr(-2)}`;
         let signCheck = `UPDATE [Mold].[MoldReceive] SET CheckBy = ${CheckBy}, CheckSignTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};`;
         await pool.request().query(signCheck);
 
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
+        res.json({ message: 'Success', Username: !getUser.recordset.length ? null : atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -334,10 +334,10 @@ router.post('/sign/mold/approve', async (req, res) => { // update TakeoutStatus 
         let { ReceiveID, ApproveBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ApproveBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
+        if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
+        let curStr = `${cur.getFullYear()}-${('00' + (cur.getMonth() + 1)).substr(-2)}-${('00' + cur.getDate()).substr(-2)} ${('00' + cur.getHours()).substr(-2)}:${('00' + cur.getMinutes()).substr(-2)}`;
         let signApprove = `UPDATE [Mold].[MoldReceive] SET ApproveBy = ${ApproveBy}, ApproveSignTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};
 
         DECLARE @TakeoutID INT,
@@ -361,7 +361,7 @@ router.post('/sign/mold/approve', async (req, res) => { // update TakeoutStatus 
         `;
         await pool.request().query(signApprove);
 
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
+        res.json({ message: 'Success', Username: !getUser.recordset.length ? null : atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -373,14 +373,14 @@ router.post('/sign/en/check', async (req, res) => {
         let { ReceiveID, CheckBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${CheckBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
+        if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
+        let curStr = `${cur.getFullYear()}-${('00' + (cur.getMonth() + 1)).substr(-2)}-${('00' + cur.getDate()).substr(-2)} ${('00' + cur.getHours()).substr(-2)}:${('00' + cur.getMinutes()).substr(-2)}`;
         let signCheck = `UPDATE [Mold].[MoldReceive] SET CheckBy = ${CheckBy}, CheckSignTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};`;
         await pool.request().query(signCheck);
 
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
+        res.json({ message: 'Success', Username: !getUser.recordset.length ? null : atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -392,10 +392,10 @@ router.post('/sign/en/approve', async (req, res) => { // update TakeoutStatus = 
         let { ReceiveID, ApproveBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ApproveBy};`);
-        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
+        if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
+        let curStr = `${cur.getFullYear()}-${('00' + (cur.getMonth() + 1)).substr(-2)}-${('00' + cur.getDate()).substr(-2)} ${('00' + cur.getHours()).substr(-2)}:${('00' + cur.getMinutes()).substr(-2)}`;
         let signApprove = `UPDATE [Mold].[MoldReceive] SET ApproveBy = ${ApproveBy}, ApproveSignTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};
 
         DECLARE @TakeoutID INT,
@@ -426,7 +426,7 @@ router.post('/sign/en/approve', async (req, res) => { // update TakeoutStatus = 
         `;
         await pool.request().query(signApprove);
 
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
+        res.json({ message: 'Success', Username: !getUser.recordset.length ? null : atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
