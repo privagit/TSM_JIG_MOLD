@@ -67,6 +67,7 @@ router.post('/detail/history', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldSpecID } = req.body;
+        console.log(MoldSpecID)
         let moldDetail = await pool.request().query(`SELECT DetailID, EditTime
         FROM [Mold].[SpecificationDetail]
         WHERE MoldSpecID = ${MoldSpecID}
@@ -82,20 +83,9 @@ router.post('/detail', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { DetailID } = req.body;
-
+        console.log(DetailID)
         if(!DetailID) return res.json([]);
-        console.log(`SELECT a.MachineSpec, a.ProductSpec, a.MoldSpec,
-        a.hvtPicture, a.MoldSpecFile, a.MoldPicture, a.MoldDrawing1, a.MoldDrawing2,
-        b.FirstName AS IssueBy, s.IssueTime,
-        c.FirstName AS CheckBy, s.CheckTime,
-        d.FirstName AS ApproveBy, s.ApproveTime
-        FROM [Mold].[SpecificationDetail] a
-        LEFT JOIN [Mold].[Specification] s ON s.MoldSpecID = a.MoldSpecID
-        LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = s.IssueBy
-        LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = s.CheckBy
-        LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = s.ApproveBy
-        WHERE a.DetailID = ${DetailID};
-        `)
+       
         let moldDetail = await pool.request().query(`SELECT a.MachineSpec, a.ProductSpec, a.MoldSpec,
         a.hvtPicture, a.MoldSpecFile, a.MoldPicture, a.MoldDrawing1, a.MoldDrawing2,
         b.FirstName AS IssueBy, s.IssueTime,
