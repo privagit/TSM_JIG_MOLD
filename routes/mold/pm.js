@@ -8,6 +8,7 @@ router.post('/', async (req, res) => { //TODO: RepairRequest, Condition AcceptSt
     try {
         let pool = await getPool('MoldPool', config);
         let { Status } = req.body;
+        console.log('Status', Status)
         // Status 1: Issue, 2: Cancel, 3: Reject, 4: Accept
         let pmList = await pool.request().query(`SELECT a.MoldID, a.BasicMold, a.DieNo, b.WarningShot, b.DangerShot, b.WarrantyShot, b.AlertPercent, b.AlertWarrantyPercent
         FROM [Mold].[MasterMold] a
@@ -33,9 +34,9 @@ router.post('/', async (req, res) => { //TODO: RepairRequest, Condition AcceptSt
         let moldArr = [];
         for(let mold of pmList.recordset){
             let needPM = false;
-            let alertPm = Math.round(mc.AlertPercent * mc.WarningShot / 100);
-            let alertWarranty = Math.round(mc.AlertWarrantyPercent * mc.WarrantyShot / 100);
-            if(mold.ActualPmShot >= alertPm || mc.ActualWarrantyShot >= alertWarranty){
+            let alertPm = Math.round(mold.AlertPercent * mold.WarningShot / 100);
+            let alertWarranty = Math.round(mold.AlertWarrantyPercent * mold.WarrantyShot / 100);
+            if(mold.ActualPmShot >= alertPm || mold.ActualWarrantyShot >= alertWarranty){
                 let pm = pmRequest.recordset.filter(v => v.MoldID == mold.MoldID && v.PmType == 1); // Pm
                 let warranty = pmRequest.recordset.filter(v => v.MoldID == mold.MoldID && v.PmType == 2); // Warranty
 
@@ -50,8 +51,8 @@ router.post('/', async (req, res) => { //TODO: RepairRequest, Condition AcceptSt
                 }
 
                 mold.minPlanTimeNo = minPlanTimeNo;
-                mold.PmStatus = !pm.length ? (mc.MonthlyShot >= alertMonthly ? 0 : null) : pm[0].AcceptStatus;
-                mold.WarrantyStatus = !warranty.length ? (mc.MonthlyShot >= alertMonthly ? 0 : null) : warranty[0].AcceptStatus;
+                mold.PmStatus = !pm.length ? (mold.MonthlyShot >= alertMonthly ? 0 : null) : pm[0].AcceptStatus;
+                mold.WarrantyStatus = !warranty.length ? (mold.MonthlyShot >= alertMonthly ? 0 : null) : warranty[0].AcceptStatus;
 
                 needPM = true;
             }
