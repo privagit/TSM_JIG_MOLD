@@ -193,7 +193,7 @@ router.post('/specification/detail', async (req, res) => { // ดูอย่า
     try {
         let pool = await getPool('MoldPool', config);
         let { DetailID } = req.body;
-        let moldDetail = await pool.request().query(`SELECT a.MachineSpec, a.ProductSpec, a.MoldSpec, a.DocumentCtrlNo,
+        let moldDetail = await pool.request().query(`SELECT a.MachineSpec, a.ProductSpec, a.MoldSpec,
         a.hvtPicture, a.MoldSpecFile, a.MoldPicture, a.MoldDrawing1, a.MoldDrawing2,
         b.FirstName AS IssueBy, a.IssueSignTime,
         c.FirstName AS CheckBy, a.CheckSignTime,
@@ -221,7 +221,7 @@ router.post('/receive/detail', async (req, res) => {
         a.MoldSize, a.MoldType, a.Model,
         a.AppearanceInspect, a.MoldStructure, a.Remark, a.ImagePath,
         b.FirstName AS MoldIssueBy, c.FirstName AS MoldCheckBy, d.FirstName AS MoldApproveBy,
-        e.FirstName AS EnCheckBy, f.FirstName AS EnApproveBy
+        e.FirstName AS EnCheckBy, f.FirstName AS EnApproveBy, a.DocumentCtrlNo
         FROM [Mold].[MoldReceive] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.MoldIssueBy = b.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.MoldCheckBy = c.EmployeeID
