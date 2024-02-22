@@ -252,10 +252,10 @@ router.post('/receive/detail/edit', async (req, res) => {
         let pool = await getPool('MoldPool', config);
         let { ReceiveID, BasicMold, DieNo, MoldControlNo, PartName, MaterialGrade, GuaranteeShot, MoldWeight, Cavity,
             MoldSize, MoldType, Model, AppearanceInspect, MoldStructure, Remark } = req.body;
-        let updateReceive = `UPDATE [Mold].[Receive] SET BasicMold = N'${BasicMold}', DieNo = N'${DieNo}', MoldControlNo = N'${MoldControlNo}',
+        let updateReceive = `UPDATE [Mold].[MoldReceive] SET BasicMold = N'${BasicMold}', DieNo = N'${DieNo}', MoldControlNo = N'${MoldControlNo}',
         PartName = N'${PartName}', MaterialGrade = N'${MaterialGrade}', GuaranteeShot = N'${GuaranteeShot}', MoldWeight = N'${MoldWeight}',
         Cavity = N'${Cavity}', MoldSize = N'${MoldSize}', MoldType = N'${MoldType}',
-        Model = N'${Model}', AppearanceInspect = N'${AppearanceInspect}', MoldStructure = N'${MoldStructure}', Remark = N'${Remark}'
+        Model = N'${Model}', AppearanceInspect = N'${AppearanceInspect.replace("'", '"')}', MoldStructure = N'${MoldStructure.replace("'", '"')}', Remark = N'${Remark}'
         WHERE ReceiveID = ${ReceiveID};
         `;
         await pool.request().query(updateReceive);
