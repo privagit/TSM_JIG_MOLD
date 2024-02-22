@@ -219,7 +219,7 @@ router.post('/receive/detail', async (req, res) => {
         let moldReceive = await pool.request().query(`SELECT a.ReceiveID, a.TakeoutID,
         a.BasicMold, a.DieNo, a.MoldControlNo, a.PartName, a.MaterialGrade, a.GuaranteeShot, a.MoldWeight, a.Cavity,
         a.MoldSize, a.MoldType, a.Model,
-        a.AppearanceInspect, a.MoldStructure, a.Remark, a.ImagePath,
+        a.AppearanceInspect, a.MoldStructure, a.Remark, 
         b.FirstName AS MoldIssueBy, c.FirstName AS MoldCheckBy, d.FirstName AS MoldApproveBy,
         e.FirstName AS EnCheckBy, f.FirstName AS EnApproveBy, a.DocumentCtrlNo
         FROM [Mold].[MoldReceive] a
