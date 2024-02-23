@@ -1,17 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const config = require('../../lib/dbconfig').dbconfig_mold;
-const sql = require('mssql');
 const Redis = require('ioredis');
 const redis = new Redis();
 const multer = require('multer');
 const path = require('path');
+const { getPool } = require('../../middlewares/pool-manager');
 
+// Repair Request(Repair Overview) ==> Submit Plan(PM Plan) ==> Confirm Plan(Planning) ==> Start Repair(Repair Overview)
 //? TODO: StartTime, EndTime == ActualTime ??
 //* ========= Repair Issue =========
 router.post('/repair-issue', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { month, year, Status } = req.body;
 
         let repairIssue = await pool.request().query(`SELECT a.RepairCheckID, b.BasicMold, b.DieNo, a.RequestTime, a.StartTime, a.EndTime, a.Complaint,
@@ -36,7 +37,7 @@ router.post('/repair-issue', async (req, res) => {
 })
 router.post('/repair-issue/dropdown/mold', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let molds = await pool.request().query(`SELECT a.MoldID, a.BasicMold, a.DieNo, a.MoldName FROM [Mold].[MasterMold] a WHERE a.Active = 1;`);
         res.json(molds.recordset);
     } catch (err) {
@@ -46,7 +47,7 @@ router.post('/repair-issue/dropdown/mold', async (req, res) => {
 })
 router.post('/repair-issue/dropdown/problem/type', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let problemType = await pool.request().query(`SELECT a.RepairTypeID, a.RepairType
         FROM [Mold].[MasterRepairType] a
         WHERE a.Active = 1;
@@ -59,7 +60,7 @@ router.post('/repair-issue/dropdown/problem/type', async (req, res) => {
 })
 router.post('/repair-issue/dropdown/problem', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairTypeID } = req.body;
         let problem = await pool.request().query(`SELECT a.RepairProblemID, a.RepairProblem
         FROM [Mold].[MasterRepairProblem] a
@@ -74,7 +75,7 @@ router.post('/repair-issue/dropdown/problem', async (req, res) => {
 // Request
 router.post('/repair-issue/request/issue', async (req, res) => { //TODO: Socket io., ReportNo., cache, RunningNo., io
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { MoldID, CavityStd, CavityAct, RepairTypeID, RepairProblemID, Complaint, Attachment, OccurTime, RequestBy, RequestTime, Section } = req.body;
 
          //* Get RunningNo
@@ -130,7 +131,7 @@ router.post('/repair-issue/request/issue', async (req, res) => { //TODO: Socket 
 // Repair
 router.post('/repair-issue/repair/start', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairCheckID } = req.body;
 
         let cur = new Date();
@@ -144,9 +145,9 @@ router.post('/repair-issue/repair/start', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/repair-issue/repair/item', async (req, res) => {
+router.post('/repair-issue/repair/item', async (req, res) => { //TODO: Process
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairCheckID } = req.body;
 
         let repair = await pool.request().query(`SELECT a.RepairCheckID, a.RequestTime, a.RepairProblemID, a.RepairTypeID, a.Complaint,
@@ -193,9 +194,9 @@ router.post('/repair-issue/repair/item', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/repair-issue/repair/process', async (req, res) => { // initial Process (Plan & Actual)
+router.post('/repair-issue/repair/process', async (req, res) => { //TODO: get from Plan, initial Process (Plan & Actual)
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let process = await pool.request().query(`SELECT ProcessID, ProcessType, Detail, CostPerHour
         FROM [Mold].[MasterProcess]
         WHERE Active = 1 AND ProcessType = 2;
@@ -206,15 +207,26 @@ router.post('/repair-issue/repair/process', async (req, res) => { // initial Pro
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/repair-issue/repair/plan-actual/edit', async (req, res) => {
+router.post('/repair-issue/repair/plan-actual/edit', async (req, res) => { //TODO: Edit Proecss
     try {
-        let pool = await sql.connect(config);
-        let { RepairCheckID, PlanStartTime, PlanFinishTime, ActualStartTime, ActualFinishTime, PlanActualArr } = req.body;
-        let updateRepair = `UPDATE [Mold].[RepairCheck] SET PlanStartTime = '${PlanStartTime}', PlanFinishTime = '${PlanFinishTime}',
-        ActualStartTime = '${ActualStartTime}', ActualFinishTime = '${ActualFinishTime}', PlanActualArr = '${PlanActualArr}'
+        let pool = await getPool('MoldPool', config);
+        let { RepairCheckID, ActualStartTime, ActualFinishTime, RepairProcess } = req.body;
+
+        // update repair
+        let updateRepair = `UPDATE [Mold].[RepairCheck] SET ActualStartTime = '${ActualStartTime}', ActualFinishTime = '${ActualFinishTime}'
         WHERE RepairCheckID = ${RepairCheckID};
         `;
         await pool.request().query(updateRepair);
+
+        // update Repair Process
+        let updateStatement = [];
+        for(let item of RepairProcess){
+            let updateRepairProcess = `UPDATE [Mold].[RepairProcess] SET StartTime = '${item.StartTime}', FinishTime = '${item.FinishTime}' WHERE RepairProcessID = ${item.RepairProcessID};`;
+            updateStatement.push(updateRepairProcess);
+        }
+        if(updateStatement.length){
+            await pool.request().query(updateStatement.join(''));
+        }
         res.json({ message: 'Success' });
     } catch (err) {
         console.log(req.url, err);
@@ -223,7 +235,7 @@ router.post('/repair-issue/repair/plan-actual/edit', async (req, res) => {
 })
 router.post('/repair-issue/repair/detail/edit', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairCheckID, DetailOfRepair, RepairResult } = req.body;
 
         //RepairResult 1: Accepted, 2: Rejected, 3: Special Accept
@@ -247,14 +259,14 @@ const storageRepairImage = multer.diskStorage({
     }
 });
 const uploadRepairImage = multer({ storage: storageRepairImage }).single('repair_image');
-router.post('/repair-issue/repair/image/upload', async (req, res) => { //TODO: Max 8 Img
+router.post('/repair-issue/repair/image/upload', async (req, res) => {
     uploadRepairImage(req, res, async (err) => {
         if (err) {
             console.log(req.url, 'Upload ERROR', err);
             res.status(500).send({ message: `${err}` });
         } else {
             try {
-                let pool = await sql.connect(config);
+                let pool = await getPool('MoldPool', config);
                 let { RepairCheckID, ImageNo } = req.body;
                 let ImagePath = (req.file) ? "/mold/repair/" + req.file.filename : ""
                 // ImageNo 0-7
@@ -275,7 +287,7 @@ router.post('/repair-issue/repair/image/upload', async (req, res) => { //TODO: M
 })
 router.delete('/repair-issue/repair/image/delete', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairCheckID, ImageNo } = req.body;
         let updateImage = `UPDATE [Mold].[RepairImage] SET Active = 0 WHERE RepairCheckID = ${RepairCheckID} AND ImageNo = ${ImageNo}`;
         await pool.request().query(updateImage);
@@ -289,7 +301,7 @@ router.delete('/repair-issue/repair/image/delete', async (req, res) => {
 // Tech
 router.post('/repair-issue/repair/tech', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairCheckID } = req.body;
 
         let techs = await pool.request().query(`SELECT a.RepairTechID, b.FirstName AS TechName
@@ -309,7 +321,7 @@ router.post('/repair-issue/repair/tech', async (req, res) => {
 })
 router.post('/repair-issue/repair/tech/add', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairCheckID, EmployeeID } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${EmployeeID};`);
@@ -339,7 +351,7 @@ router.post('/repair-issue/repair/tech/add', async (req, res) => {
 })
 router.delete('/repair-issue/repair/tech/delete', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairTechID } = req.body;
 
         let deleteTech = `DELETE FROM [Mold].[RepairTech] WHERE RepairTechID = ${RepairTechID};`;
@@ -355,7 +367,7 @@ router.delete('/repair-issue/repair/tech/delete', async (req, res) => {
 // Service / Parts Cost
 router.post('/repair-issue/service/dropdown/category', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let category = await pool.request().query(`SELECT a.SpareCategoryID, a.Category
         FROM [Mold].[MasterSpareCategory] a
         WHERE a.Active = 1;
@@ -368,7 +380,7 @@ router.post('/repair-issue/service/dropdown/category', async (req, res) => {
 })
 router.post('/repair-issue/service/dropdown/sparepart', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { SpareCategoryID } = req.body;
         let sparepart = await pool.request().query(`SELECT a.SpareID, a.SpareName, a.Price
         FROM [Mold].[MasterSpare] a
@@ -382,7 +394,7 @@ router.post('/repair-issue/service/dropdown/sparepart', async (req, res) => {
 })
 router.post('/repair-issue/service', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairCheckID } = req.body;
 
         let PartsCost = await pool.request().query(`SELECT a.RepairCheckID, a.RepairCostID, a.SpareID, b.SpareName, a.Qty, a.UnitPrice, a.UsedDate,
@@ -400,7 +412,7 @@ router.post('/repair-issue/service', async (req, res) => {
 })
 router.post('/repair-issue/service/add', async (req, res) => { // ถ้า Use มากกว่า Remain
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairCheckID, SpareID, Qty, UnitPrice } = req.body;
 
         // Get Remain
@@ -436,7 +448,7 @@ router.post('/repair-issue/service/add', async (req, res) => { // ถ้า Use 
 })
 router.delete('/repair-issue/service/delete', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairCostID } = req.body;
 
         let deletePart = `DELETE FROM [Mold].[RepairCost] WHERE RepairCostID = ${RepairCostID};`;
@@ -451,7 +463,7 @@ router.delete('/repair-issue/service/delete', async (req, res) => {
 // Sign
 router.post('/repair-issue/sign/repair', async (req, res) => { //TODO: socket io. cache, io
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairCheckID, RepairBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${RepairBy};`);
@@ -493,7 +505,7 @@ router.post('/repair-issue/sign/repair', async (req, res) => { //TODO: socket io
 })
 router.post('/repair-issue/sign/check', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairCheckID, CheckBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${CheckBy};`);
@@ -512,7 +524,7 @@ router.post('/repair-issue/sign/check', async (req, res) => {
 })
 router.post('/repair-issue/sign/approve', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairCheckID, ApproveBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ApproveBy};`);
@@ -531,7 +543,7 @@ router.post('/repair-issue/sign/approve', async (req, res) => {
 })
 router.post('/repair-issue/sign/injection', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairCheckID, InjCheckBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${InjCheckBy};`);
@@ -560,7 +572,7 @@ router.post('/repair-issue/sign/injection', async (req, res) => {
 })
 router.post('/repair-issue/sign/qc', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairCheckID, QcCheckBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${QcCheckBy};`);
@@ -589,7 +601,7 @@ router.post('/repair-issue/sign/qc', async (req, res) => {
 })
 router.post('/repair-issue/sign/mold', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config);
         let { RepairCheckID, MoldCheckBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${MoldCheckBy};`);
@@ -621,7 +633,7 @@ module.exports = router;
 
 // Repair Status
 // 1: Issue     => Issue Repair
-//TODO 2: Plan      =>
+//TODO 2: Plan      => Plan ที่ PM Plan
 // 3: Repair    => Start Repair
 // 4: Wait Sign => Sign Repair (Wait Inj,Qc,Mold Sign)
 // 5: Complete  => Sign Inj,Qc,Mold

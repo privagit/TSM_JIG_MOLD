@@ -4,12 +4,13 @@ const config = require('../../lib/dbconfig').dbconfig_jig;
 const sql = require('mssql');
 const Redis = require('ioredis');
 const redis = new Redis();
+const { getPool } = require('../../middlewares/pool-manager');
 
 //! Factory ???
 //* ========= Dashboard ==========
 router.post('/plan-complete', async (req, res) => { //TODO:
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { month, year, FactoryID } = req.body;
 
         let planComplete = await pool.request()
@@ -26,7 +27,7 @@ router.post('/plan-complete', async (req, res) => { //TODO:
 })
 router.post('/total-average', async (req, res) => { //TODO: confirm User
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { year, FactoryID } = req.body;
         let totalAndAverage = await pool.request().query(`
         DECLARE @CostYearlyEm FLOAT,
@@ -143,7 +144,7 @@ router.post('/total-average', async (req, res) => { //TODO: confirm User
 })
 router.post('/donut', async (req, res) => { //TODO:
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { month, year, FactoryID, FilterType } = req.body;
 
         if(FilterType == 1){ // MachineGroup
@@ -464,7 +465,7 @@ router.post('/donut', async (req, res) => { //TODO:
 })
 router.post('/top', async (req, res) => { //TODO:
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { month, year, FactoryID } = req.body;
 
         let topCost = await pool.request().query(`
@@ -547,7 +548,7 @@ router.post('/top', async (req, res) => { //TODO:
 })
 router.post('/pm-plan', async (req, res) => { //TODO: 2 Week
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { FactoryID } = req.body;
         let startDate = new Date();
         let endDate = new Date();
@@ -582,7 +583,7 @@ router.post('/pm-plan', async (req, res) => { //TODO: 2 Week
 })
 router.post('/sparepart-shortage', async (req, res) => { // Shotage น้อยกว่า min, Remain/min
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { month, year } = req.body;
         let sparepart = await pool.request().query(`WITH Spare AS(
             SELECT a.SpareID, a.BF, a.Received, a.Purchase
@@ -621,7 +622,7 @@ router.post('/sparepart-shortage', async (req, res) => { // Shotage น้อย
 
 router.post('/alert/total', async (req, res) => { //TODO: Avg. Check Time = เวลารอ Em มา Checkin
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { month, year } = req.body;
         let total = await pool.request().query(`SELECT COUNT(a.EmCallID) AS CntEmCall, AVG(DATEDIFF(MINUTE, a.CreatedAt, a.CheckInAt)) AS AvgCheckTime
         FROM [Em].[EmCall] a

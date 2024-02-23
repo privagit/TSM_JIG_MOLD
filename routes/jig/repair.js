@@ -1,15 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const config = require('../../lib/dbconfig').dbconfig_jig;
-const sql = require('mssql');
 const Redis = require('ioredis');
 const redis = new Redis();
+const { getPool } = require('../../middlewares/pool-manager');
 
 
 //* ========= Repair Issue =========
 router.post('/repair-issue', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { month, year, Status } = req.body;
 
         let repairIssue = await pool.request().query(`SELECT a.RepairCheckID, b.JigNo, a.RequestTime, a.StartTime, a.EndTime, a.Complaint, a.RootCause,
@@ -50,7 +50,7 @@ router.post('/repair-issue', async (req, res) => {
 })
 router.post('/repair-issue/dropdown/jig', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let jigs = await pool.request().query(`SELECT a.JigID, a.JigNo, a.JigTypeID, b.JigType FROM [Jig].[MasterJig] a
         LEFT JOIN [Jig].[MasterJigType] b ON b.JigTypeID = a.JigTypeID
         WHERE a.Active = 1
@@ -63,7 +63,7 @@ router.post('/repair-issue/dropdown/jig', async (req, res) => {
 })
 router.post('/repair-issue/dropdown/problem/type', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let problemType = await pool.request().query(`SELECT a.RepairTypeID, a.RepairType
         FROM [Jig].[MasterRepairType] a
         WHERE a.Active = 1;
@@ -76,7 +76,7 @@ router.post('/repair-issue/dropdown/problem/type', async (req, res) => {
 })
 router.post('/repair-issue/dropdown/problem', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { RepairTypeID } = req.body;
         let problem = await pool.request().query(`SELECT a.RepairProblemID, a.RepairProblem
         FROM [Jig].[MasterRepairProblem] a
@@ -91,7 +91,7 @@ router.post('/repair-issue/dropdown/problem', async (req, res) => {
 // Request
 router.post('/repair-issue/request/issue', async (req, res) => { //TODO: ReportNo., cache, RunningNo., io
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID } = req.body;
          //* Get RunningNo
         let date = new Date();
@@ -140,7 +140,7 @@ router.post('/repair-issue/request/issue', async (req, res) => { //TODO: ReportN
 // Repair
 router.post('/repair-issue/repair/start', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { RepairCheckID } = req.body;
 
         let cur = new Date();
@@ -156,7 +156,7 @@ router.post('/repair-issue/repair/start', async (req, res) => {
 })
 router.post('/repair-issue/repair/item', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { RepairCheckID } = req.body;
 
         let repair = await pool.request().query(`SELECT a.RepairCheckID, a.RequestTime, a.RepairProblemID, a.RepairTypeID, a.Complaint,
@@ -189,7 +189,7 @@ router.post('/repair-issue/repair/item', async (req, res) => {
 })
 router.post('/repair-issue/repair/edit', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { RepairCheckID, RootCause, FixDetail, TestDummyResult } = req.body;
         console.log(`UPDATE [Jig].[RepairCheck] SET RootCause = N'${RootCause}', FixDetail = N'${FixDetail}',
         TestDummyResult = ${TestDummyResult}
@@ -210,7 +210,7 @@ router.post('/repair-issue/repair/edit', async (req, res) => {
 // Tech
 router.post('/repair-issue/repair/tech', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { RepairCheckID } = req.body;
 
         let techs = await pool.request().query(`SELECT a.RepairTechID, b.FirstName AS TechName
@@ -230,7 +230,7 @@ router.post('/repair-issue/repair/tech', async (req, res) => {
 })
 router.post('/repair-issue/repair/tech/add', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { RepairCheckID, EmployeeID } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${EmployeeID};`);
@@ -260,7 +260,7 @@ router.post('/repair-issue/repair/tech/add', async (req, res) => {
 })
 router.delete('/repair-issue/repair/tech/delete', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { RepairTechID } = req.body;
 
         let deleteTech = `DELETE FROM [Jig].[RepairTech] WHERE RepairTechID = ${RepairTechID};`;
@@ -275,7 +275,7 @@ router.delete('/repair-issue/repair/tech/delete', async (req, res) => {
 // Service / Parts Cost
 router.post('/repair-issue/service/dropdown/category', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let category = await pool.request().query(`SELECT a.SpareCategoryID, a.Category
         FROM [Jig].[MasterSpareCategory] a
         WHERE a.Active = 1;
@@ -288,7 +288,7 @@ router.post('/repair-issue/service/dropdown/category', async (req, res) => {
 })
 router.post('/repair-issue/service/dropdown/sparepart', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { SpareCategoryID } = req.body;
         let sparepart = await pool.request().query(`SELECT a.SpareID, a.SpareName, a.Price
         FROM [Jig].[MasterSpare] a
@@ -302,7 +302,7 @@ router.post('/repair-issue/service/dropdown/sparepart', async (req, res) => {
 })
 router.post('/repair-issue/service', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { RepairCheckID } = req.body;
 
         let PartsCost = await pool.request().query(`SELECT a.RepairCheckID, a.RepairCostID, a.SpareID, b.SpareName, a.Qty, a.UnitPrice, a.UsedDate,
@@ -320,7 +320,7 @@ router.post('/repair-issue/service', async (req, res) => {
 })
 router.post('/repair-issue/service/add', async (req, res) => { // ถ้า Use มากกว่า Remain
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { RepairCheckID, SpareID, Qty, UnitPrice, Reuse } = req.body;
 
         // Get Remain
@@ -356,7 +356,7 @@ router.post('/repair-issue/service/add', async (req, res) => { // ถ้า Use 
 })
 router.post('/repair-issue/service/reuse', async (req, res) => { // ติ๊ก Reuse
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { RepairCostID, Reuse } = req.body;
         let updateReuse = `UPDATE [Jig].[RepairCost] SET Reuse = ${Reuse} WHERE RepairCostID = ${RepairCostID};`;
         await pool.request().query(updateReuse);
@@ -368,7 +368,7 @@ router.post('/repair-issue/service/reuse', async (req, res) => { // ติ๊ก
 })
 router.delete('/repair-issue/service/delete', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { RepairCostID } = req.body;
 
         let deletePart = `DELETE FROM [Jig].[RepairCost] WHERE RepairCostID = ${RepairCostID};`;
@@ -382,7 +382,7 @@ router.delete('/repair-issue/service/delete', async (req, res) => {
 })
 router.put('/repair-issue/result/edit', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { RepairCheckID, RepairResult } = req.body;
         let updateRepairResult = `UPDATE [Jig].[RepairCheck] SET RepairResult = ${RepairResult} WHERE RepairCheckID = ${RepairCheckID};`;
         await pool.request().query(updateRepairResult);
@@ -395,7 +395,7 @@ router.put('/repair-issue/result/edit', async (req, res) => {
 // Sign
 router.post('/repair-issue/sign/repair', async (req, res) => { //* cache, io
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { RepairCheckID, RepairBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${RepairBy};`);
@@ -437,7 +437,7 @@ router.post('/repair-issue/sign/repair', async (req, res) => { //* cache, io
 })
 router.post('/repair-issue/sign/approve', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { RepairCheckID, ApproveBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ApproveBy};`);
@@ -456,7 +456,7 @@ router.post('/repair-issue/sign/approve', async (req, res) => {
 })
 router.post('/repair-issue/sign/receive', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { RepairCheckID, ReceiveBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ReceiveBy};`);
@@ -475,7 +475,7 @@ router.post('/repair-issue/sign/receive', async (req, res) => {
 })
 router.post('/repair-issue/sign/receive-approve', async (req, res) => {
     try {
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config);
         let { RepairCheckID, ReceiveApproveBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ReceiveApproveBy};`);
