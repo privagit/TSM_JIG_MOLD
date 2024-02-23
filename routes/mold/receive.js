@@ -27,6 +27,7 @@ const uploadReceiveDetailImage = multer({ storage: storageReceiveDetailImage }).
 
 //* ========== Receive List ==========
 // TakeoutStatus : { 1: Wait Receive(New Mold), 2: Takeout, 3: Wait EN, 4: Complete }
+// TakeoutType : { 1: New Mold, 2: Tranfer Mold }
 router.post('/list', async (req, res) => { //TODO: where
     try {
         let pool = await getPool('MoldPool', config);
@@ -189,7 +190,7 @@ router.post('/specification/detail/history', async (req, res) => { // ดูอ�
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/specification/detail', async (req, res) => { // ดูอย่างเดียว
+router.post('/specification/detail', async (req, res) => { //TODO: Header(Custoemr, PartCode, PartName),  ดูอย่างเดียว
     try {
         let pool = await getPool('MoldPool', config);
         let { DetailID } = req.body;
