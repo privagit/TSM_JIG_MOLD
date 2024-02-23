@@ -1,8 +1,9 @@
-const config = require('../lib/dbconfig');
+const config_jig = require('../lib/dbconfig').dbconfig_jig;
+const config_mold = require('../lib/dbconfig').dbconfig_mold;
 const sql = require('mssql');
 const cron = require('node-cron');
 
-let insertPredictPlan = async () => { //TODO:
+let insertPreventPlanJig = async () => { //TODO:
     try {
         console.log('start Predict', new Date());
         let pool = await sql.connect(config);
@@ -102,7 +103,44 @@ let insertPredictPlan = async () => { //TODO:
     }
 }
 
-let insertSpareMonth = async () => { // New Month: insert new [SpareMonth] and Remain is BF
+let insertSpareMonthJig = async () => { // New Month: insert new [SpareMonth] and Remain is BF
+    try {
+        console.log('start insertSpareMonth', new Date());
+        let pool = await sql.connect(config);
+        let spare = await pool.request().query(`
+        WITH SpareReceive AS(
+            SELECT a.SpareID, a.BF, a.Received, a.Purchase
+            FROM [Em].[SpareMonth] a
+            WHERE MONTH(DATEADD(MONTH, 1, a.MonthYear)) = MONTH(GETDATE()) AND YEAR(DATEADD(MONTH, 1, a.MonthYear)) = YEAR(GETDATE())
+        ), SpareUsed AS (
+            SELECT a.SpareID, SUM(a.Qty) AS Used
+            FROM [Em].[RepairCost] a
+            WHERE MONTH(DATEADD(MONTH, 1, a.UsedDate)) = MONTH(GETDATE()) AND YEAR(DATEADD(MONTH, 1, a.UsedDate)) = YEAR(GETDATE())
+            GROUP BY a.SpareID
+        )
+        SELECT a.SpareID, b.BF, b.Received, b.Purchase, c.Used, d.SpareMonthID
+        FROM [Em].[MasterSpare] a
+        LEFT JOIN [SpareReceive] b ON a.SpareID = b.SpareID
+        LEFT JOIN [SpareUsed] c ON a.SpareID = c.SpareID
+        LEFT JOIN [Em].[SpareMonth] d ON a.SpareID = d.SpareID AND MONTH(d.MonthYear) = MONTH(GETDATE()) AND YEAR(d.MonthYear) = YEAR(GETDATE());
+        `);
+        let totalQuery = [];
+        for(let item of spare.recordset){
+            let BF = item.BF + item.Received + item.Purchase - item.Used;
+            if(item.SpareMonthID) continue;
+
+            let insertSpareMonth = `INSERT INTO [Em].[SpareMonth](SpareID, MonthYear, BF) VALUES(${item.SpareID}, GETDATE(), ${BF});
+            `;
+            totalQuery.push(insertSpareMonth);
+        }
+        // await pool.request().query(totalQuery.join(''));
+        console.log('finish insertSpareMonth', new Date());
+    } catch (err) {
+        console.log('insertSpareMonth', err);
+    }
+}
+
+let insertSpareMonthMold = async () => { // New Month: insert new [SpareMonth] and Remain is BF
     try {
         console.log('start insertSpareMonth', new Date());
         let pool = await sql.connect(config);

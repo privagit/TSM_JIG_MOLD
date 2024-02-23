@@ -9,7 +9,7 @@ router.post('/', async (req, res) => { //TODO: RepairRequest, Condition AcceptSt
         let pool = await getPool('MoldPool', config);
         let { Status } = req.body;
         // Status 1: Issue, 2: Cancel, 3: Reject, 4: Accept
-        let pmList = await pool.request().query(`SELECT a.MoldID, a.BasicMold, a.DieNo, b.WarningShot, b.DangerShot, b.WarrantyShot, b.AlertPercent, b.AlertWarrantyPercent
+        let pmList = await pool.request().query(`SELECT a.MoldID, a.BasicMold, a.DieNo, b.WarningShot, b.DangerShot, b.WarrantyWarningShot, b.WarrantyDangerShot, b.AlertPercent, b.AlertWarrantyPercent
         FROM [Mold].[MasterMold] a
         LEFT JOIN [Mold].[MasterPm] b ON b.MoldID = a.MoldID
         WHERE a.Active = 1;
@@ -34,7 +34,7 @@ router.post('/', async (req, res) => { //TODO: RepairRequest, Condition AcceptSt
         for(let mold of pmList.recordset){
             let needPM = false;
             let alertPm = Math.round(mc.AlertPercent * mc.WarningShot / 100);
-            let alertWarranty = Math.round(mc.AlertWarrantyPercent * mc.WarrantyShot / 100);
+            let alertWarranty = Math.round(mc.AlertWarrantyPercent * mc.WarrantyWarningShot / 100);
             if(mold.ActualPmShot >= alertPm || mc.ActualWarrantyShot >= alertWarranty){
                 let pm = pmRequest.recordset.filter(v => v.MoldID == mold.MoldID && v.PmType == 1); // Pm
                 let warranty = pmRequest.recordset.filter(v => v.MoldID == mold.MoldID && v.PmType == 2); // Warranty
