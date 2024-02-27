@@ -35,11 +35,7 @@ router.post('/', async (req, res) => { //TODO: RepairRequest, Condition AcceptSt
         for(let mold of pmList.recordset){
             let needPM = false;
             let alertPm = Math.round(mold.AlertPercent * mold.WarningShot / 100);
-<<<<<<< HEAD
-            let alertWarranty = Math.round(mold.AlertWarrantyPercent * mold.WarrantyShot / 100);
-=======
             let alertWarranty = Math.round(mold.AlertWarrantyPercent * mold.WarrantyWarningShot / 100);
->>>>>>> origin/tang
             if(mold.ActualPmShot >= alertPm || mold.ActualWarrantyShot >= alertWarranty){
                 let pm = pmRequest.recordset.filter(v => v.MoldID == mold.MoldID && v.PmType == 1); // Pm
                 let warranty = pmRequest.recordset.filter(v => v.MoldID == mold.MoldID && v.PmType == 2); // Warranty
