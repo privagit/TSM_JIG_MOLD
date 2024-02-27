@@ -247,14 +247,13 @@ router.put('/request/sign', async (req, res) => { // ต้องอนุมั
     }
 })
 
-
 //* ===== Part List =====
 router.post('/part-list', async (req, res) => { // เอา Receive ออก, เพิ่ม ModifyDate, เพิ่มเลือก Supplier
     try {
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
         let jigPartList = await pool.request().query(`SELECT row_number() over(order by a.PartListID) AS ItemNo,
-        a.PartListID, a.List, a.Qty, a.OrderType, a.Remark, b.AxCode, a.UnitPrice, c.SupplierName, ModifyDate
+        a.PartListID, a.List, a.Qty, a.OrderType, a.Remark, a.SpareID, b.AxCode, a.UnitPrice, c.SupplierName, ModifyDate, a.SupplierID
         FROM [Jig].[JigPartList] a
         LEFT JOIN [Jig].[MasterSpare] b ON b.SpareID = a.SpareID
         LEFT JOIN [Jig].[MasterSupplier] c ON c.SupplierID = a.SupplierID
@@ -453,7 +452,6 @@ router.post('/part-list/sparepart/detail', async (req, res) => { // เพิ่
     }
 })
 
-
 //* ===== Work List =====
 router.post('/work-list', async (req, res) => { //TODO: คำนวน Cost ยังไง(คำนวนเวลามาคิด Cost)
     try {
@@ -515,7 +513,6 @@ router.delete('/work-list/delete', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-
 
 //* ===== Modify Jig =====
 router.post('/modify', async (req, res) => { // Budget ดูจาก JigCreation
@@ -670,7 +667,6 @@ router.post('/modify/upload/after', async (req, res) => {
         }
     })
 })
-
 
 //* ===== Trial =====
 router.post('/trial', async (req, res) => {
