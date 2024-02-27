@@ -303,7 +303,7 @@ router.post('/part-list/add', async (req, res) => { // update SparePart Stock, �
 router.put('/part-list/edit', async (req, res) => { // update SparePart Stock, เพิ่ม unsign ApproveEdit
     try {
         let pool = await getPool('JigPool', config);
-        let { JigCreationID, PartListID, List, Qty, OrderType, Remark, SpareID, UnitPrice } = req.body;
+        let { JigCreationID, PartListID, List, Qty, OrderType, Remark, SpareID, UnitPrice, SupplierID } = req.body;
 
         // Update SparePart Stock
         let date = new Date();
@@ -324,7 +324,7 @@ router.put('/part-list/edit', async (req, res) => { // update SparePart Stock, �
 
         // Update PartList
         let updatePartList = `UPDATE [Jig].[JigPartList] SET List = N'${List}', Qty = ${Qty}, OrderType = ${OrderType},
-        Remark = N'${Remark}', SpareID = ${SpareID}, UnitPrice = ${UnitPrice}
+        Remark = N'${Remark}', SpareID = ${SpareID}, UnitPrice = ${UnitPrice}, SupplierID = ${SupplierID}
         WHERE PartListID = ${PartListID};
 
         UPDATE [Jig].[JigCreation] SET PartListApproveEditBy = null, PartListApproveEditSignTime = null WHERE JigCreationID = ${JigCreationID};
