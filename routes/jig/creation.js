@@ -360,11 +360,12 @@ router.delete('/part-list/delete', async (req, res) => { // update SparePart Sto
         }
         let month = date.getMonth() + 1;
         let year = date.getFullYear();
-        let oldPartList = await pool.request().query(`SELECT a.Qty
+        let oldPartList = await pool.request().query(`SELECT a.Qty, a.SpareID
         FROM [Jig].[JigPartList] a
         WHERE PartListID = ${PartListID};
         `);
         let Qty = oldPartList.recordset[0].Qty;
+        let SpareID = oldPartList.recordset[0].SpareID;
         let updateStock = `UPDATE [Jig].[SpareMonth] SET UsedPartList = ISNULL(UsedPartList,0) - ${Qty}
         WHERE SpareID = ${SpareID} AND MONTH(MonthYear) = ${month} AND YEAR(MonthYear) = ${year}
         `;
@@ -650,11 +651,12 @@ router.delete('/modify/part-list/delete', async (req, res) => { // same as PartL
         }
         let month = date.getMonth() + 1;
         let year = date.getFullYear();
-        let oldPartList = await pool.request().query(`SELECT a.Qty
+        let oldPartList = await pool.request().query(`SELECT a.Qty, a.SpareID
         FROM [Jig].[JigModifyPartList] a
         WHERE ModifyPartListID = ${ModifyPartListID};
         `);
         let Qty = oldPartList.recordset[0].Qty;
+        let SpareID = oldPartList.recordset[0].SpareID;
         let updateStock = `UPDATE [Jig].[SpareMonth] SET UsedPartList = ISNULL(UsedPartList,0) - ${Qty}
         WHERE SpareID = ${SpareID} AND MONTH(MonthYear) = ${month} AND YEAR(MonthYear) = ${year}
         `;
