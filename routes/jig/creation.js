@@ -18,7 +18,7 @@ router.post('/list', async (req, res) => { //TODO: Where
         a.Quantity, a.JigTypeID, c.JigType, a.RequestType, a.Budget, a.CustomerBudget,
         a.ExamResult, a.ExamApproveBy, CONVERT(NVARCHAR, a.FinishDate, 23) AS FinishDate,
         d.FirstName AS PartListApproveBy, a.PartListApproveSignTime,
-        d.FirstName AS PartListApproveEditBy, a.PartListApproveEditSignTime
+        e.FirstName AS PartListApproveEditBy, a.PartListApproveEditSignTime
         FROM [Jig].[JigCreation] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
         LEFT JOIN [Jig].[MasterJigType] c ON c.JigTypeID = a.JigTypeID
@@ -45,6 +45,7 @@ router.post('/list', async (req, res) => { //TODO: Where
 
         for (let item of jigCreateList.recordset) {
             item.PartListApproveBy = !item.PartListApproveBy ? null : atob(item.PartListApproveBy);
+            item.PartListApproveEditBy = !item.PartListApproveEditBy ? null : atob(item.PartListApproveEditBy);
 
             // Request Status { 0: Issue, 1: Accept (Wait Approve), 2: Accept, 3: Reject }
             if (item.ExamResult == null) {
@@ -578,6 +579,7 @@ router.post('/modify/part-list', async (req, res) => { // same as PartList
         LEFT JOIN [Jig].[MasterSupplier] c ON c.SupplierID = a.SupplierID
         WHERE a.ModifyID = ${ModifyID} AND a.Active = 1;
         `);
+        console.log(modifyPartList.recordset)
         res.json(modifyPartList.recordset);
     } catch (err) {
         console.log(req.url, err);
