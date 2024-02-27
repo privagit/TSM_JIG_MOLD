@@ -94,7 +94,7 @@ router.post('/repair-issue/dropdown/problem', async (req, res) => {
 router.post('/repair-issue/request/issue', async (req, res) => { //TODO: ReportNo., cache, RunningNo., io
     try {
         let pool = await getPool('JigPool', config);
-        let { JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID } = req.body;
+        let { JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID, LotNo } = req.body;
          //* Get RunningNo
         let date = new Date();
         let monthRunningNo = await pool.request().query(`SELECT a.MonthDate, a.RunningNo
@@ -110,8 +110,8 @@ router.post('/repair-issue/request/issue', async (req, res) => { //TODO: ReportN
         }
         let ReportNo = `EM-${('0000'+RunningNo).substr(-4)}-${('00'+(date.getMonth()+1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
 
-        let issueRepair = await pool.request().query(`INSERT INTO [Jig].[RepairCheck](JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID, ReportNo)
-        VALUES(${JigID}, N'${RequestBy}', '${RequestTime}', '${Section}', N'${Complaint}', ${RepairTypeID}, ${RepairProblemID}, '${ReportNo}');
+        let issueRepair = await pool.request().query(`INSERT INTO [Jig].[RepairCheck](JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID, ReportNo, LotNo)
+        VALUES(${JigID}, N'${RequestBy}', '${RequestTime}', '${Section}', N'${Complaint}', ${RepairTypeID}, ${RepairProblemID}, '${ReportNo}', N'${LotNo}');
 
         SELECT SCOPE_IDENTITY() AS RepairCheckID;
         `);
@@ -165,7 +165,7 @@ router.post('/repair-issue/repair/item', async (req, res) => {
         a.StartTime, a.EndTime, a.RootCause, a.FixDetail, a.TestDummyResult, a.RepairResult,
         b.FirstName AS RequestSign, c.FirstName AS RepairBy, d.FirstName AS ApproveBy, e.FirstName AS ReceiveBy, a.ReceiveTime,
         f.FirstName AS ReceiveApproveBy,
-        a.JigID, g.JigTypeID, h.JigType, a.Section
+        a.JigID, g.JigTypeID, h.JigType, a.Section, a.LotNo
         FROM [Jig].[RepairCheck] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.RequestBy = b.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.RepairBy = c.EmployeeID
