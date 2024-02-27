@@ -295,7 +295,7 @@ router.post('/receive/detail/image/upload', async (req, res) => {
 router.post('/sign/mold/issue', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
-        let { ReceiveID, IssueBy } = req.body;
+        let { ReceiveID, MoldIssueBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${IssueBy};`);
         if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
@@ -314,7 +314,7 @@ router.post('/sign/mold/issue', async (req, res) => {
 router.post('/sign/mold/check', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
-        let { ReceiveID, CheckBy } = req.body;
+        let { ReceiveID, MoldCheckBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${CheckBy};`);
         if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
