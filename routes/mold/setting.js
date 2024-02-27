@@ -147,12 +147,16 @@ router.post('/maintenace', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldID } = req.body;
+<<<<<<< HEAD
         console.log('object :>> ', `SELECT a.PmID, a.MoldID, a.WarningShot, a.DangerShot, a.WarrantyShot,
         a.AlertPercent, a.AlertWarrantyPercent, a.ImagePath, a.PmTopic
         FROM [Mold].[MasterPm] a
         WHERE a.MoldID = ${MoldID};
         `);
         let maintenance = await pool.request().query(`SELECT a.PmID, a.MoldID, a.WarningShot, a.DangerShot, a.WarrantyShot,
+=======
+        let maintenance = await pool.request().query(`SELECT a.PmID, a.MoldID, a.WarningShot, a.DangerShot, a.WarrantyWarningShot, a.WarrantyDangerShot,
+>>>>>>> origin/tang
         a.AlertPercent, a.AlertWarrantyPercent, a.ImagePath, a.PmTopic
         FROM [Mold].[MasterPm] a
         WHERE a.MoldID = ${MoldID};
@@ -166,6 +170,7 @@ router.post('/maintenace', async (req, res) => {
 router.post('/maintenace/pm/edit', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
+<<<<<<< HEAD
         let { MoldID, WarningShot, DangerShot, WarrantyShot, AlertPercent, AlertWarrantyPercent } = req.body;
         console.log('object :>> ', `DECLARE @PmID INT;
         SET @PmID = (SELECT PmID FROM [Mold].[MasterPm] WHERE MoldID = ${MoldID});
@@ -182,18 +187,21 @@ router.post('/maintenace/pm/edit', async (req, res) => {
             WHERE PmID = @PmID;
         END;
         `);
+=======
+        let { MoldID, WarningShot, DangerShot, WarrantyWarningShot, WarrantyDangerShot, AlertPercent, AlertWarrantyPercent } = req.body;
+>>>>>>> origin/tang
         let updatePm = `DECLARE @PmID INT;
         SET @PmID = (SELECT PmID FROM [Mold].[MasterPm] WHERE MoldID = ${MoldID});
 
         IF(@PmID IS NULL) -- Insert
         BEGIN
-            INSERT INTO [Mold].[MasterPm](MoldID, WarningShot, DangerShot, WarrantyShot, AlertPercent, AlertWarrantyPercent)
-            VALUES(${MoldID}, ${WarningShot}, ${DangerShot}, ${WarrantyShot}, ${AlertPercent}, ${AlertWarrantyPercent});
+            INSERT INTO [Mold].[MasterPm](MoldID, WarningShot, DangerShot, WarrantyWarningShot, WarrantyDangerShot, AlertPercent, AlertWarrantyPercent)
+            VALUES(${MoldID}, ${WarningShot}, ${DangerShot}, ${WarrantyWarningShot}, ${WarrantyDangerShot}, ${AlertPercent}, ${AlertWarrantyPercent});
         END
         ELSE -- Update
         BEGIN
-            UPDATE [Mold].[MasterPm] SET WarningShot = ${WarningShot}, DangerShot = ${DangerShot}, WarrantyShot = ${WarrantyShot},
-            AlertPercent = ${AlertPercent}, AlertWarrantyPercent = ${AlertWarrantyPercent}
+            UPDATE [Mold].[MasterPm] SET WarningShot = ${WarningShot}, DangerShot = ${DangerShot}, WarrantyWarningShot = ${WarrantyWarningShot},
+            WarrantyDangerShot = ${WarrantyDangerShot}, AlertPercent = ${AlertPercent}, AlertWarrantyPercent = ${AlertWarrantyPercent}
             WHERE PmID = @PmID;
         END;
         `;

@@ -53,7 +53,11 @@ let moldPlanConfirmRouter = require('./routes/mold/planconfirm'); //TODO
 let moldSpecificRouter = require('./routes/mold/specific'); //TODO
 let moldReceiveRouter = require('./routes/mold/receive'); //TODO
 let moldRunPlanRouter = require('./routes/mold/runplan'); //TODO
+<<<<<<< HEAD
 let moldPMPlan = require('./routes/mold/pm'); //TODO
+=======
+let moldPmRouter = require('./routes/mold/pm'); //TODO
+>>>>>>> origin/tang
 // let moldPrepareRouter = require('./routes/mold/prepare');
 app.use('/mold/setting', moldSettingRouter);
 app.use('/mold/sparepart', moldSparepartRouter);
@@ -62,7 +66,11 @@ app.use('/mold/plan-confirm', moldPlanConfirmRouter);
 app.use('/mold/specification', moldSpecificRouter);
 app.use('/mold/receive', moldReceiveRouter);
 app.use('/mold/run-plan', moldRunPlanRouter);
+<<<<<<< HEAD
 app.use('/mold/pmplan', moldPMPlan);
+=======
+app.use('/mold/pm', moldPmRouter);
+>>>>>>> origin/tang
 // app.use('/mold/prepare', moldPrepareRouter);
 
 // Swagger definition

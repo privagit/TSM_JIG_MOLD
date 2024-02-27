@@ -51,12 +51,20 @@ router.post('/repair-issue', async (req, res) => {
 router.post('/repair-issue/dropdown/jig', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
+<<<<<<< HEAD
         let { CustomerID } = req.body;
         if(!CustomerID) return res.json([])
         let jigs = await pool.request().query(`SELECT a.JigID, a.JigNo, a.JigTypeID, b.JigType 
         FROM [Jig].[MasterJig] a
         LEFT JOIN [Jig].[MasterJigType] b ON b.JigTypeID = a.JigTypeID
         WHERE a.Active = 1 AND a.CustomerID = ${CustomerID}
+=======
+        let jigs = await pool.request().query(`SELECT a.JigID, a.JigNo, a.JigTypeID, b.JigType, a.PartCode, c.CustomerName
+        FROM [Jig].[MasterJig] a
+        LEFT JOIN [Jig].[MasterJigType] b ON b.JigTypeID = a.JigTypeID
+        LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] c ON c.CustomerID = a.CustomerID
+        WHERE a.Active = 1
+>>>>>>> origin/tang
         `);
         res.json(jigs.recordset);
     } catch (err) {
@@ -95,7 +103,7 @@ router.post('/repair-issue/dropdown/problem', async (req, res) => {
 router.post('/repair-issue/request/issue', async (req, res) => { //TODO: ReportNo., cache, RunningNo., io
     try {
         let pool = await getPool('JigPool', config);
-        let { JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID } = req.body;
+        let { JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID, LotNo } = req.body;
          //* Get RunningNo
         let date = new Date();
         let monthRunningNo = await pool.request().query(`SELECT a.MonthDate, a.RunningNo
@@ -109,10 +117,10 @@ router.post('/repair-issue/request/issue', async (req, res) => { //TODO: ReportN
             var RunningNo = 1;
             await pool.request().query(`INSERT INTO [MonthRunningNo](MonthDate, RunningNo) VALUES('${date.getFullYear()}-${date.getMonth()+1}-1', 1)`);
         }
-        let ReportNo = `EM-${('0000'+RunningNo).substr(-4)}-${('00'+(date.getMonth()+1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
+        let ReportNo = `JIG-${('0000'+RunningNo).substr(-4)}-${('00'+(date.getMonth()+1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
 
-        let issueRepair = await pool.request().query(`INSERT INTO [Jig].[RepairCheck](JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID, ReportNo)
-        VALUES(${JigID}, N'${RequestBy}', '${RequestTime}', '${Section}', N'${Complaint}', ${RepairTypeID}, ${RepairProblemID}, '${ReportNo}');
+        let issueRepair = await pool.request().query(`INSERT INTO [Jig].[RepairCheck](JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID, ReportNo, LotNo)
+        VALUES(${JigID}, N'${RequestBy}', '${RequestTime}', '${Section}', N'${Complaint}', ${RepairTypeID}, ${RepairProblemID}, '${ReportNo}', N'${LotNo}');
 
         SELECT SCOPE_IDENTITY() AS RepairCheckID;
         `);
@@ -166,7 +174,7 @@ router.post('/repair-issue/repair/item', async (req, res) => {
         a.StartTime, a.EndTime, a.RootCause, a.FixDetail, a.TestDummyResult, a.RepairResult,
         b.FirstName AS RequestSign, c.FirstName AS RepairBy, d.FirstName AS ApproveBy, e.FirstName AS ReceiveBy, a.ReceiveTime,
         f.FirstName AS ReceiveApproveBy,
-        a.JigID, g.JigTypeID, h.JigType, a.Section
+        a.JigID, g.JigTypeID, h.JigType, a.Section, a.LotNo
         FROM [Jig].[RepairCheck] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.RequestBy = b.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.RepairBy = c.EmployeeID
@@ -190,14 +198,11 @@ router.post('/repair-issue/repair/item', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/repair-issue/repair/edit', async (req, res) => {
+router.post('/repair-issue/repair/edit', async (req, res) => { //? Check StartTime ?
     try {
         let pool = await getPool('JigPool', config);
         let { RepairCheckID, RootCause, FixDetail, TestDummyResult } = req.body;
-        console.log(`UPDATE [Jig].[RepairCheck] SET RootCause = N'${RootCause}', FixDetail = N'${FixDetail}',
-        TestDummyResult = ${TestDummyResult}
-        WHERE RepairCheckID = ${RepairCheckID};
-        `)
+
         let updateRepair = `UPDATE [Jig].[RepairCheck] SET RootCause = N'${RootCause}', FixDetail = N'${FixDetail}',
         TestDummyResult = ${TestDummyResult}
         WHERE RepairCheckID = ${RepairCheckID};

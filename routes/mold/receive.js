@@ -27,6 +27,7 @@ const uploadReceiveDetailImage = multer({ storage: storageReceiveDetailImage }).
 
 //* ========== Receive List ==========
 // TakeoutStatus : { 1: Wait Receive(New Mold), 2: Takeout, 3: Wait EN, 4: Complete }
+// TakeoutType : { 1: New Mold, 2: Tranfer Mold }
 router.post('/list', async (req, res) => { //TODO: where
     try {
         let pool = await getPool('MoldPool', config);
@@ -51,7 +52,7 @@ router.post('/list', async (req, res) => { //TODO: where
             UNION ALL
             SELECT * FROM [TakeoutMold]
         )
-        SELECT ReceiveID, MoldSpecID, MoldID, TakeoutType, TakeoutStatus, BasicMold, DieNo, MoldControlNo,
+        SELECT ReceiveID, MoldSpecID, MoldID, TakeoutType AS MoldStatus, TakeoutStatus, BasicMold, DieNo, MoldControlNo,
             IssueTime, ReceiveTime, MoldApprovBy, EnApprovBy
         FROM [tbsum]
         `);
@@ -189,7 +190,7 @@ router.post('/specification/detail/history', async (req, res) => { // ดูอ�
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/specification/detail', async (req, res) => { // ดูอย่างเดียว
+router.post('/specification/detail', async (req, res) => { //TODO: Header(Custoemr, PartCode, PartName),  ดูอย่างเดียว
     try {
         let pool = await getPool('MoldPool', config);
         let { DetailID } = req.body;
@@ -228,6 +229,7 @@ router.post('/receive/detail', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.MoldApprovBy = d.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] e ON a.EnCheckBy = e.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] f ON a.EnApprovBy = f.EmployeeID
+        LEFT JOIN [Mold].[MoldTakeout] g ON g.TakeoutID = a.TakeoutID
         WHERE a.ReceiveID = ${ReceiveID};
         `);
         let receiveImage = await pool.request().query(`SELECT a.ImageNo, a.ImagePath
@@ -295,7 +297,7 @@ router.post('/receive/detail/image/upload', async (req, res) => {
 router.post('/sign/mold/issue', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
-        let { ReceiveID, IssueBy } = req.body;
+        let { ReceiveID, MoldIssueBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${IssueBy};`);
         if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
@@ -314,7 +316,7 @@ router.post('/sign/mold/issue', async (req, res) => {
 router.post('/sign/mold/check', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
-        let { ReceiveID, CheckBy } = req.body;
+        let { ReceiveID, MoldCheckBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${CheckBy};`);
         if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
@@ -333,7 +335,7 @@ router.post('/sign/mold/check', async (req, res) => {
 router.post('/sign/mold/approve', async (req, res) => { // update TakeoutStatus = 3(Wait EN), if New Mold Update Spec Status = 4(Mold Received)
     try {
         let pool = await getPool('MoldPool', config);
-        let { ReceiveID, ApproveBy } = req.body;
+        let { ReceiveID, MoldApproveBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ApproveBy};`);
         if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
@@ -372,7 +374,7 @@ router.post('/sign/mold/approve', async (req, res) => { // update TakeoutStatus 
 router.post('/sign/en/check', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
-        let { ReceiveID, CheckBy } = req.body;
+        let { ReceiveID, EnCheckBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${CheckBy};`);
         if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
@@ -391,7 +393,7 @@ router.post('/sign/en/check', async (req, res) => {
 router.post('/sign/en/approve', async (req, res) => { // update TakeoutStatus = 4(Complete), if New Mold update SpecStatus = 5(Complete), add to Master
     try {
         let pool = await getPool('MoldPool', config);
-        let { ReceiveID, ApproveBy } = req.body;
+        let { ReceiveID, EnApproveBy } = req.body;
 
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ApproveBy};`);
         if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });

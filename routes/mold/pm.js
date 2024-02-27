@@ -10,7 +10,7 @@ router.post('/', async (req, res) => { //TODO: RepairRequest, Condition AcceptSt
         let { Status } = req.body;
         console.log('Status', Status)
         // Status 1: Issue, 2: Cancel, 3: Reject, 4: Accept
-        let pmList = await pool.request().query(`SELECT a.MoldID, a.BasicMold, a.DieNo, b.WarningShot, b.DangerShot, b.WarrantyShot, b.AlertPercent, b.AlertWarrantyPercent
+        let pmList = await pool.request().query(`SELECT a.MoldID, a.BasicMold, a.DieNo, b.WarningShot, b.DangerShot, b.WarrantyWarningShot, b.WarrantyDangerShot, b.AlertPercent, b.AlertWarrantyPercent
         FROM [Mold].[MasterMold] a
         LEFT JOIN [Mold].[MasterPm] b ON b.MoldID = a.MoldID
         WHERE a.Active = 1;
@@ -35,7 +35,11 @@ router.post('/', async (req, res) => { //TODO: RepairRequest, Condition AcceptSt
         for(let mold of pmList.recordset){
             let needPM = false;
             let alertPm = Math.round(mold.AlertPercent * mold.WarningShot / 100);
+<<<<<<< HEAD
             let alertWarranty = Math.round(mold.AlertWarrantyPercent * mold.WarrantyShot / 100);
+=======
+            let alertWarranty = Math.round(mold.AlertWarrantyPercent * mold.WarrantyWarningShot / 100);
+>>>>>>> origin/tang
             if(mold.ActualPmShot >= alertPm || mold.ActualWarrantyShot >= alertWarranty){
                 let pm = pmRequest.recordset.filter(v => v.MoldID == mold.MoldID && v.PmType == 1); // Pm
                 let warranty = pmRequest.recordset.filter(v => v.MoldID == mold.MoldID && v.PmType == 2); // Warranty
@@ -68,22 +72,45 @@ router.post('/', async (req, res) => { //TODO: RepairRequest, Condition AcceptSt
     }
 })
 
-router.post('/pm/item', async (req, res) => { //TODO: pm list
+router.post('/pm/item', async (req, res) => { //TODO: Filter PmRequest
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldID } = req.body;
         let mold = await pool.request().query(`SELECT a.MoldID, a.BasicMold, a.DieNo, a.Cavity, a.LastProduction,
-        b.WarningShot, b.DangerShot, b.WarrantyShot, b.AlertPercent, b.AlertWarrantyPercent
+        b.WarningShot, b.DangerShot, b.WarrantyWarningShot, b.WarrantyDangerShot, b.AlertPercent, b.AlertWarrantyPercent
         FROM [Mold].[MasterMold] a
         LEFT JOIN [Mold].[MasterPm] b ON b.MoldID = a.MoldID
         WHERE a.MoldID = ${MoldID};
         `);
-        let PmRequest = await pool.request().query();
+        let PmRequest = await pool.request().query(`SELECT a.PmPlanID, a.PmType, a.AcceptStatus, a.PmEnd
+        FROM [Mold].[PmPlan] a
+        WHERE a.MoldID = ${MoldID} AND a.PmEnd IS NULL AND a.AcceptStatus IN (0,1);
+        `); // ตัวที่วาง Plan แล้ว
         let pmList = [];
 
         let alertPm = Math.round(mold.recordset[0].AlertPercent * mold.recordset[0].WarningShot / 100);
-        let alertWarranty = Math.round(mold.recordset[0].AlertWarrantyPercent * mold.recordset[0].WarrantyShot / 100);
+        let alertWarranty = Math.round(mold.recordset[0].AlertWarrantyPercent * mold.recordset[0].WarrantyWarningShot / 100);
+        if(mold.recordset[0].PmShot >= alertPm){ // PM
+            pmList.push({
+                MoldID: mold.recordset[0].MoldID,
+                PmType: 1, PmTypeName: 'PM',
+                ActualShot: mold.recordset[0].PmShot,
+                WarningShot: mold.recordset[0].WarningShot,
+                DangerShot: mold.recordset[0].DangerShot
+            })
+        }
+        if(mold.recordset[0].WarrantyShot >= alertWarranty){ // Warranty
+            pmList.push({
+                MoldID: mold.recordset[0].MoldID,
+                PmType: 2, PmTypeName: 'Warranty',
+                ActualShot: mold.recordset[0].WarrantyShot,
+                WarningShot: mold.recordset[0].WarrantyWarningShot,
+                DangerShot: mold.recordset[0].WarrantyDangerShot
+            })
+        }
 
+        let pmListfiltered = pmList.filter(item => !PmRequest.recordset.some(pmr => pmr.MoldID == item.MoldID && pmr.PmType == item.PmType));
+        res.json(pmListfiltered);
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
