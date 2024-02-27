@@ -317,7 +317,7 @@ router.post('/repair-issue/service', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/repair-issue/service/add', async (req, res) => { // ถ้า Use มากกว่า Remain
+router.post('/repair-issue/service/add', async (req, res) => { //TODO: update Stock, ถ้า Use มากกว่า Remain
     try {
         let pool = await getPool('JigPool', config);
         let { RepairCheckID, SpareID, Qty, UnitPrice, Reuse } = req.body;
@@ -365,7 +365,7 @@ router.post('/repair-issue/service/reuse', async (req, res) => { // ติ๊ก
         res.status(500).send({ message: `${err}` });
     }
 })
-router.delete('/repair-issue/service/delete', async (req, res) => {
+router.delete('/repair-issue/service/delete', async (req, res) => { //TODO: update Stock
     try {
         let pool = await getPool('JigPool', config);
         let { RepairCostID } = req.body;
