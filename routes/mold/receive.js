@@ -364,7 +364,7 @@ router.post('/sign/mold/approve', async (req, res) => { // update TakeoutStatus 
         -- Check TakeoutType 1: New Mold
         IF(@TakeoutType = 1)
         BEGIN
-            UPDATE [Mold].[Specification] SET Status = 4 MoldSpecID = @MoldSpecID;
+            UPDATE [Mold].[Specification] SET Status = 4 WHERE MoldSpecID = @MoldSpecID;
         END;
         `;
         await pool.request().query(signApprove);
