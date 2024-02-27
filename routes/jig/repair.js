@@ -108,7 +108,7 @@ router.post('/repair-issue/request/issue', async (req, res) => { //TODO: ReportN
             var RunningNo = 1;
             await pool.request().query(`INSERT INTO [MonthRunningNo](MonthDate, RunningNo) VALUES('${date.getFullYear()}-${date.getMonth()+1}-1', 1)`);
         }
-        let ReportNo = `EM-${('0000'+RunningNo).substr(-4)}-${('00'+(date.getMonth()+1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
+        let ReportNo = `JIG-${('0000'+RunningNo).substr(-4)}-${('00'+(date.getMonth()+1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
 
         let issueRepair = await pool.request().query(`INSERT INTO [Jig].[RepairCheck](JigID, RequestBy, RequestTime, Section, Complaint, RepairTypeID, RepairProblemID, ReportNo, LotNo)
         VALUES(${JigID}, N'${RequestBy}', '${RequestTime}', '${Section}', N'${Complaint}', ${RepairTypeID}, ${RepairProblemID}, '${ReportNo}', N'${LotNo}');
@@ -189,14 +189,11 @@ router.post('/repair-issue/repair/item', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/repair-issue/repair/edit', async (req, res) => {
+router.post('/repair-issue/repair/edit', async (req, res) => { //? Check StartTime ?
     try {
         let pool = await getPool('JigPool', config);
         let { RepairCheckID, RootCause, FixDetail, TestDummyResult } = req.body;
-        console.log(`UPDATE [Jig].[RepairCheck] SET RootCause = N'${RootCause}', FixDetail = N'${FixDetail}',
-        TestDummyResult = ${TestDummyResult}
-        WHERE RepairCheckID = ${RepairCheckID};
-        `)
+
         let updateRepair = `UPDATE [Jig].[RepairCheck] SET RootCause = N'${RootCause}', FixDetail = N'${FixDetail}',
         TestDummyResult = ${TestDummyResult}
         WHERE RepairCheckID = ${RepairCheckID};
