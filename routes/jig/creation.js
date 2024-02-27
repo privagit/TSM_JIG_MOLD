@@ -115,12 +115,27 @@ router.post('/issue', async (req, res) => {
                 let { CustomerID, JigTypeID, PartCode, PartName, RequiredDate, RequestTime, Quantity, RequestSection, RequestType,
                     ProductionDate, Budget, CustomerBudget, FgMonthQty, FgYearQty, UseIn, Requirement, CsNo } = req.body;
 
+                // Jig No.
+                let monthRunningNo = await pool.request().query(`SELECT a.MonthDate, a.JigRunningNo
+                FROM [MonthRunningNo] a
+                WHERE Month(MonthDate) = ${date.getMonth()+1} AND YEAR(MonthDate) = ${date.getFullYear()};
+                `);
+                if(monthRunningNo.recordset.length){
+                    var JigRunningNo = monthRunningNo.recordset[0].JigRunningNo + Quantity;
+                    await pool.request().query(`UPDATE [MonthRunningNo] SET JigRunningNo = ${JigRunningNo} WHERE Month(MonthDate) = ${date.getMonth()+1} AND YEAR(MonthDate) = ${date.getFullYear()};`);
+                } else{
+                    var JigRunningNo = 1;
+                    await pool.request().query(`INSERT INTO [MonthRunningNo](MonthDate, JigRunningNo) VALUES('${date.getFullYear()}-${date.getMonth()+1}-1', 1)`);
+                }
+                let JigNo = `JL-${('0000'+JigRunningNo).substr(-4)}-${('00'+(date.getMonth()+1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
+
+
                 let insertJigCreate = await pool.request().query(`INSERT INTO [Jig].[JigCreation](CustomerID, JigTypeID, PartCode, PartName,
                     RequiredDate, RequestTime, Quantity, RequestSection, RequestType, CsNo,
-                    ProductionDate, Budget, CustomerBudget, FgMonthQty, FgYearQty, UseIn, Requirement, RequestImagePath)
+                    ProductionDate, Budget, CustomerBudget, FgMonthQty, FgYearQty, UseIn, Requirement, RequestImagePath, JlNo)
                     VALUES(${CustomerID}, ${JigTypeID}, N'${PartCode}', N'${PartName}',
                     '${RequiredDate}', '${RequestTime}', ${Quantity}, ${RequestSection}, ${RequestType}, N'${CsNo}',
-                    '${ProductionDate}', ${Budget}, ${CustomerBudget}, ${FgMonthQty}, ${FgYearQty}, ${UseIn}, N'${Requirement}', '${RequestImagePath}'
+                    '${ProductionDate}', ${Budget}, ${CustomerBudget}, ${FgMonthQty}, ${FgYearQty}, ${UseIn}, N'${Requirement}', '${RequestImagePath}', '${JigNo}'
                     );
                 `);
                 await pool.request().query(insertJigCreate);
