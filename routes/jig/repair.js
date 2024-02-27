@@ -165,7 +165,8 @@ router.post('/repair-issue/repair/item', async (req, res) => {
         a.StartTime, a.EndTime, a.RootCause, a.FixDetail, a.TestDummyResult, a.RepairResult,
         b.FirstName AS RequestSign, c.FirstName AS RepairBy, d.FirstName AS ApproveBy, e.FirstName AS ReceiveBy, a.ReceiveTime,
         f.FirstName AS ReceiveApproveBy,
-        a.JigID, g.JigTypeID, h.JigType, a.Section, a.LotNo
+        a.JigID, g.JigTypeID, h.JigType, a.Section, a.LotNo,
+        g.PartCode, i.CustomerName
         FROM [Jig].[RepairCheck] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.RequestBy = b.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.RepairBy = c.EmployeeID
@@ -174,6 +175,7 @@ router.post('/repair-issue/repair/item', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[User] f ON a.ReceiveApproveBy = f.EmployeeID
         LEFT JOIN [Jig].[MasterJig] g ON g.JigID = a.JigID
         LEFT JOIN [Jig].[MasterJigType] h ON h.JigTypeID = g.JigTypeID
+        LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] i ON i.CustomerID = g.CustomerID
         WHERE a.RepairCheckID = ${RepairCheckID};
         `);
         if(repair.recordset.length){
