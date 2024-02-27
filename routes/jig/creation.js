@@ -591,19 +591,10 @@ router.post('/trial/add', async (req, res) => { // Approve PartList ครั้
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
 
-<<<<<<< HEAD
-        let getPartList = await pool.request().query(`SELECT a.PartListID
-        FROM [Jig].[JigPartList] a
-        WHERE Received = 0 AND a.JigCreationID = 1;
-        `);
-        if (getPartList.recordset.length) return res.status(400).send({ message: 'มี PartList ยังไม่ถูก Receive' });
-
-=======
         //! deprecate: ต้อง Receive PartList ให้ครบก่อน
         // Approve PartList ครั้งแรกแล้ว Trial ได้เลย
         let getPartListApprove = await pool.request().query(`SELECT PartListApproveBy FROM [Jig].[JigCreation] WHERE JigCreationID = ${JigCreationID};`);
         if(!getPartListApprove.recordset[0]?.PartListApproveBy) return res.status(400).send({ message: 'กรุณาลงชื่อ Approve Part List ก่อน' });
->>>>>>> origin/tang
 
         let insertTrial = `INSERT INTO [Jig].[JigTrial](JigCreationID) VALUES(${JigCreationID});`;
         await pool.request().query(insertTrial);
