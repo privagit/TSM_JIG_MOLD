@@ -319,7 +319,7 @@ router.post('/repair-issue/service', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/repair-issue/service/add', async (req, res) => { //TODO: update Stock, ถ้า Use มากกว่า Remain
+router.post('/repair-issue/service/add', async (req, res) => { // update SparePart Stock, ถ้า Use มากกว่า Remain
     try {
         let pool = await getPool('JigPool', config);
         let { RepairCheckID, SpareID, Qty, UnitPrice, Reuse } = req.body;
@@ -349,6 +349,18 @@ router.post('/repair-issue/service/add', async (req, res) => { //TODO: update St
         `;
         await pool.request().query(insertPart);
 
+        // Update SparePart Stock
+        let date = new Date();
+        if(date.getHours() < 8){
+            date.setDate(date.getDate() - 1);
+        }
+        let month = date.getMonth() + 1;
+        let year = date.getFullYear();
+        let updateStock = `UPDATE [Jig].[SpareMonth] SET UsedRepair = ISNULL(UsedRepair,0) + ${Qty}
+        WHERE SpareID = ${SpareID} AND MONTH(MonthYear) = ${month} AND YEAR(MonthYear) = ${year}
+        `;
+        await pool.request().query(updateStock);
+
         res.json({ message: 'Success' });
     } catch (err) {
         console.log(req.url, err);
@@ -367,11 +379,30 @@ router.post('/repair-issue/service/reuse', async (req, res) => { // ติ๊ก
         res.status(500).send({ message: `${err}` });
     }
 })
-router.delete('/repair-issue/service/delete', async (req, res) => { //TODO: update Stock
+router.delete('/repair-issue/service/delete', async (req, res) => { // update Spare Stock
     try {
         let pool = await getPool('JigPool', config);
         let { RepairCostID } = req.body;
 
+        // Update SparePart Stock
+        let date = new Date();
+        if(date.getHours() < 8){
+            date.setDate(date.getDate() - 1);
+        }
+        let month = date.getMonth() + 1;
+        let year = date.getFullYear();
+        let oldSpare = await pool.request().query(`SELECT a.Qty, a.SpareID
+        FROM [Jig].[RepairCost] a
+        WHERE RepairCostID = ${RepairCostID};
+        `);
+        let Qty = oldSpare.recordset[0].Qty;
+        let SpareID = oldSpare.recordset[0].SpareID;
+        let updateStock = `UPDATE [Jig].[SpareMonth] SET UsedRepair = ISNULL(UsedRepair,0) - ${Qty}
+        WHERE SpareID = ${SpareID} AND MONTH(MonthYear) = ${month} AND YEAR(MonthYear) = ${year}
+        `;
+        await pool.request().query(updateStock);
+
+        // Delete SparePart
         let deletePart = `DELETE FROM [Jig].[RepairCost] WHERE RepairCostID = ${RepairCostID};`;
         await pool.request().query(deletePart);
 
