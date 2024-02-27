@@ -33,7 +33,7 @@ router.post('/dropdown/supplier', async (req, res) => {
     }
 })
 
-router.post('/spare-part', async (req, res) => {
+router.post('/spare-part', async (req, res) => { //TODO: Used From PartList
     try {
         let pool = await getPool('JigPool', config);
         let { SpareCategoryID, month, year } = req.body;
