@@ -228,7 +228,7 @@ router.post('/receive/detail', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.MoldCheckBy = c.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.MoldApprovBy = d.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] e ON a.EnCheckBy = e.EmployeeID
-        LEFT JOIN [TSMolymer_F].[dbo].[User] f ON a.EnApprovBy = f.EmployeeID
+        LEFT JOIN [TSMolymer_F].[dbo].[User] f ON a.EnApproveBy = f.EmployeeID
         LEFT JOIN [Mold].[MoldTakeout] g ON g.TakeoutID = a.TakeoutID
         WHERE a.ReceiveID = ${ReceiveID};
         `);
