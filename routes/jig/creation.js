@@ -10,23 +10,29 @@ const { getPool } = require('../../middlewares/pool-manager');
 router.post('/list', async (req, res) => { //TODO: Where
     try {
         let pool = await getPool('JigPool', config);
-        let { RequestSection, Status } = req.body;
+        let { month, year, RequestSection, Status } = req.body;
 
         //TODO: where
         let jigCreateList = await pool.request().query(`SELECT a.JigCreationID, a.JlNo, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.RequestSection, 
         CONVERT(NVARCHAR, a.RequestTime, 23) AS RequestDate, CONVERT(NVARCHAR, a.RequiredDate, 23) AS RequiredDate,
         a.Quantity, a.JigTypeID, c.JigType, a.RequestType, a.Budget, a.CustomerBudget,
-        d.FirstName AS PartListApproveBy, a.PartListApproveSignTime, a.ExamResult, a.ExamApproveBy, CONVERT(NVARCHAR, a.FinishDate, 23) AS FinishDate
+        a.ExamResult, a.ExamApproveBy, CONVERT(NVARCHAR, a.FinishDate, 23) AS FinishDate,
+        d.FirstName AS PartListApproveBy, a.PartListApproveSignTime,
+        d.FirstName AS PartListApproveEditBy, a.PartListApproveEditSignTime
         FROM [Jig].[JigCreation] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
         LEFT JOIN [Jig].[MasterJigType] c ON c.JigTypeID = a.JigTypeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.PartListApproveBy = d.EmployeeID
+        LEFT JOIN [TSMolymer_F].[dbo].[User] e ON a.PartListApproveEditBy = e.EmployeeID
+        WHERE MONTH(a.RequestTime) = ${month} AND YEAR(a.RequestTime) = ${year};
         `);
+        //TODO: where
         let jigPartList = await pool.request().query(`SELECT a.JigCreationID, COUNT(a.PartListID) AS CntPartList,
         COUNT(CASE WHEN a.Received = 1 THEN a.PartListID ELSE 0 END) AS CntReceived
         FROM [Jig].[JigPartList] a
         GROUP BY a.JigCreationID;
         `);
+        //TODO: where
         let jigTrial = await pool.request().query(`SELECT a.JigCreationID, COUNT(a.TrialID) AS TrialCount
         FROM [Jig].[JigTrial] a
         GROUP BY a.JigCreationID;
@@ -891,6 +897,26 @@ router.post('/evaluation/add', async (req, res) => { //TODO: บล็อคต�
     try {
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
+
+        // Check if Pass
+        let evals = await pool.request().query(`SELECT a.JigCreationID, a.CustomerBudget, b.TsResult, b.CustomerResult
+        FROM [Jig].[JigCreation] a
+        LEFT JOIN [Jig].[JigEvaluation] b ON b.JigCreationID = a.JigCreationID
+        WHERE a.JigCreationID = ${JigCreationID};
+        `);
+        let evalResult = 0;
+        for(let item of evals.recordset){
+            if(!item.CustomerBudget){ // TS ทำเอง
+                if(item.TsResult == 1){
+                    evalResult = 1;
+                }
+            } else { // Customer Budget
+                if(item.TsResult == 1 && item.CustomerResult == 1){
+                    evalResult = 1;
+                }
+            }
+        }
+
         let insertEval = `INSERT INTO [Jig].[JigEvaluation](JigCreationID, EvalDateTime) VALUES(${JigCreationID}, GETDATE());`;
         await pool.request().query(insertEval);
         res.json({ message: 'Success' });
