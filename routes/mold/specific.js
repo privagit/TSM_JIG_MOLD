@@ -345,7 +345,7 @@ router.post('/receive/detail', async (req, res) => {
         let { ReceiveID } = req.body;
         let moldReceive = await pool.request().query(`SELECT a.ReceiveID, a.TakeoutID,
         a.BasicMold, a.DieNo, a.MoldControlNo, a.PartName, a.MaterialGrade, a.GuaranteeShot, a.MoldWeight, a.Cavity,
-        a.MoldSize, a.CustomerMoldWarranty, a.MoldType, a.Model,
+        a.MoldSize, a.CustomerMoldWarranty, a.MoldType, a.Model, g.TakeoutType AS MoldStatus,
         a.AppearanceInspect, a.MoldStructure, a.Remark, a.ImagePath,
         b.FirstName AS MoldIssueBy, c.FirstName AS MoldCheckBy, d.FirstName AS MoldApproveBy,
         e.FirstName AS EnCheckBy, f.FirstName AS EnApproveBy, a.DocumentCtrlNo
@@ -355,6 +355,7 @@ router.post('/receive/detail', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.MoldApprovBy = d.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] e ON a.EnCheckBy = e.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] f ON a.EnApprovBy = f.EmployeeID
+        LEFT JOIN [Mold].[MoldTakeout] g ON g.TakeoutID = a.TakeoutID
         WHERE a.ReceiveID = ${ReceiveID};
         `);
         let receiveImage = await pool.request().query(`SELECT a.ImageNo, a.ImagePath

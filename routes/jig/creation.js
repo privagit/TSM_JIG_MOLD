@@ -113,13 +113,13 @@ router.post('/issue', async (req, res) => {
                 let pool = await getPool('JigPool', config);
                 let RequestImagePath = (req.file) ? "/jig/request/" + req.file.filename : "";
                 let { CustomerID, JigTypeID, PartCode, PartName, RequiredDate, RequestTime, Quantity, RequestSection, RequestType,
-                    ProductionDate, Budget, CustomerBudget, FgMonthQty, FgYearQty, UseIn, Requirement } = req.body;
+                    ProductionDate, Budget, CustomerBudget, FgMonthQty, FgYearQty, UseIn, Requirement, CsNo } = req.body;
 
                 let insertJigCreate = await pool.request().query(`INSERT INTO [Jig].[JigCreation](CustomerID, JigTypeID, PartCode, PartName,
-                    RequiredDate, RequestTime, Quantity, RequestSection, RequestType,
+                    RequiredDate, RequestTime, Quantity, RequestSection, RequestType, CsNo,
                     ProductionDate, Budget, CustomerBudget, FgMonthQty, FgYearQty, UseIn, Requirement, RequestImagePath)
                     VALUES(${CustomerID}, ${JigTypeID}, N'${PartCode}', N'${PartName}',
-                    '${RequiredDate}', '${RequestTime}', ${Quantity}, ${RequestSection}, ${RequestType},
+                    '${RequiredDate}', '${RequestTime}', ${Quantity}, ${RequestSection}, ${RequestType}, N'${CsNo}',
                     '${ProductionDate}', ${Budget}, ${CustomerBudget}, ${FgMonthQty}, ${FgYearQty}, ${UseIn}, N'${Requirement}', '${RequestImagePath}'
                     );
                 `);
@@ -140,10 +140,9 @@ router.post('/request', async (req, res) => { //TODO: JigNo
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
         let jigRequest = await pool.request().query(`SELECT a.JigCreationID, a.JlNo, a.CustomerID, a.JigTypeID, a.PartCode, a.PartName, a.Quantity, a.RequiredDate,
-        a.RequestTime, a.RequestSection, a.RequestType, a.ProductionDate, a.Budget, a.CustomerBudget, a.FgMonthQty, a.FgYearQty,
+        a.RequestTime, a.RequestSection, a.RequestType, a.ProductionDate, a.Budget, a.CustomerBudget, a.FgMonthQty, a.FgYearQty, a.CsNo,
         a.UseIn, a.Requirement, a.RequestImagePath, a.ConfirmDateResult, a.ConfirmDate, a.ExamResult, a.Reason, a.Project,
-        b.FirstName AS ResponsibleBy,
-        c.FirstName AS RequestBy, a.RequestSignTime,
+        b.FirstName AS ResponsibleBy, a.ResponsibleSignTime,
         d.FirstName AS CheckedBy, a.CheckedSignTime,
         e.FirstName AS ApproveBy, a.ApproveSignTime,
         f.FirstName AS ExamRequestBy, a.ExamRequestSignTime,
@@ -151,7 +150,6 @@ router.post('/request', async (req, res) => { //TODO: JigNo
         h.FirstName AS ExamApproveBy, a.ExamApproveSignTime
         FROM [Jig].[JigCreation] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.ResponsibleBy
-        LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.RequestBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = a.CheckedBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = a.ApproveBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] f ON f.EmployeeID = a.ExamRequestBy
@@ -236,7 +234,7 @@ router.put('/request/sign', async (req, res) => { // ต้องอนุมั
 
 
 //* ===== Part List =====
-router.post('/part-list', async (req, res) => {
+router.post('/part-list', async (req, res) => { //TODO: เอา Receive ออก, เพิ่ม ModifyDate, เพิ่มเลือก Supplier
     try {
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
@@ -270,7 +268,7 @@ router.post('/part-list/add', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/part-list/received', async (req, res) => {
+router.put('/part-list/received', async (req, res) => { //! Deprecated
     try {
         let pool = await getPool('JigPool', config);
         let { PartListID, Received } = req.body;
@@ -317,18 +315,41 @@ router.put('/part-list/sign/approve', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
+router.put('/part-list/sign/approve/edit', async (req, res) => { //TODO: Sign ApproveEdit
+    try {
+        let pool = await getPool('JigPool', config);
+        let { JigCreationID, PartListApproveBy } = req.body;
+
+        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${PartListApproveBy};`);
+        if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
+
+        let cur = new Date();
+        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
+        let signApprove = `UPDATE [Jig].[JigCreation] SET PartListApproveBy = ${PartListApproveBy}, PartListApproveSignTime = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
+        await pool.request().query(signApprove);
+
+        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
 
 
 //* ===== Work List =====
-router.post('/work-list', async (req, res) => {
+router.post('/work-list', async (req, res) => { //TODO: Cal Cost
     try {
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
         let jigWorkList = await pool.request().query(`SELECT row_number() over(order by a.WorkListID) AS ItemNo,
-        a.WorkListID, a.WorkType, a.StartTime, a.FinishTime, a.Detail, a.Responsible, a.Remark
+        a.WorkListID, a.WorkType, a.StartTime, a.FinishTime, a.Detail, a.Responsible, a.Remark,
+        a.CostPerHour, a.ManPower, DATEDIFF(HOUR, StartTime, FinishTime) AS H
         FROM [Jig].[JigWorkList] a
         WHERE a.JigCreationID = ${JigCreationID} AND Active = 1;
         `);
+        for(let item of jigWorkList.recordset){
+            item.Cost = (item.CostPerHour || 0) * (item.H || 0) * (item.ManPower || 0);
+        }
         res.json(jigWorkList.recordset);
     } catch (err) {
         console.log(req.url, err);
@@ -338,9 +359,9 @@ router.post('/work-list', async (req, res) => {
 router.post('/work-list/add', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
-        let { JigCreationID, WorkType, StartTime, FinishTime, Detail, Responsible, Remark } = req.body;
-        let insertWorkList = `INSERT INTO [Jig].[JigWorkList](JigCreationID, WorkType, StartTime, FinishTime, Detail, Responsible, Remark, Active)
-        VALUES(${JigCreationID}, N'${WorkType}', '${StartTime}', '${FinishTime}', N'${Detail}', N'${Responsible}', N'${Remark}', 1);
+        let { JigCreationID, WorkType, StartTime, FinishTime, Detail, Responsible, Remark, CostPerHour, ManPower } = req.body;
+        let insertWorkList = `INSERT INTO [Jig].[JigWorkList](JigCreationID, WorkType, StartTime, FinishTime, Detail, Responsible, Remark, CostPerHour, ManPower, Active)
+        VALUES(${JigCreationID}, N'${WorkType}', '${StartTime}', '${FinishTime}', N'${Detail}', N'${Responsible}', N'${Remark}', ${CostPerHour}, ${ManPower}, 1);
         `;
         await pool.request().query(insertWorkList);
         res.json({ message: 'Success' });
@@ -352,9 +373,10 @@ router.post('/work-list/add', async (req, res) => {
 router.put('/work-list/edit', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
-        let { WorkListID, WorkType, StartTime, FinishTime, Detail, Responsible, Remark } = req.body;
+        let { WorkListID, WorkType, StartTime, FinishTime, Detail, Responsible, Remark, CostPerHour, ManPower } = req.body;
         let updateWorkList = `UPDATE [Jig].[JigWorkList] SET WorkType = N'${WorkType}', StartTime = '${StartTime}', FinishTime = '${FinishTime}',
-        Detail = N'${Detail}', Responsible = N'${Responsible}', Remark = N'${Remark}' WHERE WorkListID = ${WorkListID};
+        Detail = N'${Detail}', Responsible = N'${Responsible}', Remark = N'${Remark}', CostPerHour = ${CostPerHour}, ManPower = ${ManPower}
+        WHERE WorkListID = ${WorkListID};
         `;
         await pool.request().query(updateWorkList);
         res.json({ message: 'Success' });
@@ -553,17 +575,14 @@ router.post('/trial', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/trial/add', async (req, res) => { // ต้อง Receive PartList ให้ครบก่อน
+router.post('/trial/add', async (req, res) => { // Approve PartList ครั้งแรกแล้ว Trial ได้เลย
     try {
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
-
-        let getPartList = await pool.request().query(`SELECT a.PartListID
-        FROM [Jig].[JigPartList] a
-        WHERE Received = 0 AND a.JigCreationID = 1;
-        `);
-        if (getPartList.recordset.length) return res.status(400).send({ message: 'มี PartList ยังไม่ถูก Receive' });
-
+        //! deprecate: ต้อง Receive PartList ให้ครบก่อน
+        // Approve PartList ครั้งแรกแล้ว Trial ได้เลย
+        let getPartListApprove = await pool.request().query(`SELECT PartListApproveBy FROM [Jig].[JigCreation] WHERE JigCreationID = ${JigCreationID};`);
+        if(!getPartListApprove.recordset[0]?.PartListApproveBy) return res.status(400).send({ message: 'กรุณาลงชื่อ Approve Part List ก่อน' });
 
         let insertTrial = `INSERT INTO [Jig].[JigTrial](JigCreationID) VALUES(${JigCreationID});`;
         await pool.request().query(insertTrial);

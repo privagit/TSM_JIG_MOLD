@@ -27,6 +27,7 @@ const uploadReceiveDetailImage = multer({ storage: storageReceiveDetailImage }).
 
 //* ========== Receive List ==========
 // TakeoutStatus : { 1: Wait Receive(New Mold), 2: Takeout, 3: Wait EN, 4: Complete }
+// TakeoutType : { 1: New Mold, 2: Tranfer Mold }
 router.post('/list', async (req, res) => { //TODO: where
     try {
         let pool = await getPool('MoldPool', config);
@@ -51,7 +52,7 @@ router.post('/list', async (req, res) => { //TODO: where
             UNION ALL
             SELECT * FROM [TakeoutMold]
         )
-        SELECT ReceiveID, MoldSpecID, MoldID, TakeoutType, TakeoutStatus, BasicMold, DieNo, MoldControlNo,
+        SELECT ReceiveID, MoldSpecID, MoldID, TakeoutType AS MoldStatus, TakeoutStatus, BasicMold, DieNo, MoldControlNo,
             IssueTime, ReceiveTime, MoldApprovBy, EnApprovBy
         FROM [tbsum]
         `);
@@ -189,7 +190,7 @@ router.post('/specification/detail/history', async (req, res) => { // ดูอ�
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/specification/detail', async (req, res) => { // ดูอย่างเดียว
+router.post('/specification/detail', async (req, res) => { //TODO: Header(Custoemr, PartCode, PartName),  ดูอย่างเดียว
     try {
         let pool = await getPool('MoldPool', config);
         let { DetailID } = req.body;
@@ -218,8 +219,8 @@ router.post('/receive/detail', async (req, res) => {
         let { ReceiveID } = req.body;
         let moldReceive = await pool.request().query(`SELECT a.ReceiveID, a.TakeoutID,
         a.BasicMold, a.DieNo, a.MoldControlNo, a.PartName, a.MaterialGrade, a.GuaranteeShot, a.MoldWeight, a.Cavity,
-        a.MoldSize, a.MoldType, a.Model,
-        a.AppearanceInspect, a.MoldStructure, a.Remark, 
+        a.MoldSize, a.MoldType, a.Model, g.TakeoutType AS MoldStatus,
+        a.AppearanceInspect, a.MoldStructure, a.Remark,
         b.FirstName AS MoldIssueBy, c.FirstName AS MoldCheckBy, d.FirstName AS MoldApproveBy,
         e.FirstName AS EnCheckBy, f.FirstName AS EnApproveBy, a.DocumentCtrlNo
         FROM [Mold].[MoldReceive] a
@@ -228,6 +229,7 @@ router.post('/receive/detail', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.MoldApprovBy = d.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] e ON a.EnCheckBy = e.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] f ON a.EnApprovBy = f.EmployeeID
+        LEFT JOIN [Mold].[MoldTakeout] g ON g.TakeoutID = a.TakeoutID
         WHERE a.ReceiveID = ${ReceiveID};
         `);
         let receiveImage = await pool.request().query(`SELECT a.ImageNo, a.ImagePath
