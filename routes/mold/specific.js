@@ -52,8 +52,8 @@ router.post('/add', async (req, res) => {
 router.delete('/delete', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
-        let { SpecID } = req.body;
-        let deleteSpecific = `UPDATE [Mold].[Specification] SET Active = 0 WHERE SpecID = ${SpecID};`;
+        let { MoldSpecID } = req.body;
+        let deleteSpecific = `UPDATE [Mold].[Specification] SET Active = 0 WHERE MoldSpecID = ${MoldSpecID};`;
         await pool.request().query(deleteSpecific);
         res.json({ message: 'Success' });
     } catch (err) {
