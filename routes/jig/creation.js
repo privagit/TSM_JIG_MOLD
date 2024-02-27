@@ -13,7 +13,7 @@ router.post('/list', async (req, res) => { //TODO: JigNo
         let { RequestSection, Status } = req.body;
 
         //TODO: where
-        let jigCreateList = await pool.request().query(`SELECT a.JigCreationID, NULL AS JigNo, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.RequestSection, 
+        let jigCreateList = await pool.request().query(`SELECT a.JigCreationID, a.JlNo, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.RequestSection, 
         CONVERT(NVARCHAR, a.RequestTime, 23) AS RequestDate, CONVERT(NVARCHAR, a.RequiredDate, 23) AS RequiredDate,
         a.Quantity, a.JigTypeID, c.JigType, a.RequestType, a.Budget, a.CustomerBudget,
         d.FirstName AS PartListApproveBy, a.PartListApproveSignTime, a.ExamResult, a.ExamApproveBy, CONVERT(NVARCHAR, a.FinishDate, 23) AS FinishDate
@@ -114,14 +114,16 @@ router.post('/issue', async (req, res) => {
                 let RequestImagePath = (req.file) ? "/jig/request/" + req.file.filename : "";
                 let { CustomerID, JigTypeID, PartCode, PartName, RequiredDate, RequestTime, Quantity, RequestSection, RequestType,
                     ProductionDate, Budget, CustomerBudget, FgMonthQty, FgYearQty, UseIn, Requirement, CsNo } = req.body;
-
+                
                 // Jig No.
+                let date = new Date()
                 let monthRunningNo = await pool.request().query(`SELECT a.MonthDate, a.JigRunningNo
                 FROM [MonthRunningNo] a
                 WHERE Month(MonthDate) = ${date.getMonth()+1} AND YEAR(MonthDate) = ${date.getFullYear()};
                 `);
                 if(monthRunningNo.recordset.length){
-                    var JigRunningNo = monthRunningNo.recordset[0].JigRunningNo + Quantity;
+                    console.log(typeof monthRunningNo.recordset[0].JigRunningNo)
+                    var JigRunningNo = monthRunningNo.recordset[0].JigRunningNo + parseInt(Quantity);
                     await pool.request().query(`UPDATE [MonthRunningNo] SET JigRunningNo = ${JigRunningNo} WHERE Month(MonthDate) = ${date.getMonth()+1} AND YEAR(MonthDate) = ${date.getFullYear()};`);
                 } else{
                     var JigRunningNo = 1;
