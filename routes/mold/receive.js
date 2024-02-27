@@ -213,7 +213,7 @@ router.post('/specification/detail', async (req, res) => { //TODO: Header(Custoe
 })
 
 //* ========== Receive Detail ==========
-router.post('/receive/detail', async (req, res) => {
+router.post('/receive/detail', async (req, res) => { //
     try {
         let pool = await getPool('MoldPool', config);
         let { ReceiveID } = req.body;
