@@ -35,14 +35,14 @@ router.post('/list', async (req, res) => { //TODO: where
         let receiveList = await pool.request().query(`
         WITH NewMold AS (
             SELECT c.ReceiveID, b.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
-            a.IssueTime, a.ReceiveTime, c.MoldApprovBy, c.EnApprovBy
+            a.IssueTime, a.ReceiveTime, c.MoldApproveBy, c.EnApproveBy
             FROM [Mold].[MoldTakeout] a
             INNER JOIN [Mold].[Specification] b ON b.MoldSpecID = a.MoldSpecID
             LEFT JOIN [Mold].[MoldReceive] c ON c.TakeoutID = a.TakeoutID
             WHERE a.TakeoutType = 1
         ), TakeoutMold AS (
             SELECT b.ReceiveID, a.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
-            a.IssueTime, a.ReceiveTime, b.MoldApprovBy, b.EnApprovBy
+            a.IssueTime, a.ReceiveTime, b.MoldApproveBy, b.EnApproveBy
             FROM [Mold].[MoldTakeout] a
             LEFT JOIN [Mold].[MoldReceive] b ON b.TakeoutID = a.TakeoutID
             LEFT JOIN [Mold].[MasterMold] c ON c.MoldID = a.MoldID
@@ -52,8 +52,8 @@ router.post('/list', async (req, res) => { //TODO: where
             UNION ALL
             SELECT * FROM [TakeoutMold]
         )
-        SELECT ReceiveID, MoldSpecID, MoldID, TakeoutType, TakeoutStatus, BasicMold, DieNo, MoldControlNo,
-            IssueTime, ReceiveTime, MoldApprovBy, EnApprovBy
+        SELECT ReceiveID, MoldSpecID, MoldID, TakeoutType AS MoldStatus, TakeoutStatus, BasicMold, DieNo, MoldControlNo,
+            IssueTime, ReceiveTime, MoldApproveBy, EnApproveBy
         FROM [tbsum]
         `);
         if(TakeoutStatus){
@@ -213,22 +213,27 @@ router.post('/specification/detail', async (req, res) => { //TODO: Header(Custoe
 })
 
 //* ========== Receive Detail ==========
-router.post('/receive/detail', async (req, res) => {
+router.post('/receive/detail', async (req, res) => { //
     try {
         let pool = await getPool('MoldPool', config);
         let { ReceiveID } = req.body;
         let moldReceive = await pool.request().query(`SELECT a.ReceiveID, a.TakeoutID,
         a.BasicMold, a.DieNo, a.MoldControlNo, a.PartName, a.MaterialGrade, a.GuaranteeShot, a.MoldWeight, a.Cavity,
-        a.MoldSize, a.MoldType, a.Model,
-        a.AppearanceInspect, a.MoldStructure, a.Remark, a.ImagePath,
-        b.FirstName AS MoldIssueBy, c.FirstName AS MoldCheckBy, d.FirstName AS MoldApproveBy,
-        e.FirstName AS EnCheckBy, f.FirstName AS EnApproveBy, a.DocumentCtrlNo
+        a.MoldSize, a.MoldType, a.Model, g.TakeoutType AS MoldStatus,
+        a.AppearanceInspect, a.MoldStructure, a.Remark,
+        b.FirstName AS MoldIssueBy, a.MoldIssueTime,
+        c.FirstName AS MoldCheckBy, a.MoldCheckTime,
+        d.FirstName AS MoldApproveBy, a.MoldApproveTime,
+        e.FirstName AS EnCheckBy, a.EnCheckTime,
+        f.FirstName AS EnApproveBy, a.EnApproveTime,
+        a.DocumentCtrlNo
         FROM [Mold].[MoldReceive] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.MoldIssueBy = b.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.MoldCheckBy = c.EmployeeID
-        LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.MoldApprovBy = d.EmployeeID
+        LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.MoldApproveBy = d.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] e ON a.EnCheckBy = e.EmployeeID
-        LEFT JOIN [TSMolymer_F].[dbo].[User] f ON a.EnApprovBy = f.EmployeeID
+        LEFT JOIN [TSMolymer_F].[dbo].[User] f ON a.EnApproveBy = f.EmployeeID
+        LEFT JOIN [Mold].[MoldTakeout] g ON g.TakeoutID = a.TakeoutID
         WHERE a.ReceiveID = ${ReceiveID};
         `);
         let receiveImage = await pool.request().query(`SELECT a.ImageNo, a.ImagePath
@@ -253,7 +258,7 @@ router.post('/receive/detail/edit', async (req, res) => {
         let pool = await getPool('MoldPool', config);
         let { ReceiveID, BasicMold, DieNo, MoldControlNo, PartName, MaterialGrade, GuaranteeShot, MoldWeight, Cavity,
             MoldSize, MoldType, Model, AppearanceInspect, MoldStructure, Remark } = req.body;
-        let updateReceive = `UPDATE [Mold].[Receive] SET BasicMold = N'${BasicMold}', DieNo = N'${DieNo}', MoldControlNo = N'${MoldControlNo}',
+        let updateReceive = `UPDATE [Mold].[MoldReceive] SET BasicMold = N'${BasicMold}', DieNo = N'${DieNo}', MoldControlNo = N'${MoldControlNo}',
         PartName = N'${PartName}', MaterialGrade = N'${MaterialGrade}', GuaranteeShot = N'${GuaranteeShot}', MoldWeight = N'${MoldWeight}',
         Cavity = N'${Cavity}', MoldSize = N'${MoldSize}', MoldType = N'${MoldType}',
         Model = N'${Model}', AppearanceInspect = N'${AppearanceInspect}', MoldStructure = N'${MoldStructure}', Remark = N'${Remark}'
@@ -296,14 +301,14 @@ router.post('/receive/detail/image/upload', async (req, res) => {
 router.post('/sign/mold/issue', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
-        let { ReceiveID, IssueBy } = req.body;
+        let { ReceiveID, MoldIssueBy } = req.body;
 
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${IssueBy};`);
+        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${MoldIssueBy};`);
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signIssue = `UPDATE [Mold].[MoldReceive] SET IssueBy = ${IssueBy}, IssueSignTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};`;
+        let signIssue = `UPDATE [Mold].[MoldReceive] SET MoldIssueBy = ${MoldIssueBy}, MoldIssueTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};`;
         await pool.request().query(signIssue);
 
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
@@ -315,14 +320,14 @@ router.post('/sign/mold/issue', async (req, res) => {
 router.post('/sign/mold/check', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
-        let { ReceiveID, CheckBy } = req.body;
+        let { ReceiveID, MoldCheckBy } = req.body;
 
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${CheckBy};`);
+        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${MoldCheckBy};`);
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signCheck = `UPDATE [Mold].[MoldReceive] SET CheckBy = ${CheckBy}, CheckSignTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};`;
+        let signCheck = `UPDATE [Mold].[MoldReceive] SET MoldCheckBy = ${MoldCheckBy}, MoldCheckTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};`;
         await pool.request().query(signCheck);
 
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
@@ -334,14 +339,14 @@ router.post('/sign/mold/check', async (req, res) => {
 router.post('/sign/mold/approve', async (req, res) => { // update TakeoutStatus = 3(Wait EN), if New Mold Update Spec Status = 4(Mold Received)
     try {
         let pool = await getPool('MoldPool', config);
-        let { ReceiveID, ApproveBy } = req.body;
+        let { ReceiveID, MoldApproveBy } = req.body;
 
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ApproveBy};`);
+        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${MoldApproveBy};`);
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signApprove = `UPDATE [Mold].[MoldReceive] SET ApproveBy = ${ApproveBy}, ApproveSignTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};
+        let signApprove = `UPDATE [Mold].[MoldReceive] SET MoldApproveBy = ${MoldApproveBy}, MoldApproveTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};
 
         DECLARE @TakeoutID INT,
         @TakeoutType INT,
@@ -373,14 +378,14 @@ router.post('/sign/mold/approve', async (req, res) => { // update TakeoutStatus 
 router.post('/sign/en/check', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
-        let { ReceiveID, CheckBy } = req.body;
+        let { ReceiveID, EnCheckBy } = req.body;
 
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${CheckBy};`);
+        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${EnCheckBy};`);
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signCheck = `UPDATE [Mold].[MoldReceive] SET CheckBy = ${CheckBy}, CheckSignTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};`;
+        let signCheck = `UPDATE [Mold].[MoldReceive] SET EnCheckBy = ${EnCheckBy}, EnCheckTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};`;
         await pool.request().query(signCheck);
 
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
@@ -392,14 +397,14 @@ router.post('/sign/en/check', async (req, res) => {
 router.post('/sign/en/approve', async (req, res) => { // update TakeoutStatus = 4(Complete), if New Mold update SpecStatus = 5(Complete), add to Master
     try {
         let pool = await getPool('MoldPool', config);
-        let { ReceiveID, ApproveBy } = req.body;
+        let { ReceiveID, EnApproveBy } = req.body;
 
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ApproveBy};`);
+        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${EnApproveBy};`);
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signApprove = `UPDATE [Mold].[MoldReceive] SET ApproveBy = ${ApproveBy}, ApproveSignTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};
+        let signApprove = `UPDATE [Mold].[MoldReceive] SET EnApproveBy = ${EnApproveBy}, EnApproveTime = '${curStr}' WHERE ReceiveID = ${ReceiveID};
 
         DECLARE @TakeoutID INT,
         @TakeoutType INT,
