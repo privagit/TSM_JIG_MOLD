@@ -51,20 +51,11 @@ router.post('/repair-issue', async (req, res) => {
 router.post('/repair-issue/dropdown/jig', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
-<<<<<<< HEAD
-        let { CustomerID } = req.body;
-        if(!CustomerID) return res.json([])
-        let jigs = await pool.request().query(`SELECT a.JigID, a.JigNo, a.JigTypeID, b.JigType 
-        FROM [Jig].[MasterJig] a
-        LEFT JOIN [Jig].[MasterJigType] b ON b.JigTypeID = a.JigTypeID
-        WHERE a.Active = 1 AND a.CustomerID = ${CustomerID}
-=======
         let jigs = await pool.request().query(`SELECT a.JigID, a.JigNo, a.JigTypeID, b.JigType, a.PartCode, c.CustomerName
         FROM [Jig].[MasterJig] a
         LEFT JOIN [Jig].[MasterJigType] b ON b.JigTypeID = a.JigTypeID
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] c ON c.CustomerID = a.CustomerID
         WHERE a.Active = 1
->>>>>>> origin/tang
         `);
         res.json(jigs.recordset);
     } catch (err) {
