@@ -282,7 +282,7 @@ router.post('/receive/detail/image/upload', async (req, res) => {
                 let { ReceiveID, ImageNo } = req.body;
                 let ImagePath = (req.file) ? "/mold/receive_detail/" + req.file.filename : ""
                 // ImageNo 0-7
-                let insertImage = `UPDATE [Mold].[MoldRceiveImage] SET Active = 0 WHERE ReceiveID = ${ReceiveID} AND ImageNo = ${ImageNo};
+                let insertImage = `UPDATE [Mold].[MoldReceiveImage] SET Active = 0 WHERE ReceiveID = ${ReceiveID} AND ImageNo = ${ImageNo};
                 INSERT INTO [Mold].[MoldReceiveImage] (ReceiveID, ImageNo, ImagePath, Active) VALUES(${ReceiveID}, ${ImageNo}, '${ImagePath}', 1);
                 `;
                 await pool.request().query(insertImage);
@@ -364,7 +364,7 @@ router.post('/sign/mold/approve', async (req, res) => { // update TakeoutStatus 
         -- Check TakeoutType 1: New Mold
         IF(@TakeoutType = 1)
         BEGIN
-            UPDATE [Mold].[Specification] SET Status = 4 MoldSpecID = @MoldSpecID;
+            UPDATE [Mold].[Specification] SET Status = 4 WHERE MoldSpecID = @MoldSpecID;
         END;
         `;
         await pool.request().query(signApprove);

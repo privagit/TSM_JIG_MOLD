@@ -7,26 +7,32 @@ const { getPool } = require('../../middlewares/pool-manager');
 
 
 //* ========== Jig Creation ==========
-router.post('/list', async (req, res) => { //TODO: JigNo
+router.post('/list', async (req, res) => { //TODO: Where
     try {
         let pool = await getPool('JigPool', config);
-        let { RequestSection, Status } = req.body;
+        let { month, year, RequestSection, Status } = req.body;
 
         //TODO: where
-        let jigCreateList = await pool.request().query(`SELECT a.JigCreationID, NULL AS JigNo, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.RequestSection, 
+        let jigCreateList = await pool.request().query(`SELECT a.JigCreationID, a.JlNo, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.RequestSection, 
         CONVERT(NVARCHAR, a.RequestTime, 23) AS RequestDate, CONVERT(NVARCHAR, a.RequiredDate, 23) AS RequiredDate,
         a.Quantity, a.JigTypeID, c.JigType, a.RequestType, a.Budget, a.CustomerBudget,
-        d.FirstName AS PartListApproveBy, a.PartListApproveSignTime, a.ExamResult, a.ExamApproveBy, CONVERT(NVARCHAR, a.FinishDate, 23) AS FinishDate
+        a.ExamResult, a.ExamApproveBy, CONVERT(NVARCHAR, a.FinishDate, 23) AS FinishDate,
+        d.FirstName AS PartListApproveBy, a.PartListApproveSignTime,
+        e.FirstName AS PartListApproveEditBy, a.PartListApproveEditSignTime
         FROM [Jig].[JigCreation] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
         LEFT JOIN [Jig].[MasterJigType] c ON c.JigTypeID = a.JigTypeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.PartListApproveBy = d.EmployeeID
+        LEFT JOIN [TSMolymer_F].[dbo].[User] e ON a.PartListApproveEditBy = e.EmployeeID
+        WHERE MONTH(a.RequestTime) = ${month} AND YEAR(a.RequestTime) = ${year};
         `);
+        //TODO: where
         let jigPartList = await pool.request().query(`SELECT a.JigCreationID, COUNT(a.PartListID) AS CntPartList,
         COUNT(CASE WHEN a.Received = 1 THEN a.PartListID ELSE 0 END) AS CntReceived
         FROM [Jig].[JigPartList] a
         GROUP BY a.JigCreationID;
         `);
+        //TODO: where
         let jigTrial = await pool.request().query(`SELECT a.JigCreationID, COUNT(a.TrialID) AS TrialCount
         FROM [Jig].[JigTrial] a
         GROUP BY a.JigCreationID;
@@ -39,6 +45,7 @@ router.post('/list', async (req, res) => { //TODO: JigNo
 
         for(let item of jigCreateList.recordset){
             item.PartListApproveBy = !item.PartListApproveBy ? null : atob(item.PartListApproveBy);
+            item.PartListApproveEditBy = !item.PartListApproveEditBy ? null : atob(item.PartListApproveEditBy);
 
             // Request Status { 0: Issue, 1: Accept (Wait Approve), 2: Accept, 3: Reject }
             if(item.ExamResult == null){
@@ -116,12 +123,13 @@ router.post('/issue', async (req, res) => {
                     ProductionDate, Budget, CustomerBudget, FgMonthQty, FgYearQty, UseIn, Requirement, CsNo } = req.body;
 
                 // Jig No.
+                let date = new Date();
                 let monthRunningNo = await pool.request().query(`SELECT a.MonthDate, a.JigRunningNo
                 FROM [MonthRunningNo] a
                 WHERE Month(MonthDate) = ${date.getMonth()+1} AND YEAR(MonthDate) = ${date.getFullYear()};
                 `);
                 if(monthRunningNo.recordset.length){
-                    var JigRunningNo = monthRunningNo.recordset[0].JigRunningNo + Quantity;
+                    var JigRunningNo = monthRunningNo.recordset[0].JigRunningNo + parseInt(Quantity);
                     await pool.request().query(`UPDATE [MonthRunningNo] SET JigRunningNo = ${JigRunningNo} WHERE Month(MonthDate) = ${date.getMonth()+1} AND YEAR(MonthDate) = ${date.getFullYear()};`);
                 } else{
                     var JigRunningNo = 1;
@@ -148,9 +156,8 @@ router.post('/issue', async (req, res) => {
     })
 })
 
-
 //* ===== Request Jig =====
-router.post('/request', async (req, res) => { //TODO: JigNo
+router.post('/request', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
@@ -250,14 +257,15 @@ router.put('/request/sign', async (req, res) => { // ต้องอนุมั
 
 
 //* ===== Part List =====
-router.post('/part-list', async (req, res) => { //TODO: เอา Receive ออก, เพิ่ม ModifyDate, เพิ่มเลือก Supplier
+router.post('/part-list', async (req, res) => { // เอา Receive ออก, เพิ่ม ModifyDate, เพิ่มเลือก Supplier
     try {
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
         let jigPartList = await pool.request().query(`SELECT row_number() over(order by a.PartListID) AS ItemNo,
-        a.PartListID, a.List, a.Qty, a.OrderType, a.Remark, a.Received, b.AxCode, a.UnitPrice
+        a.PartListID, a.List, a.Qty, a.OrderType, a.Remark, b.AxCode, a.UnitPrice, c.SupplierName, ModifyDate
         FROM [Jig].[JigPartList] a
         LEFT JOIN [Jig].[MasterSpare] b ON b.SpareID = a.SpareID
+        LEFT JOIN [Jig].[MasterSupplier] c ON c.SupplierID = a.SupplierID
         WHERE a.JigCreationID = ${JigCreationID} AND a.Active = 1;
         `);
         for(let item of jigPartList.recordset){
@@ -269,15 +277,66 @@ router.post('/part-list', async (req, res) => { //TODO: เอา Receive ออ
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/part-list/add', async (req, res) => {
+router.post('/part-list/add', async (req, res) => { // update SparePart Stock, เพิ่ม unsign ApproveEdit
     try {
         let pool = await getPool('JigPool', config);
-        let { JigCreationID, List, Qty, OrderType, Remark, SpareID, UnitPrice } = req.body;
+        let { JigCreationID, List, Qty, OrderType, Remark, SpareID, UnitPrice, SupplierID } = req.body;
 
-        let insertPartList = `INSERT INTO [Jig].[JigPartList](JigCreationID, List, Qty, OrderType, Remark, SpareID, UnitPrice, Active)
-        VALUES(${JigCreationID}, N'${List}', ${Qty}, ${OrderType}, N'${Remark}', ${SpareID}, ${UnitPrice}, 1);
+        let insertPartList = `INSERT INTO [Jig].[JigPartList](JigCreationID, List, Qty, OrderType, Remark, SpareID, UnitPrice, SupplierID, Active)
+        VALUES(${JigCreationID}, N'${List}', ${Qty}, ${OrderType}, N'${Remark}', ${SpareID}, ${UnitPrice}, ${SupplierID}, 1);
+
+        UPDATE [Jig].[JigCreation] SET PartListApproveEditBy = null, PartListApproveEditSignTime = null WHERE JigCreationID = ${JigCreationID};
         `;
         await pool.request().query(insertPartList);
+
+        // Update SparePart Stock
+        let date = new Date();
+        if(date.getHours() < 8){
+            date.setDate(date.getDate() - 1);
+        }
+        let month = date.getMonth() + 1;
+        let year = date.getFullYear();
+        let updateStock = `UPDATE [Jig].[SpareMonth] SET UsedPartList = ISNULL(UsedPartList,0) + ${Qty}
+        WHERE SpareID = ${SpareID} AND MONTH(MonthYear) = ${month} AND YEAR(MonthYear) = ${year}
+        `;
+        await pool.request().query(updateStock);
+
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.put('/part-list/edit', async (req, res) => { // update SparePart Stock, เพิ่ม unsign ApproveEdit
+    try {
+        let pool = await getPool('JigPool', config);
+        let { JigCreationID, PartListID, List, Qty, OrderType, Remark, SpareID, UnitPrice, SupplierID } = req.body;
+
+        // Update SparePart Stock
+        let date = new Date();
+        if(date.getHours() < 8){
+            date.setDate(date.getDate() - 1);
+        }
+        let month = date.getMonth() + 1;
+        let year = date.getFullYear();
+        let oldPartList = await pool.request().query(`SELECT a.Qty
+        FROM [Jig].[JigPartList] a
+        WHERE PartListID = ${PartListID};
+        `);
+        let diff = Qty - oldPartList.recordset[0].Qty;
+        let updateStock = `UPDATE [Jig].[SpareMonth] SET UsedPartList = ISNULL(UsedPartList,0) + ${diff}
+        WHERE SpareID = ${SpareID} AND MONTH(MonthYear) = ${month} AND YEAR(MonthYear) = ${year}
+        `;
+        await pool.request().query(updateStock);
+
+        // Update PartList
+        let updatePartList = `UPDATE [Jig].[JigPartList] SET List = N'${List}', Qty = ${Qty}, OrderType = ${OrderType},
+        Remark = N'${Remark}', SpareID = ${SpareID}, UnitPrice = ${UnitPrice}, SupplierID = ${SupplierID}
+        WHERE PartListID = ${PartListID};
+
+        UPDATE [Jig].[JigCreation] SET PartListApproveEditBy = null, PartListApproveEditSignTime = null WHERE JigCreationID = ${JigCreationID};
+        `;
+        await pool.request().query(updatePartList);
         res.json({ message: 'Success' });
     } catch (err) {
         console.log(req.url, err);
@@ -298,13 +357,31 @@ router.put('/part-list/received', async (req, res) => { //! Deprecated
         res.status(500).send({ message: `${err}` });
     }
 })
-router.delete('/part-list/delete', async (req, res) => {
+router.delete('/part-list/delete', async (req, res) => { // update SparePart Stock
     try {
         let pool = await getPool('JigPool', config);
         let { PartListID } = req.body;
 
-        let deletePartList = `UPDATE [Jig].[JigPartList] SET Active = 0 WHERE PartListID = ${PartListID};
+        // Update SparePart Stock
+        let date = new Date();
+        if(date.getHours() < 8){
+            date.setDate(date.getDate() - 1);
+        }
+        let month = date.getMonth() + 1;
+        let year = date.getFullYear();
+        let oldPartList = await pool.request().query(`SELECT a.Qty, a.SpareID
+        FROM [Jig].[JigPartList] a
+        WHERE PartListID = ${PartListID};
+        `);
+        let Qty = oldPartList.recordset[0].Qty;
+        let SpareID = oldPartList.recordset[0].SpareID;
+        let updateStock = `UPDATE [Jig].[SpareMonth] SET UsedPartList = ISNULL(UsedPartList,0) - ${Qty}
+        WHERE SpareID = ${SpareID} AND MONTH(MonthYear) = ${month} AND YEAR(MonthYear) = ${year}
         `;
+        await pool.request().query(updateStock);
+
+        // delete PartList
+        let deletePartList = `UPDATE [Jig].[JigPartList] SET Active = 0 WHERE PartListID = ${PartListID};`;
         await pool.request().query(deletePartList);
         res.json({ message: 'Success' });
     } catch (err) {
@@ -312,7 +389,7 @@ router.delete('/part-list/delete', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/part-list/sign/approve', async (req, res) => {
+router.put('/part-list/sign/approve', async (req, res) => { // Sign Approve => go to Trial
     try {
         let pool = await getPool('JigPool', config);
         let { JigCreationID, PartListApproveBy } = req.body;
@@ -331,20 +408,54 @@ router.put('/part-list/sign/approve', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/part-list/sign/approve/edit', async (req, res) => { //TODO: Sign ApproveEdit
+router.put('/part-list/sign/approve/edit', async (req, res) => { // Sign ApproveEdit
     try {
         let pool = await getPool('JigPool', config);
-        let { JigCreationID, PartListApproveBy } = req.body;
+        let { JigCreationID, PartListApproveEditBy } = req.body;
 
-        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${PartListApproveBy};`);
+        let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${PartListApproveEditBy};`);
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let signApprove = `UPDATE [Jig].[JigCreation] SET PartListApproveBy = ${PartListApproveBy}, PartListApproveSignTime = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
+        let signApprove = `UPDATE [Jig].[JigCreation] SET PartListApproveEditBy = ${PartListApproveEditBy}, PartListApproveEditSignTime = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
         await pool.request().query(signApprove);
 
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/part-list/sparepart/detail', async (req, res) => { // เพิ่ม Remain, ดึง Price
+    try {
+        let pool = await getPool('JigPool', config);
+        let { SpareID } = req.body;
+
+        let date = new Date();
+        if(date.getHours() < 8){
+            date.setDate(date.getDate() - 1);
+        }
+        let month = date.getMonth() + 1;
+        let year = date.getFullYear();
+
+        let sparepart = await pool.request().query(`
+        DECLARE @BF INT,
+            @Received INT,
+            @Purchase INT,
+            @UsedRepair INT,
+            @UsedPartList INT;
+
+        SELECT @BF = a.BF, @Received = a.Received, @Purchase = a.Purchase, @UsedRepair = a.UsedRepair, @UsedPartList = a.UsedPartList
+        FROM [Jig].[SpareMonth] a
+        WHERE MONTH(a.MonthYear) = ${month} AND YEAR(a.MonthYear) = ${year} AND a.SpareID = ${SpareID};
+
+        SELECT a.SpareID, a.SpareName, a.AxCode, a.Price,
+        ISNULL(@BF,0) + ISNULL(@Received,0) + ISNULL(@Purchase,0) - ISNULL(@UsedRepair,0) - ISNULL(@UsedPartList,0) AS Remain
+        FROM [Jig].[MasterSpare] a
+        WHERE a.SpareID = ${SpareID};
+        `);
+        res.json(sparepart.recordset);
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -353,7 +464,7 @@ router.put('/part-list/sign/approve/edit', async (req, res) => { //TODO: Sign Ap
 
 
 //* ===== Work List =====
-router.post('/work-list', async (req, res) => { //TODO: Cal Cost
+router.post('/work-list', async (req, res) => { //TODO: คำนวน Cost ยังไง(คำนวนเวลามาคิด Cost)
     try {
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
@@ -461,14 +572,15 @@ router.put('/modify/edit', async (req, res) => {
     }
 })
 // รายละเอียดวัสดุ / ค่าใช้จ่ายอื่นๆ
-router.post('/modify/part-list', async (req, res) => {
+router.post('/modify/part-list', async (req, res) => { // same as PartList
     try {
         let pool = await getPool('JigPool', config);
         let { ModifyID } = req.body;
         let modifyPartList = await pool.request().query(`SELECT row_number() over(order by a.ModifyPartListID) AS ItemNo, a.ModifyPartListID,
-        a.List, a.Qty, a.OrderType, a.Remark, a.Received, b.AxCode, a.UnitPrice
+        a.List, a.Qty, a.OrderType, a.Remark, b.AxCode, a.UnitPrice, a.SupplierID, c.SupplierName, SpareID
         FROM [Jig].[JigModifyPartList] a
         LEFT JOIN [Jig].[MasterSpare] b ON b.SpareID = a.SpareID
+        LEFT JOIN [Jig].[MasterSupplier] c ON c.SupplierID = a.SupplierID
         WHERE a.ModifyID = ${ModifyID} AND a.Active = 1;
         `);
         res.json(modifyPartList.recordset);
@@ -477,27 +589,93 @@ router.post('/modify/part-list', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/modify/part-list/add', async (req, res) => {
+router.post('/modify/part-list/add', async (req, res) => { // same as PartList, update SparePart Stock
     try {
         let pool = await getPool('JigPool', config);
-        let { JigCreationID } = req.body;
-        let insertModify = `INSERT INTO [Jig].[JigModify](JigCreationID) VALUES(${JigCreationID});`;
-        await pool.request().query(insertModify);
+        let { ModifyID, List, Qty, OrderType, Remark, SpareID, UnitPrice, SupplierID } = req.body;
+        let insertModifyPartList = `INSERT INTO [Jig].[JigModifyPartList](ModifyID, List, Qty, OrderType, Remark, SpareID, UnitPrice, SupplierID, Active)
+        VALUES(${ModifyID}, N'${List}', ${Qty}, N'${OrderType}', N'${Remark}', ${SpareID}, ${UnitPrice}, ${SupplierID}, 1);
+        `;
+        await pool.request().query(insertModifyPartList);
+
+        // Update SparePart Stock
+        let date = new Date();
+        if(date.getHours() < 8){
+            date.setDate(date.getDate() - 1);
+        }
+        let month = date.getMonth() + 1;
+        let year = date.getFullYear();
+        let updateStock = `UPDATE [Jig].[SpareMonth] SET UsedPartList = ISNULL(UsedPartList,0) + ${Qty}
+        WHERE SpareID = ${SpareID} AND MONTH(MonthYear) = ${month} AND YEAR(MonthYear) = ${year}
+        `;
+        await pool.request().query(updateStock);
+
         res.json({ message: 'Success' });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
     }
 })
-router.delete('/modify/part-list/delete', async (req, res) => {
+router.put('/modify/part-list/edit', async (req, res) => { // update SparePart Stock, เพิ่ม unsign ApproveEdit
     try {
         let pool = await getPool('JigPool', config);
-        let { ModifyID, ModifyNo, ModifyDate, Responsible, Problem, Solution, Detail, Benefit, Cost } = req.body;
-        let updateModify = `UPDATE [Jig].[JigModify] SET ModifyNo = ${ModifyNo}, ModifyDate = '${ModifyDate}', Responsible = N'${Responsible}',
-        Problem = N'${Problem}', Solution = N'${Solution}', Detail = N'${Detail}', Benefit = N'${Benefit}', Cost = N'${Cost}'
-        WHERE ModifyID = ${ModifyID};
+        let { ModifyPartListID, List, Qty, OrderType, Remark, SpareID, UnitPrice, SupplierID } = req.body;
+
+        // Update SparePart Stock
+        let date = new Date();
+        if(date.getHours() < 8){
+            date.setDate(date.getDate() - 1);
+        }
+        let month = date.getMonth() + 1;
+        let year = date.getFullYear();
+        let oldPartList = await pool.request().query(`SELECT a.Qty
+        FROM [Jig].[JigModifyPartList] a
+        WHERE ModifyPartListID = ${ModifyPartListID};
+        `);
+        let diff = Qty - oldPartList.recordset[0].Qty;
+        let updateStock = `UPDATE [Jig].[SpareMonth] SET UsedPartList = ISNULL(UsedPartList,0) + ${diff}
+        WHERE SpareID = ${SpareID} AND MONTH(MonthYear) = ${month} AND YEAR(MonthYear) = ${year}
         `;
-        await pool.request().query(updateModify);
+        await pool.request().query(updateStock);
+
+        // Update Modify PartList
+        let updateModifyPartList = `UPDATE [Jig].[JigModifyPartList] SET List = N'${List}', Qty = ${Qty}, OrderType = ${OrderType},
+        Remark = N'${Remark}', SpareID = ${SpareID}, UnitPrice = ${UnitPrice}, SupplierID = ${SupplierID}
+        WHERE ModifyPartListID = ${ModifyPartListID};
+        `;
+        await pool.request().query(updateModifyPartList);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.delete('/modify/part-list/delete', async (req, res) => { // same as PartList, update SparePart Stock
+    try {
+        let pool = await getPool('JigPool', config);
+        let { ModifyPartListID } = req.body;
+
+        // Update SparePart Stock
+        let date = new Date();
+        if(date.getHours() < 8){
+            date.setDate(date.getDate() - 1);
+        }
+        let month = date.getMonth() + 1;
+        let year = date.getFullYear();
+        let oldPartList = await pool.request().query(`SELECT a.Qty, a.SpareID
+        FROM [Jig].[JigModifyPartList] a
+        WHERE ModifyPartListID = ${ModifyPartListID};
+        `);
+        let Qty = oldPartList.recordset[0].Qty;
+        let SpareID = oldPartList.recordset[0].SpareID;
+        let updateStock = `UPDATE [Jig].[SpareMonth] SET UsedPartList = ISNULL(UsedPartList,0) - ${Qty}
+        WHERE SpareID = ${SpareID} AND MONTH(MonthYear) = ${month} AND YEAR(MonthYear) = ${year}
+        `;
+        await pool.request().query(updateStock);
+
+        // delete Modify PartList
+        let deleteModify = `UPDATE [Jig].[JigModifyPartList] SET Active = 0 WHERE ModifyPartListID = ${ModifyPartListID};`;
+        await pool.request().query(deleteModify);
         res.json({ message: 'Success' });
     } catch (err) {
         console.log(req.url, err);
@@ -577,11 +755,13 @@ router.post('/trial', async (req, res) => {
         let { JigCreationID } = req.body;
         let jigTrial = await pool.request().query(`SELECT row_number() over(order by a.TrialID) AS Attempt,
         a.TrialID, CONVERT(NVARCHAR, a.PlanStart, 23) AS TestDate, a.Qty,
-        FORMAT(a.PlanStart, 'HH:MM') AS PlanStart, FORMAT(a.PlanFinish, 'HH:MM') AS PlanFinish,
+        CONVERT(NVARCHAR,a.PlanStart,108) AS PlanStart, CONVERT(NVARCHAR,a.PlanFinish,108) AS PlanFinish,
         DATEDIFF(HOUR, a.PlanStart, a.PlanFinish) AS PlanTime,
-        FORMAT(a.ActualStart, 'HH:MM') AS ActualStart, FORMAT(a.ActualFinish, 'HH:MM') AS ActualFinish,
+        CONVERT(NVARCHAR,a.ActualStart,108) AS ActualStart, CONVERT(NVARCHAR,a.ActualFinish,108) AS ActualFinish,
         DATEDIFF(HOUR, a.ActualStart, a.ActualFinish) AS ActualTime,
-        a.Problem, a.Reason, a.FixDetail, a.Remark
+        a.Problem, a.Reason, a.FixDetail, a.Remark,
+        a.ActualStart AS ActualStartDate, a.ActualFinish AS ActualFinishDate
+        a.PlanStart AS PlanStartDate, a.PlanFinish AS PlanFinishDate
         FROM [Jig].[JigTrial] a
         WHERE a.JigCreationID = ${JigCreationID};
         `);
@@ -596,7 +776,7 @@ router.post('/trial/add', async (req, res) => { // Approve PartList ครั้
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
 
-        //! deprecate: ต้อง Receive PartList ให้ครบก่อน
+        //? deprecate: ต้อง Receive PartList ให้ครบก่อน
         // Approve PartList ครั้งแรกแล้ว Trial ได้เลย
         let getPartListApprove = await pool.request().query(`SELECT PartListApproveBy FROM [Jig].[JigCreation] WHERE JigCreationID = ${JigCreationID};`);
         if(!getPartListApprove.recordset[0]?.PartListApproveBy) return res.status(400).send({ message: 'กรุณาลงชื่อ Approve Part List ก่อน' });
@@ -619,6 +799,34 @@ router.put('/trial/edit', async (req, res) => {
         `;
         await pool.request().query(updateTrial);
         res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.put('/trial/start', async (req, res) => {
+    try {
+        let pool = await getPool('JigPool', config);
+        let { TrialID } = req.body;
+        let cur = new Date();
+        let curStr = `${cur.getFullYear()}-${cur.getMonth()+1}-${cur.getDate()} ${cur.getHours()}:${cur.getMinutes()}:${cur.getSeconds()}`;
+        let updateTrial = `UPDATE [Jig].[JigTrial] SET ActualStart = '${curStr}' WHERE TrialID = ${TrialID};`;
+        await pool.request().query(updateTrial);
+        res.json({ message: 'Success', ActualStart: curStr });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.put('/trial/finish', async (req, res) => {
+    try {
+        let pool = await getPool('JigPool', config);
+        let { TrialID } = req.body;
+        let cur = new Date();
+        let curStr = `${cur.getFullYear()}-${cur.getMonth()+1}-${cur.getDate()} ${cur.getHours()}:${cur.getMinutes()}:${cur.getSeconds()}`;
+        let updateTrial = `UPDATE [Jig].[JigTrial] SET ActualFinish = '${curStr}'WHERE TrialID = ${TrialID};`;
+        await pool.request().query(updateTrial);
+        res.json({ message: 'Success', ActualFinish: curStr });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -716,10 +924,31 @@ router.post('/evaluation/item', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/evaluation/add', async (req, res) => { //TODO: บล็อคตอนที่มี Pass แล้ว (Pass อันไหนบ้าง)
+router.post('/evaluation/add', async (req, res) => { // บล็อคตอนที่มี Pass แล้ว
     try {
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
+
+        // Check if Pass
+        let evals = await pool.request().query(`SELECT a.JigCreationID, a.CustomerBudget, b.TsResult, b.CustomerResult
+        FROM [Jig].[JigCreation] a
+        LEFT JOIN [Jig].[JigEvaluation] b ON b.JigCreationID = a.JigCreationID
+        WHERE a.JigCreationID = ${JigCreationID};
+        `);
+        let evalResult = 0;
+        for(let item of evals.recordset){
+            if(!item.CustomerBudget){ // TS ทำเอง
+                if(item.TsResult == 1){
+                    evalResult = 1;
+                }
+            } else { // Customer Budget
+                if(item.TsResult == 1 && item.CustomerResult == 1){
+                    evalResult = 1;
+                }
+            }
+        }
+        if(evalResult) return res.status(400).send({ message: 'มีผลการประเมินผ่านแล้ว' });
+
         let insertEval = `INSERT INTO [Jig].[JigEvaluation](JigCreationID, EvalDateTime) VALUES(${JigCreationID}, GETDATE());`;
         await pool.request().query(insertEval);
         res.json({ message: 'Success' });
@@ -748,7 +977,7 @@ router.put('/evaluation/edit', async (req, res) => { // Comment ต้อง Fix
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/evaluation/sign/eval', async (req, res) => { //TODO: finish
+router.put('/evaluation/sign/eval', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { EvalID, EvalBy, itemNo } = req.body;
@@ -768,7 +997,7 @@ router.put('/evaluation/sign/eval', async (req, res) => { //TODO: finish
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/evaluation/sign/approve', async (req, res) => { //TODO: finish
+router.put('/evaluation/sign/approve', async (req, res) => { // finish Creation
     try {
         let pool = await getPool('JigPool', config);
         let { EvalID, ApproveBy, itemNo } = req.body;
@@ -776,10 +1005,70 @@ router.put('/evaluation/sign/approve', async (req, res) => { //TODO: finish
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ApproveBy};`);
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
+        // Check Eval
+        let getSignEval = await pool.request().query(`SELECT ${itemMap[itemNo]}EvalBy FROM [Jig].[JigEvaluation] WHERE EvalID = ${EvalID};`);
+        if(!getSignEval.recordset[0].EvalBy) return res.status(400).send({ message: `กรุณาลงชื่อ Evaluator ${itemMap[itemNo].toUpperCase()} ก่อน` });
+
+        // Update ApproveSign
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
         let signApprove = `UPDATE [Jig].[JigEvaluation] SET ${itemMap[itemNo]}ApproveBy = ${ApproveBy}, ${itemMap[itemNo]}ApproveTime = GETDATE() WHERE EvalID = ${EvalID};`;
         await pool.request().query(signApprove);
+
+        // Check Finish
+        let eval = await pool.request().query(`SELECT a.JigApproveBy, a.EnApproveBy, a.QaApproveBy, a.PdApproveBy, a.PeApproveBy,
+        a.CustomerEval1, a.CustomerEval2, b.CustomerBudget, a.TsResult, a.CustomerResult,
+        b.JigCreationID, b.Quantity, b.JlNo, b.JigTypeID, b.CustomerID, b.PartCode, b.PartName, b.RequestSection, b.UseIn
+        FROM [Jig].[JigEvaluation] a
+        LEFT JOIN [Jig].[JigCreation] b ON b.JigCreationID = a.JigCreationID
+        WHERE a.EvalID = ${EvalID};
+        `);
+        let CustomerBudget = eval.recordset[0].CustomerBudget;
+        let TsResult = eval.recordset[0].TsResult;
+        let CustomerResult = eval.recordset[0].CustomerResult;
+        let JigApproveBy = eval.recordset[0].JigApproveBy;
+        let EnApproveBy = eval.recordset[0].EnApproveBy;
+        let QaApproveBy = eval.recordset[0].QaApproveBy;
+        let PdApproveBy = eval.recordset[0].PdApproveBy;
+        let PeApproveBy = eval.recordset[0].PeApproveBy;
+        let CustomerEval1 = eval.recordset[0].CustomerEval1;
+        let CustomerEval2 = eval.recordset[0].CustomerEval2;
+        let finish;
+        if(!CustomerBudget){ // TS ทำเอง
+            if(TsResult){ // Pass
+                if(JigApproveBy && EnApproveBy && QaApproveBy && PdApproveBy && PeApproveBy){  // All Approve
+                    finish = true;
+                }
+            }
+        } else{ // Customer Budget
+            if(TsResult && CustomerResult){ // Pass
+                if(JigApproveBy && EnApproveBy && QaApproveBy && PdApproveBy && PeApproveBy && (CustomerEval1 || CustomerEval2)){ // All Approve
+                    finish = true;
+                }
+            }
+        }
+        if(finish){ // update Finish & Insert to Master
+            let JigCreationID = eval.recordset[0].JigCreationID;
+            let Quantity = eval.recordset[0].Quantity;
+            let JlNo = eval.recordset[0].JlNo.split('-')[1];
+            let JigTypeID = eval.recordset[0].JigTypeID;
+            let CustomerID = eval.recordset[0].CustomerID;
+            let PartCode = eval.recordset[0].PartCode;
+            let PartName = eval.recordset[0].PartName;
+            let RequestSection = eval.recordset[0].RequestSection;
+            let UseIn = eval.recordset[0].UseIn;
+
+            let updateJigCreate = `UPDATE [Jig].[JigCreation] SET FinishDate = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
+            let insertStatement = `INSERT INTO [Jig].[MasterJig](JigTypeID, CustomerID, PartCode, PartName, Section, UseIn, JigNo, Active, Status)
+            VALUES`;
+            let insertArr = [];
+            for(let i = 0; i < Quantity; i++){
+                let JigNo = `JL-${('0000'+JlNo).substr(-4)}-${('00'+(date.getMonth()+1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
+                insertArr.push(`(${JigTypeID}, ${CustomerID}, N'${PartCode}', N'${PartName}', ${RequestSection}, ${UseIn}, '${JigNo}', 1, 1)`);
+                JlNo++;
+            }
+            await pool.request().query(updateJigCreate + (insertStatement + insertArr.join(', ')));
+        }
 
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
     } catch (err) {
@@ -787,7 +1076,7 @@ router.put('/evaluation/sign/approve', async (req, res) => { //TODO: finish
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/evaluation/sign/customer', async (req, res) => { // TODO: finish
+router.put('/evaluation/sign/customer', async (req, res) => { // finish Creation
     try {
         let pool = await getPool('JigPool', config);
         let { EvalID, CustomerNo, CustomerName } = req.body;
@@ -795,6 +1084,62 @@ router.put('/evaluation/sign/customer', async (req, res) => { // TODO: finish
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
         let signEval = `UPDATE [Jig].[JigEvaluation] SET CustomerEval${CustomerNo} = N'${CustomerName}', CustomerEvalTime${CustomerNo} = GETDATE() WHERE EvalID = ${EvalID};`;
         await pool.request().query(signEval);
+
+        // Check Finish
+        let eval = await pool.request().query(`SELECT a.JigApproveBy, a.EnApproveBy, a.QaApproveBy, a.PdApproveBy, a.PeApproveBy,
+        a.CustomerEval1, a.CustomerEval2, b.CustomerBudget, a.TsResult, a.CustomerResult,
+        b.JigCreationID, b.Quantity, b.JlNo, b.JigTypeID, b.CustomerID, b.PartCode, b.PartName, b.RequestSection, b.UseIn
+        FROM [Jig].[JigEvaluation] a
+        LEFT JOIN [Jig].[JigCreation] b ON b.JigCreationID = a.JigCreationID
+        WHERE a.EvalID = ${EvalID};
+        `);
+        let CustomerBudget = eval.recordset[0].CustomerBudget;
+        let TsResult = eval.recordset[0].TsResult;
+        let CustomerResult = eval.recordset[0].CustomerResult;
+        let JigApproveBy = eval.recordset[0].JigApproveBy;
+        let EnApproveBy = eval.recordset[0].EnApproveBy;
+        let QaApproveBy = eval.recordset[0].QaApproveBy;
+        let PdApproveBy = eval.recordset[0].PdApproveBy;
+        let PeApproveBy = eval.recordset[0].PeApproveBy;
+        let CustomerEval1 = eval.recordset[0].CustomerEval1;
+        let CustomerEval2 = eval.recordset[0].CustomerEval2;
+        let finish;
+        if(!CustomerBudget){ // TS ทำเอง
+            if(TsResult){ // Pass
+                if(JigApproveBy && EnApproveBy && QaApproveBy && PdApproveBy && PeApproveBy){  // All Approve
+                    finish = true;
+                }
+            }
+        } else{ // Customer Budget
+            if(TsResult && CustomerResult){ // Pass
+                if(JigApproveBy && EnApproveBy && QaApproveBy && PdApproveBy && PeApproveBy && (CustomerEval1 || CustomerEval2)){ // All Approve
+                    finish = true;
+                }
+            }
+        }
+        if(finish){ // update Finish & Insert to Master
+            let JigCreationID = eval.recordset[0].JigCreationID;
+            let Quantity = eval.recordset[0].Quantity;
+            let JlNo = eval.recordset[0].JlNo.split('-')[1];
+            let JigTypeID = eval.recordset[0].JigTypeID;
+            let CustomerID = eval.recordset[0].CustomerID;
+            let PartCode = eval.recordset[0].PartCode;
+            let PartName = eval.recordset[0].PartName;
+            let RequestSection = eval.recordset[0].RequestSection;
+            let UseIn = eval.recordset[0].UseIn;
+
+            let updateJigCreate = `UPDATE [Jig].[JigCreation] SET FinishDate = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
+            let insertStatement = `INSERT INTO [Jig].[MasterJig](JigTypeID, CustomerID, PartCode, PartName, Section, UseIn, JigNo, Active, Status)
+            VALUES`;
+            let insertArr = [];
+            for(let i = 0; i < Quantity; i++){
+                let JigNo = `JL-${('0000'+JlNo).substr(-4)}-${('00'+(date.getMonth()+1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
+                insertArr.push(`(${JigTypeID}, ${CustomerID}, N'${PartCode}', N'${PartName}', ${RequestSection}, ${UseIn}, '${JigNo}', 1, 1)`);
+                JlNo++;
+            }
+            await pool.request().query(updateJigCreate + (insertStatement + insertArr.join(', ')));
+        }
+
         res.json({ message: 'Success', SignTime: curStr });
     } catch (err) {
         console.log(req.url, err);
