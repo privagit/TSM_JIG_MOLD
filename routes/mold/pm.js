@@ -191,7 +191,7 @@ router.post('/repair/process', async (req, res) => { //TODO: initial Process
         let pool = await getPool('MoldPool', config);
         let { MoldID } = req.body;
         let mold = await pool.request().query(`SELECT a.MoldID, a.BasicMold, a.DieNo, a.Cavity, a.LastProduction,
-        b.WarningShot, b.DangerShot, b.WarrantyShot, b.AlertPercent, b.AlertWarrantyPercent
+        b.WarningShot, b.DangerShot, b.WarrantyWarningShot, b.WarrantyDangerShot, b.AlertPercent, b.AlertWarrantyPercent
         FROM [Mold].[MasterMold] a
         LEFT JOIN [Mold].[MasterPm] b ON b.MoldID = a.MoldID
         WHERE a.MoldID = ${MoldID};
