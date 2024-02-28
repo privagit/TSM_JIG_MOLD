@@ -573,7 +573,7 @@ router.post('/modify/part-list', async (req, res) => { // same as PartList
         let pool = await getPool('JigPool', config);
         let { ModifyID } = req.body;
         let modifyPartList = await pool.request().query(`SELECT row_number() over(order by a.ModifyPartListID) AS ItemNo, a.ModifyPartListID,
-        a.List, a.Qty, a.OrderType, a.Remark, b.AxCode, a.UnitPrice, a.SupplierID, a.SpareID, c.SupplierName
+        a.List, a.Qty, a.OrderType, a.Remark, b.AxCode, a.UnitPrice, a.SupplierID, c.SupplierName, SpareID
         FROM [Jig].[JigModifyPartList] a
         LEFT JOIN [Jig].[MasterSpare] b ON b.SpareID = a.SpareID
         LEFT JOIN [Jig].[MasterSupplier] c ON c.SupplierID = a.SupplierID
@@ -793,6 +793,34 @@ router.put('/trial/edit', async (req, res) => {
         `;
         await pool.request().query(updateTrial);
         res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.put('/trial/start', async (req, res) => {
+    try {
+        let pool = await getPool('JigPool', config);
+        let { TrialID } = req.body;
+        let cur = new Date();
+        let curStr = `${cur.getFullYear()}-${cur.getMonth()+1}-${cur.getDate()} ${cur.getHours()}-${cur.getMinutes()}-${cur.getSeconds()}`;
+        let updateTrial = `UPDATE [Jig].[JigTrial] SET ActualStart = '${curStr}' WHERE TrialID = ${TrialID};`;
+        await pool.request().query(updateTrial);
+        res.json({ message: 'Success', ActualStart: curStr });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.put('/trial/finish', async (req, res) => {
+    try {
+        let pool = await getPool('JigPool', config);
+        let { TrialID } = req.body;
+        let cur = new Date();
+        let curStr = `${cur.getFullYear()}-${cur.getMonth()+1}-${cur.getDate()} ${cur.getHours()}-${cur.getMinutes()}-${cur.getSeconds()}`;
+        let updateTrial = `UPDATE [Jig].[JigTrial] SET ActualFinish = '${curStr}'WHERE TrialID = ${TrialID};`;
+        await pool.request().query(updateTrial);
+        res.json({ message: 'Success', ActualFinish: curStr });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
