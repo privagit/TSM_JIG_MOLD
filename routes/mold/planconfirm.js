@@ -21,16 +21,16 @@ router.post('/', async (req, res) => { //TODO: PlanTime, From, To, WarrantyShot,
             LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.RequestBy = c.EmployeeID
             LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.AcceptBy = d.EmployeeID
         ), Pm AS (
-            SELECT NULL AS RepairCheckID, a.PmPlanID, CONVERT(DATE, a.PlanDate) AS PmDate,
+            SELECT NULL AS RepairCheckID, a.PmPlanID, CONVERT(DATE, a.PlanTime) AS PmDate,
             NULL AS FromTime, NULL AS ToTime,
             b.BasicMold, b.DieNo, a.PmType AS PlanType, a.ActualShot,
-            CASE WHEN a.PmType = 1 THEN e.WarningShot WHEN a.PmType = 2 THEN e.WarrantyShot END AS WarningShot,
-            CASE WHEN a.PmType = 1 THEN e.DangerShot WHEN a.PmType = 2 THEN e.WarrantyShot END AS DangerShot,
+            CASE WHEN a.PmType = 1 THEN e.WarningShot WHEN a.PmType = 2 THEN e.WarrantyWarningShot END AS WarningShot,
+            CASE WHEN a.PmType = 1 THEN e.DangerShot WHEN a.PmType = 2 THEN e.WarrantyDangerShot END AS DangerShot,
             a.AcceptStatus, c.FirstName AS RequestBy, d.FirstName AS AcceptBy, a.AcceptReason, a.AcceptTime, a.RequestTime
             FROM [Mold].[PmPlan] a
             LEFT JOIN [Mold].[MasterMold] b ON b.MoldID = a.MoldID
             LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.RequestBy = c.EmployeeID
-            LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.AcceptBy = d.EmployeeID	
+            LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.AcceptBy = d.EmployeeID
             LEFT JOIN [Mold].[MasterPm] e ON e.MoldID = a.MoldID
         ), tbsum AS (
             SELECT RepairCheckID, PmPlanID, PmDate, FromTime, ToTime, BasicMold, DieNo, PlanType, ActualShot, WarningShot, DangerShot,

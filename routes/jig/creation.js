@@ -755,9 +755,9 @@ router.post('/trial', async (req, res) => {
         let { JigCreationID } = req.body;
         let jigTrial = await pool.request().query(`SELECT row_number() over(order by a.TrialID) AS Attempt,
         a.TrialID, CONVERT(NVARCHAR, a.PlanStart, 23) AS TestDate, a.Qty,
-        FORMAT(a.PlanStart, 'HH:MM') AS PlanStart, FORMAT(a.PlanFinish, 'HH:MM') AS PlanFinish,
+        CONVERT(NVARCHAR,a.PlanStart,108) AS PlanStart, CONVERT(NVARCHAR,a.PlanFinish,108) AS PlanFinish,
         DATEDIFF(HOUR, a.PlanStart, a.PlanFinish) AS PlanTime,
-        FORMAT(a.ActualStart, 'HH:MM') AS ActualStart, FORMAT(a.ActualFinish, 'HH:MM') AS ActualFinish,
+        CONVERT(NVARCHAR,a.ActualStart,108) AS ActualStart, CONVERT(NVARCHAR,a.ActualFinish,108) AS ActualFinish,
         DATEDIFF(HOUR, a.ActualStart, a.ActualFinish) AS ActualTime,
         a.Problem, a.Reason, a.FixDetail, a.Remark
         FROM [Jig].[JigTrial] a
@@ -807,7 +807,7 @@ router.put('/trial/start', async (req, res) => {
         let pool = await getPool('JigPool', config);
         let { TrialID } = req.body;
         let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${cur.getMonth()+1}-${cur.getDate()} ${cur.getHours()}-${cur.getMinutes()}-${cur.getSeconds()}`;
+        let curStr = `${cur.getFullYear()}-${cur.getMonth()+1}-${cur.getDate()} ${cur.getHours()}:${cur.getMinutes()}:${cur.getSeconds()}`;
         let updateTrial = `UPDATE [Jig].[JigTrial] SET ActualStart = '${curStr}' WHERE TrialID = ${TrialID};`;
         await pool.request().query(updateTrial);
         res.json({ message: 'Success', ActualStart: curStr });
@@ -821,7 +821,7 @@ router.put('/trial/finish', async (req, res) => {
         let pool = await getPool('JigPool', config);
         let { TrialID } = req.body;
         let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${cur.getMonth()+1}-${cur.getDate()} ${cur.getHours()}-${cur.getMinutes()}-${cur.getSeconds()}`;
+        let curStr = `${cur.getFullYear()}-${cur.getMonth()+1}-${cur.getDate()} ${cur.getHours()}:${cur.getMinutes()}:${cur.getSeconds()}`;
         let updateTrial = `UPDATE [Jig].[JigTrial] SET ActualFinish = '${curStr}'WHERE TrialID = ${TrialID};`;
         await pool.request().query(updateTrial);
         res.json({ message: 'Success', ActualFinish: curStr });
