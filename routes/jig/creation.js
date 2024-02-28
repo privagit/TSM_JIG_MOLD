@@ -759,7 +759,9 @@ router.post('/trial', async (req, res) => {
         DATEDIFF(HOUR, a.PlanStart, a.PlanFinish) AS PlanTime,
         CONVERT(NVARCHAR,a.ActualStart,108) AS ActualStart, CONVERT(NVARCHAR,a.ActualFinish,108) AS ActualFinish,
         DATEDIFF(HOUR, a.ActualStart, a.ActualFinish) AS ActualTime,
-        a.Problem, a.Reason, a.FixDetail, a.Remark
+        a.Problem, a.Reason, a.FixDetail, a.Remark,
+        a.ActualStart AS ActualStartDate, a.ActualFinish AS ActualFinishDate
+        a.PlanStart AS PlanStartDate, a.PlanFinish AS PlanFinishDate
         FROM [Jig].[JigTrial] a
         WHERE a.JigCreationID = ${JigCreationID};
         `);
