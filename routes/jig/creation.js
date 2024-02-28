@@ -750,8 +750,10 @@ router.post('/trial', async (req, res) => {
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
         let jigTrial = await pool.request().query(`SELECT row_number() over(order by a.TrialID) AS Attempt,
-        a.TrialID, CONVERT(NVARCHAR, a.PlanStart, 23) AS TestDate, a.Qty,
+        a.TrialID, CONVERT(NVARCHAR, a.PlanStart, 23) AS TestDate, a.Qty, 
         FORMAT(a.PlanStart, 'HH:MM') AS PlanStart, FORMAT(a.PlanFinish, 'HH:MM') AS PlanFinish,
+        a.PlanStart AS PlanStartDate, a.PlanFinish AS PlanFinishDate,
+        a.ActualStart AS ActualStartDate, a.ActualFinish AS ActualFinishDate,
         DATEDIFF(HOUR, a.PlanStart, a.PlanFinish) AS PlanTime,
         FORMAT(a.ActualStart, 'HH:MM') AS ActualStart, FORMAT(a.ActualFinish, 'HH:MM') AS ActualFinish,
         DATEDIFF(HOUR, a.ActualStart, a.ActualFinish) AS ActualTime,
@@ -803,7 +805,8 @@ router.put('/trial/start', async (req, res) => {
         let pool = await getPool('JigPool', config);
         let { TrialID } = req.body;
         let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${cur.getMonth()+1}-${cur.getDate()} ${cur.getHours()}-${cur.getMinutes()}-${cur.getSeconds()}`;
+        let curStr = `${cur.getFullYear()}-${cur.getMonth()+1}-${cur.getDate()} ${cur.getHours()}:${cur.getMinutes()}:${cur.getSeconds()}`;
+        console.log(`UPDATE [Jig].[JigTrial] SET ActualStart = '${curStr}' WHERE TrialID = ${TrialID};`)
         let updateTrial = `UPDATE [Jig].[JigTrial] SET ActualStart = '${curStr}' WHERE TrialID = ${TrialID};`;
         await pool.request().query(updateTrial);
         res.json({ message: 'Success', ActualStart: curStr });
@@ -817,7 +820,7 @@ router.put('/trial/finish', async (req, res) => {
         let pool = await getPool('JigPool', config);
         let { TrialID } = req.body;
         let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${cur.getMonth()+1}-${cur.getDate()} ${cur.getHours()}-${cur.getMinutes()}-${cur.getSeconds()}`;
+        let curStr = `${cur.getFullYear()}-${cur.getMonth()+1}-${cur.getDate()} ${cur.getHours()}:${cur.getMinutes()}:${cur.getSeconds()}`;
         let updateTrial = `UPDATE [Jig].[JigTrial] SET ActualFinish = '${curStr}'WHERE TrialID = ${TrialID};`;
         await pool.request().query(updateTrial);
         res.json({ message: 'Success', ActualFinish: curStr });
@@ -995,6 +998,7 @@ router.put('/evaluation/sign/approve', async (req, res) => { // finish Creation
     try {
         let pool = await getPool('JigPool', config);
         let { EvalID, ApproveBy, itemNo } = req.body;
+        console.log(req.body)
         let itemMap = { 1: 'Jig', 2: 'En', 3: 'Qa', 4: 'Pd', 5: 'Pe' };
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ApproveBy};`);
         if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
