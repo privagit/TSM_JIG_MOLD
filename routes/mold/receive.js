@@ -35,17 +35,25 @@ router.post('/list', async (req, res) => { //TODO: where
         let receiveList = await pool.request().query(`
         WITH NewMold AS (
             SELECT c.ReceiveID, b.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
-            a.IssueTime, a.ReceiveTime, c.MoldApproveBy, c.EnApproveBy
+            a.IssueTime, a.ReceiveTime,
+            d.FirstName AS MoldApproveBy, c.MoldApproveTime,
+            e.FirstName AS EnApproveBy, c.EnApproveTime
             FROM [Mold].[MoldTakeout] a
             INNER JOIN [Mold].[Specification] b ON b.MoldSpecID = a.MoldSpecID
             LEFT JOIN [Mold].[MoldReceive] c ON c.TakeoutID = a.TakeoutID
+            LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = c.MoldApproveBy
+            LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = c.EnApproveBy
             WHERE a.TakeoutType = 1
         ), TakeoutMold AS (
             SELECT b.ReceiveID, a.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
-            a.IssueTime, a.ReceiveTime, b.MoldApproveBy, b.EnApproveBy
+            a.IssueTime, a.ReceiveTime,
+            d.FirstName AS MoldApproveBy, b.MoldApproveTime,
+            e.FirstName AS EnApproveBy, b.EnApproveTime
             FROM [Mold].[MoldTakeout] a
             LEFT JOIN [Mold].[MoldReceive] b ON b.TakeoutID = a.TakeoutID
             LEFT JOIN [Mold].[MasterMold] c ON c.MoldID = a.MoldID
+            LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = b.MoldApproveBy
+            LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = b.EnApproveBy
             WHERE a.TakeoutType = 2
         ), tbsum AS (
             SELECT * FROM [NewMold]
@@ -53,9 +61,13 @@ router.post('/list', async (req, res) => { //TODO: where
             SELECT * FROM [TakeoutMold]
         )
         SELECT ReceiveID, MoldSpecID, MoldID, TakeoutType AS MoldStatus, TakeoutStatus, BasicMold, DieNo, MoldControlNo,
-            IssueTime, ReceiveTime, MoldApproveBy, EnApproveBy
+            IssueTime, ReceiveTime, MoldApproveBy, EnApproveBy, MoldApproveTime, EnApproveTime
         FROM [tbsum]
         `);
+        for(let item of receiveList.recordset){
+            item.MoldApproveBy = atob(item.MoldApproveBy || '');
+            item.EnApproveBy = atob(item.EnApproveBy || '');
+        }
         if(TakeoutStatus){
             let receiveListFiltered = receiveList.recordset.filter(v => v.TakeoutStatus == TakeoutStatus);
             return res.json(receiveListFiltered);
