@@ -234,7 +234,6 @@ router.post('/technician', async (req, res) => { //TODO PM, Repair ?
         LEFT JOIN [Jig].[MasterTechnician] b ON a.UserID = b.UserID
         CROSS JOIN [cte2] c
         `);
-
         let PM_Month = maintenance.recordset[0]?.totalMonth || 0;
         let PM_Year = maintenance.recordset[0]?.totalYear || 0;
         for(let item of maintenance.recordset){
