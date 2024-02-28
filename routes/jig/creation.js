@@ -573,7 +573,7 @@ router.post('/modify/part-list', async (req, res) => { // same as PartList
         let pool = await getPool('JigPool', config);
         let { ModifyID } = req.body;
         let modifyPartList = await pool.request().query(`SELECT row_number() over(order by a.ModifyPartListID) AS ItemNo, a.ModifyPartListID,
-        a.List, a.Qty, a.OrderType, a.Remark, b.AxCode, a.UnitPrice, a.SupplierID, c.SupplierName, SpareID
+        a.List, a.Qty, a.OrderType, a.Remark, b.AxCode, a.UnitPrice, a.SupplierID, c.SupplierName, a.SpareID
         FROM [Jig].[JigModifyPartList] a
         LEFT JOIN [Jig].[MasterSpare] b ON b.SpareID = a.SpareID
         LEFT JOIN [Jig].[MasterSupplier] c ON c.SupplierID = a.SupplierID
@@ -749,6 +749,7 @@ router.post('/trial', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
+
         let jigTrial = await pool.request().query(`SELECT row_number() over(order by a.TrialID) AS Attempt,
         a.TrialID, CONVERT(NVARCHAR, a.PlanStart, 23) AS TestDate, a.Qty,
         CONVERT(NVARCHAR,a.PlanStart,108) AS PlanStart, CONVERT(NVARCHAR,a.PlanFinish,108) AS PlanFinish,
@@ -756,7 +757,7 @@ router.post('/trial', async (req, res) => {
         CONVERT(NVARCHAR,a.ActualStart,108) AS ActualStart, CONVERT(NVARCHAR,a.ActualFinish,108) AS ActualFinish,
         DATEDIFF(HOUR, a.ActualStart, a.ActualFinish) AS ActualTime,
         a.Problem, a.Reason, a.FixDetail, a.Remark,
-        a.ActualStart AS ActualStartDate, a.ActualFinish AS ActualFinishDate
+        a.ActualStart AS ActualStartDate, a.ActualFinish AS ActualFinishDate,
         a.PlanStart AS PlanStartDate, a.PlanFinish AS PlanFinishDate
         FROM [Jig].[JigTrial] a
         WHERE a.JigCreationID = ${JigCreationID};
@@ -847,7 +848,7 @@ router.post('/evaluation', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.JigEvalBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.JigApproveBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = a.EnEvalBy
-        LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = a.EnEvalBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = a.EnApproveBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] f ON f.EmployeeID = a.QaEvalBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] g ON g.EmployeeID = a.QaApproveBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] h ON h.EmployeeID = a.PdEvalBy
@@ -883,6 +884,8 @@ router.post('/evaluation/item', async (req, res) => {
         a.Solution, a.ModifyDetail,
         a.JigEvalTime, a.EnEvalTime, a.QaEvalTime, a.PdEvalTime, a.PeEvalTime,
         a.JigApproveTime, a.EnApproveTime, a.QaApproveTime, a.PdApproveTime, a.PeApproveTime,
+        a.CustomerEvalTime1, a.CustomerEvalTime2,
+        a.ProblemImage, a.SolutionImage, a.BeforeImage, a.AfterImage, a.JigImage, a.PartListImage, a.ModifyImage,
         b.FirstName AS JigEvalBy, c.FirstName AS JigApproveBy,
         d.FirstName AS EnEvalBy, e.FirstName AS EnApproveBy,
         f.FirstName AS QaEvalBy, g.FirstName AS QaApproveBy,
@@ -893,7 +896,7 @@ router.post('/evaluation/item', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.JigEvalBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.JigApproveBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = a.EnEvalBy
-        LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = a.EnEvalBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = a.EnApproveBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] f ON f.EmployeeID = a.QaEvalBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] g ON g.EmployeeID = a.QaApproveBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] h ON h.EmployeeID = a.PdEvalBy
@@ -1001,9 +1004,8 @@ router.put('/evaluation/sign/approve', async (req, res) => { // finish Creation
         let itemMap = { 1: 'Jig', 2: 'En', 3: 'Qa', 4: 'Pd', 5: 'Pe' };
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ApproveBy};`);
         if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
-
         // Check Eval
-        let getSignEval = await pool.request().query(`SELECT ${itemMap[itemNo]}EvalBy FROM [Jig].[JigEvaluation] WHERE EvalID = ${EvalID};`);
+        let getSignEval = await pool.request().query(`SELECT ${itemMap[itemNo]}EvalBy AS EvalBy FROM [Jig].[JigEvaluation] WHERE EvalID = ${EvalID};`);
         if(!getSignEval.recordset[0].EvalBy) return res.status(400).send({ message: `กรุณาลงชื่อ Evaluator ${itemMap[itemNo].toUpperCase()} ก่อน` });
 
         // Update ApproveSign
