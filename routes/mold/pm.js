@@ -60,8 +60,8 @@ router.post('/', async (req, res) => { //TODO: Condition AcceptStatus
                 }
 
                 mold.minPlanTimeNo = minPlanTimeNo;
-                mold.PmStatus = !pm.length ? (mold.MonthlyShot >= alertPm ? 0 : null) : pm[0].AcceptStatus;
-                mold.WarrantyStatus = !warranty.length ? (mold.MonthlyShot >= alertWarranty ? 0 : null) : warranty[0].AcceptStatus;
+                mold.PmStatus = !pm.length ? (mold.ActualPmShot >= alertPm ? 0 : null) : pm[0].AcceptStatus;
+                mold.WarrantyStatus = !warranty.length ? (mold.ActualWarrantyShot >= alertWarranty ? 0 : null) : warranty[0].AcceptStatus;
 
                 needPM = true;
             }
@@ -106,9 +106,11 @@ router.post('/pm/item', async (req, res) => { //? Filter PmRequest
         let pool = await getPool('MoldPool', config);
         let { MoldID } = req.body;
         let mold = await pool.request().query(`SELECT a.MoldID, a.BasicMold, a.DieNo, a.Cavity, a.LastProduction,
-        b.WarningShot, b.DangerShot, b.WarrantyWarningShot, b.WarrantyDangerShot, b.AlertPercent, b.AlertWarrantyPercent
+        b.WarningShot, b.DangerShot, b.WarrantyWarningShot, b.WarrantyDangerShot, b.AlertPercent, b.AlertWarrantyPercent,
+        c.ActualPmShot, c.ActualWarrantyShot
         FROM [Mold].[MasterMold] a
         LEFT JOIN [Mold].[MasterPm] b ON b.MoldID = a.MoldID
+        LEFT JOIN [Mold].[MoldShot] c ON c.MoldID = a.MoldID
         WHERE a.MoldID = ${MoldID};
         `);
         let PmRequest = await pool.request().query(`SELECT a.PmPlanID, a.PmType, a.AcceptStatus, a.PmEnd
@@ -119,7 +121,7 @@ router.post('/pm/item', async (req, res) => { //? Filter PmRequest
 
         let alertPm = Math.round(mold.recordset[0].AlertPercent * mold.recordset[0].WarningShot / 100);
         let alertWarranty = Math.round(mold.recordset[0].AlertWarrantyPercent * mold.recordset[0].WarrantyWarningShot / 100);
-        if(mold.recordset[0].PmShot >= alertPm){ // PM
+        if(mold.recordset[0].ActualPmShot >= alertPm){ // PM
             pmList.push({
                 MoldID: mold.recordset[0].MoldID,
                 PmType: 1, PmTypeName: 'PM',
@@ -128,7 +130,7 @@ router.post('/pm/item', async (req, res) => { //? Filter PmRequest
                 DangerShot: mold.recordset[0].DangerShot
             })
         }
-        if(mold.recordset[0].WarrantyShot >= alertWarranty){ // Warranty
+        if(mold.recordset[0].ActualWarrantyShot >= alertWarranty){ // Warranty
             pmList.push({
                 MoldID: mold.recordset[0].MoldID,
                 PmType: 2, PmTypeName: 'Warranty',
@@ -137,7 +139,6 @@ router.post('/pm/item', async (req, res) => { //? Filter PmRequest
                 DangerShot: mold.recordset[0].WarrantyDangerShot
             })
         }
-
         let pmListfiltered = pmList.filter(item => !PmRequest.recordset.some(pmr => pmr.MoldID == item.MoldID && pmr.PmType == item.PmType));
         res.json(pmListfiltered);
     } catch (err) {
@@ -289,10 +290,10 @@ router.post('/repair/process', async (req, res) => { //! Deprecated: initial Pro
 
 
 //* ========== Plan Confirm ==========
-router.post('/plan', async (req, res) => { //TODO: Where month, year
+router.post('/plan', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
-        let { Status } = req.body;
+        let { Status, month, year } = req.body;
         // Status 1: Issue, 2: Cancel, 3: Reject, 4: Accept
         let planConfirm = await pool.request().query(`WITH Repair AS (
             SELECT a.RepairCheckID, NULL AS PmPlanID, CONVERT(DATE, a.PlanStartTime) AS PmDate,
@@ -305,6 +306,7 @@ router.post('/plan', async (req, res) => { //TODO: Where month, year
             LEFT JOIN [Mold].[MasterMold] b ON b.MoldID = a.MoldID
             LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.RequestBy = c.EmployeeID
             LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.AcceptBy = d.EmployeeID
+            WHERE MONTH(a.PlanStartTime) = ${month} AND YEAR(a.PlanStartTime) = ${year}
         ), Pm AS (
             SELECT NULL AS RepairCheckID, a.PmPlanID, CONVERT(DATE, a.PlanStartTime) AS PmDate,
             CONVERT(NVARCHAR(5),a.PlanStartTime,108) AS FromTime, CONVERT(NVARCHAR(5),a.PlanFinishTime,108) AS ToTime,
@@ -317,6 +319,7 @@ router.post('/plan', async (req, res) => { //TODO: Where month, year
             LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.RequestBy = c.EmployeeID
             LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.AcceptBy = d.EmployeeID
             LEFT JOIN [Mold].[MasterPm] e ON e.MoldID = a.MoldID
+            WHERE MONTH(a.PlanStartTime) = ${month} AND YEAR(a.PlanStartTime) = ${year}
         ), tbsum AS (
             SELECT RepairCheckID, PmPlanID, PmDate, FromTime, ToTime, BasicMold, DieNo, PlanType, ActualShot, WarningShot, DangerShot,
             AcceptStatus, RequestBy, AcceptBy, AcceptReason, AcceptTime, RequestTime
@@ -362,3 +365,16 @@ router.post('/plan/cancel', async (req, res) => { // Cancel Plan
 
 
 module.exports = router
+
+
+// RepairStatus
+// 1: Issue     => Issue Repair
+// 2: Plan      => Plan ที่ PM Plan
+// 3: Repair    => Start Repair
+// 4: Wait Sign => Sign Repair (Wait Inj,Qc,Mold Sign)
+// 5: Complete  => Sign Inj,Qc,Mold
+
+// Repair PlanStatus
+// 1: Accept => Accept at ConfirmPlan
+// 2: Reject => Reject at ConfirmPlan
+// 3: Cancel => Cancel at PmPlan

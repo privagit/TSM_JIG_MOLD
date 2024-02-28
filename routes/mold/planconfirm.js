@@ -4,10 +4,10 @@ const config = require('../../lib/dbconfig').dbconfig_mold;
 const { getPool } = require('../../middlewares/pool-manager');
 
 //* ========== Plan Confirm ==========
-router.post('/', async (req, res) => { //TODO: where month, year
+router.post('/', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
-        let { Status } = req.body;
+        let { Status, month, year } = req.body;
         // Status 1: Issue, 2: Cancel, 3: Reject, 4: Accept
         let planConfirm = await pool.request().query(`WITH Repair AS (
             SELECT a.RepairCheckID, NULL AS PmPlanID, CONVERT(DATE, a.PlanStartTime) AS PmDate,
@@ -20,6 +20,7 @@ router.post('/', async (req, res) => { //TODO: where month, year
             LEFT JOIN [Mold].[MasterMold] b ON b.MoldID = a.MoldID
             LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.RequestBy = c.EmployeeID
             LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.AcceptBy = d.EmployeeID
+            WHERE MONTH(a.PlanStartTime) = ${month} AND YEAR(a.PlanStartTime) = ${year}
         ), Pm AS (
             SELECT NULL AS RepairCheckID, a.PmPlanID, CONVERT(DATE, a.PlanStartTime) AS PmDate,
             CONVERT(NVARCHAR(5),a.PlanStartTime,108) AS FromTime, CONVERT(NVARCHAR(5),a.PlanFinishTime,108) AS ToTime,
@@ -32,6 +33,7 @@ router.post('/', async (req, res) => { //TODO: where month, year
             LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.RequestBy = c.EmployeeID
             LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.AcceptBy = d.EmployeeID
             LEFT JOIN [Mold].[MasterPm] e ON e.MoldID = a.MoldID
+            WHERE MONTH(a.PlanStartTime) = ${month} AND YEAR(a.PlanStartTime) = ${year}
         ), tbsum AS (
             SELECT RepairCheckID, PmPlanID, PmDate, FromTime, ToTime, BasicMold, DieNo, PlanType, ActualShot, WarningShot, DangerShot,
             AcceptStatus, RequestBy, AcceptBy, AcceptReason, AcceptTime, RequestTime
