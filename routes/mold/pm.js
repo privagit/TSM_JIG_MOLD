@@ -159,7 +159,7 @@ router.post('/pm/request', async (req, res) => { // request PM
             let FinishTimeStr = `${FinishTime.getFullYear()}-${FinishTime.getMonth()+1}-${FinishTime.getDate()} ${FinishTime.getHours()}:${FinishTime.getMinutes()}:${FinishTime.getSeconds()}`;
 
             // Insert PmPlan
-            // PlanStatus = 0: Wait Accept, 1: Accept, 2: Reject
+            // PlanStatus = 0: Wait Accept, 1: Accept, 2: Reject, 3: Cancel
             let insertPlan = `INSERT INTO [Mold].[PmPlan](MoldID, PlanStartTime, PlanFinishTime, PmTime, PmType, ActualShot, Remark, RequestBy, RequestTime, AcceptStatus)
             VALUES(${MoldID}, '${PlanTimeStr}', '${FinishTimeStr}', ${item.PmTime}, ${item.PmType}, ${item.Actual}, N'${item.Remark}', ${RequestBy}, GETDATE(), 0);
             `;
@@ -289,19 +289,70 @@ router.post('/repair/process', async (req, res) => { //! Deprecated: initial Pro
 
 
 //* ========== Plan Confirm ==========
-router.post('/plan', async (req, res) => { //TODO: Plan List
+router.post('/plan', async (req, res) => { //TODO: Where month, year
     try {
         let pool = await getPool('MoldPool', config);
-        
+        let { Status } = req.body;
+        // Status 1: Issue, 2: Cancel, 3: Reject, 4: Accept
+        let planConfirm = await pool.request().query(`WITH Repair AS (
+            SELECT a.RepairCheckID, NULL AS PmPlanID, CONVERT(DATE, a.PlanStartTime) AS PmDate,
+            CONVERT(NVARCHAR(5), a.PlanStartTime, 108) AS FromTime,
+            CONVERT(NVARCHAR(5), a.PlanFinishTime, 108) AS ToTime,
+            b.BasicMold, b.DieNo, 3 AS PlanType, NULL AS ActualShot, NULL AS WarningShot, NULL AS DangerShot,
+            a.RepairStatus,
+            a.AcceptStatus, c.FirstName AS RequestBy, d.FirstName AS AcceptBy, a.AcceptReason, a.AcceptTime, a.RequestTime
+            FROM [Mold].[RepairCheck] a
+            LEFT JOIN [Mold].[MasterMold] b ON b.MoldID = a.MoldID
+            LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.RequestBy = c.EmployeeID
+            LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.AcceptBy = d.EmployeeID
+        ), Pm AS (
+            SELECT NULL AS RepairCheckID, a.PmPlanID, CONVERT(DATE, a.PlanStartTime) AS PmDate,
+            CONVERT(NVARCHAR(5),a.PlanStartTime,108) AS FromTime, CONVERT(NVARCHAR(5),a.PlanFinishTime,108) AS ToTime,
+            b.BasicMold, b.DieNo, a.PmType AS PlanType, a.ActualShot,
+            CASE WHEN a.PmType = 1 THEN e.WarningShot WHEN a.PmType = 2 THEN e.WarrantyWarningShot END AS WarningShot,
+            CASE WHEN a.PmType = 1 THEN e.DangerShot WHEN a.PmType = 2 THEN e.WarrantyDangerShot END AS DangerShot,
+            a.AcceptStatus, c.FirstName AS RequestBy, d.FirstName AS AcceptBy, a.AcceptReason, a.AcceptTime, a.RequestTime
+            FROM [Mold].[PmPlan] a
+            LEFT JOIN [Mold].[MasterMold] b ON b.MoldID = a.MoldID
+            LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.RequestBy = c.EmployeeID
+            LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.AcceptBy = d.EmployeeID
+            LEFT JOIN [Mold].[MasterPm] e ON e.MoldID = a.MoldID
+        ), tbsum AS (
+            SELECT RepairCheckID, PmPlanID, PmDate, FromTime, ToTime, BasicMold, DieNo, PlanType, ActualShot, WarningShot, DangerShot,
+            AcceptStatus, RequestBy, AcceptBy, AcceptReason, AcceptTime, RequestTime
+            FROM [Repair]
+            UNION ALL
+            SELECT RepairCheckID, PmPlanID, PmDate, FromTime, ToTime, BasicMold, DieNo, PlanType, ActualShot, WarningShot, DangerShot,
+            AcceptStatus, RequestBy, AcceptBy, AcceptReason, AcceptTime, RequestTime
+            FROM [Pm]
+        )
+        SELECT RepairCheckID, PmPlanID, PmDate, FromTime, ToTime, BasicMold, DieNo, PlanType, ActualShot, WarningShot, DangerShot,
+            AcceptStatus, RequestBy, AcceptBy, AcceptReason, AcceptTime, RequestTime
+        FROM [tbsum]
+        `);
+        if(Status){
+            let planConfirmFiltered = planConfirm.recordset.filter(v => v.AcceptStatus == Status);
+            return res.json(planConfirmFiltered);
+        }
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/plan/cancel', async (req, res) => { //TODO: Cancel Plan
+router.post('/plan/cancel', async (req, res) => { // Cancel Plan
     try {
         let pool = await getPool('MoldPool', config);
-        let { PmPlanID, RepairCheckID } = req.body;
+        let { PmPlanID, RepairPlanID } = req.body;
+        if(PmPlanID){
+            // AcceptStatus { 0: Wait Accept, 1: Accept, 2: Reject, 3: Cancel }
+            let cancelPm = `UPDATE [Mold].[PmPlan] SET AcceptStatus = 3 WHERE PmPlanID = ${PmPlanID};`;
+            await pool.request().query(cancelPm);
+        }
+        else if(RepairCheckID){
+            let cancelRepair = `UPDATE [Mold].[RepairPlan] SET PlanStatus = 3 WHERE RepairPlanID = ${RepairPlanID};`;
+            await pool.request().query(cancelRepair);
+        }
+        res.json({ message: 'Success' });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
