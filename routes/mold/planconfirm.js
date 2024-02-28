@@ -4,10 +4,10 @@ const config = require('../../lib/dbconfig').dbconfig_mold;
 const { getPool } = require('../../middlewares/pool-manager');
 
 //* ========== Plan Confirm ==========
-router.post('/', async (req, res) => { //TODO: PlanTime, From, To, WarrantyShot, RepairProcess
+router.post('/', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
-        let { Status } = req.body;
+        let { Status, month, year } = req.body;
         // Status 1: Issue, 2: Cancel, 3: Reject, 4: Accept
         let planConfirm = await pool.request().query(`WITH Repair AS (
             SELECT a.RepairCheckID, NULL AS PmPlanID, CONVERT(DATE, a.PlanStartTime) AS PmDate,
@@ -20,9 +20,10 @@ router.post('/', async (req, res) => { //TODO: PlanTime, From, To, WarrantyShot,
             LEFT JOIN [Mold].[MasterMold] b ON b.MoldID = a.MoldID
             LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.RequestBy = c.EmployeeID
             LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.AcceptBy = d.EmployeeID
+            WHERE MONTH(a.PlanStartTime) = ${month} AND YEAR(a.PlanStartTime) = ${year}
         ), Pm AS (
-            SELECT NULL AS RepairCheckID, a.PmPlanID, CONVERT(DATE, a.PlanTime) AS PmDate,
-            NULL AS FromTime, NULL AS ToTime,
+            SELECT NULL AS RepairCheckID, a.PmPlanID, CONVERT(DATE, a.PlanStartTime) AS PmDate,
+            CONVERT(NVARCHAR(5),a.PlanStartTime,108) AS FromTime, CONVERT(NVARCHAR(5),a.PlanFinishTime,108) AS ToTime,
             b.BasicMold, b.DieNo, a.PmType AS PlanType, a.ActualShot,
             CASE WHEN a.PmType = 1 THEN e.WarningShot WHEN a.PmType = 2 THEN e.WarrantyWarningShot END AS WarningShot,
             CASE WHEN a.PmType = 1 THEN e.DangerShot WHEN a.PmType = 2 THEN e.WarrantyDangerShot END AS DangerShot,
@@ -32,6 +33,7 @@ router.post('/', async (req, res) => { //TODO: PlanTime, From, To, WarrantyShot,
             LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.RequestBy = c.EmployeeID
             LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.AcceptBy = d.EmployeeID
             LEFT JOIN [Mold].[MasterPm] e ON e.MoldID = a.MoldID
+            WHERE MONTH(a.PlanStartTime) = ${month} AND YEAR(a.PlanStartTime) = ${year}
         ), tbsum AS (
             SELECT RepairCheckID, PmPlanID, PmDate, FromTime, ToTime, BasicMold, DieNo, PlanType, ActualShot, WarningShot, DangerShot,
             AcceptStatus, RequestBy, AcceptBy, AcceptReason, AcceptTime, RequestTime
@@ -58,7 +60,7 @@ router.post('/', async (req, res) => { //TODO: PlanTime, From, To, WarrantyShot,
 router.post('/confirm', async (req, res) => { //
     try {
         let pool = await getPool('MoldPool', config);
-        let { RepairCheckID, PmPlanID, PlanType, AcceptStatus, AcceptReason, AcceptBy, AcceptTime } = req.body;
+        let { RepairCheckID, RepairPlanID, PmPlanID, PlanType, AcceptStatus, AcceptReason, AcceptBy, AcceptTime } = req.body;
         // 1: Accept, 2: Reject
         if(PlanType == 1 || PlanType == 2) { // Pm, Warranty
             let updateStatusPmPlan = `UPDATE [Mold].[PmPlan] SET AcceptStatus = ${AcceptStatus}, AcceptReason = N'${AcceptReason}',
@@ -67,8 +69,11 @@ router.post('/confirm', async (req, res) => { //
             await pool.request().query(updateStatusPmPlan);
         } else{ // Repair
             let RepairStatus = AcceptStatus == 1 ? 2 : 1; // if Accept => RepairStatus = Plan(2), if Reject => RepairStatus = Issue(1)
-            let updateStatusRepairPlan = `UPDATE [Mold].[RepairCheck] SET AcceptStatus = ${AcceptStatus}, AcceptReason = N'${AcceptReason}',
-            AcceptBy = ${AcceptBy}, AcceptTime = GETDATE(), RepairStatus = ${RepairStatus} WHERE RepairCheckID = ${RepairCheckID}
+            let updateStatusRepairPlan = `
+            UPDATE [Mold].[RepairPlan] SET PlanStatus = ${AcceptStatus} WHERE RepairPlanID = ${RepairPlanID};
+
+            UPDATE [Mold].[RepairCheck] SET AcceptStatus = ${AcceptStatus}, AcceptReason = N'${AcceptReason}',
+            AcceptBy = ${AcceptBy}, AcceptTime = GETDATE(), RepairStatus = ${RepairStatus} WHERE RepairCheckID = ${RepairCheckID};
             `;
             await pool.request().query(updateStatusRepairPlan);
         }
