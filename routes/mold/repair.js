@@ -145,7 +145,7 @@ router.post('/repair-issue/repair/start', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/repair-issue/repair/item', async (req, res) => { //TODO: Process
+router.post('/repair-issue/repair/item', async (req, res) => { //TODO: ProcessCost คิดยังไง
     try {
         let pool = await getPool('MoldPool', config);
         let { RepairCheckID } = req.body;
@@ -168,6 +168,12 @@ router.post('/repair-issue/repair/item', async (req, res) => { //TODO: Process
         FROM [Mold].[RepairImage] a
         WHERE a.RepairCheckID = ${RepairCheckID} AND a.Active = 1;
         `);
+        let repairProcess = await pool.request().query(`SELECT a.RepairProcessID, a.ProcessID, a.ProcessDetail, a.EstStartTime, a.EstFinishTime, 
+        a.ActualStartTime, a.ActualFinishTime, a.CostPerHour, DATEDIFF(MINUTE, a.EstStartTime, a.EstFinishTime) AS EstTime
+        FROM [Mold].[RepairProecss] a
+        WHERE a.RepairCheckID = ${RepairCheckID};
+        `);
+
         if(repair.recordset.length){
             repair.recordset[0].RequestBy = !repair.recordset[0].RequestBy ? null: atob(repair.recordset[0].RequestBy);
             repair.recordset[0].RepairBy = !repair.recordset[0].RepairBy ? null: atob(repair.recordset[0].RepairBy);
@@ -187,6 +193,8 @@ router.post('/repair-issue/repair/item', async (req, res) => { //TODO: Process
                 }
             }
             repair.recordset[0].RepairImage = tempImage;
+
+            repair.recordset[0].RepairProcess = repairProcess.recordset;
         }
         res.json(repair.recordset);
     } catch (err) {
@@ -194,7 +202,7 @@ router.post('/repair-issue/repair/item', async (req, res) => { //TODO: Process
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/repair-issue/repair/process', async (req, res) => { //TODO: get from Plan, initial Process (Plan & Actual)
+router.post('/repair-issue/repair/process', async (req, res) => { // initial Process (Plan & Actual)
     try {
         let pool = await getPool('MoldPool', config);
         let process = await pool.request().query(`SELECT ProcessID, ProcessType, Detail, CostPerHour
@@ -207,7 +215,7 @@ router.post('/repair-issue/repair/process', async (req, res) => { //TODO: get fr
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/repair-issue/repair/plan-actual/edit', async (req, res) => { //TODO: Edit Proecss
+router.post('/repair-issue/repair/plan-actual/edit', async (req, res) => { //TODO: Insert & Update Proecss
     try {
         let pool = await getPool('MoldPool', config);
         let { RepairCheckID, ActualStartTime, ActualFinishTime, RepairProcess } = req.body;
@@ -633,9 +641,14 @@ router.post('/repair-issue/sign/mold', async (req, res) => {
 
 module.exports = router;
 
-// Repair Status
+// RepairStatus
 // 1: Issue     => Issue Repair
-//TODO 2: Plan      => Plan ที่ PM Plan
+// 2: Plan      => Plan ที่ PM Plan
 // 3: Repair    => Start Repair
 // 4: Wait Sign => Sign Repair (Wait Inj,Qc,Mold Sign)
 // 5: Complete  => Sign Inj,Qc,Mold
+
+// PlanStatus
+// 1: Accept => Accept at ConfirmPlan
+// 2: Reject => Reject at ConfirmPlan
+// 3: Cancel => Cancel at PmPlan
