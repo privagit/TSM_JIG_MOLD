@@ -29,13 +29,13 @@ router.post('/', async (req, res) => { //TODO: Condition AcceptStatus
         let repairRequest = await pool.request().query(`WITH Repair AS (
             SELECT ROW_NUMBER() OVER (PARTITION BY a.MoldID ORDER BY a.RequestTime DESC) AS RowNum,
             a.MoldID, a.RepairCheckID, a.RepairStatus, a.AcceptStatus, a.PlanStartTime,
-            ISNULL(c.RepairProblem, b.RepairType) AS RepairProblem
+            ISNULL(c.RepairProblem, b.RepairType) AS RepairProblem, a.RequestTime
             FROM [Mold].[RepairCheck] a
             LEFT JOIN [Mold].[MasterRepairType] b ON b.RepairTypeID = a.RepairTypeiD
 	        LEFT JOIN [Mold].[MasterRepairProblem] c ON c.RepairProblemID = a.RepairProblemID
             WHERE a.EndTime IS NULL
         )
-        SELECT MoldID, RepairCheckID, RepairStatus, AcceptStatus, PlanStartTime, ROW_NUMBER() OVER (ORDER BY PlanStartTime) AS RowNo, RepairProblem
+        SELECT MoldID, RepairStatus, AcceptStatus, ROW_NUMBER() OVER (ORDER BY PlanStartTime) AS RowNo, RepairProblem, RequestTime
         FROM [Repair]
         WHERE RowNum = 1;
         `);
@@ -68,21 +68,17 @@ router.post('/', async (req, res) => { //TODO: Condition AcceptStatus
 
             let repairFiltered = repairRequest.recordset.filter(v => v.MoldID == mold.MoldID);
             if(repairFiltered.length){
-                mold.RepairCheckID = repairFiltered[0].RepairCheckID;
                 mold.RepairStatus = repairFiltered[0].RepairStatus;
-                mold.AcceptStatus = repairFiltered[0].AcceptStatus;
-                mold.PlanStartTime = repairFiltered[0].PlanStartTime;
-                mold.RepairStatus = repairFiltered[0].RepairStatus;
+                mold.RepairAcceptStatus = repairFiltered[0].AcceptStatus;
                 mold.RepairProblem = repairFiltered[0].RepairProblem;
+                mold.RepairRequestTime = repairFiltered[0].RequestTime;
 
                 needPM = true;
             } else{
-                mold.RepairCheckID = null;
                 mold.RepairStatus = null;
-                mold.AcceptStatus = null;
-                mold.PlanStartTime = null;
-                mold.RepairStatus = null;
+                mold.RepairAcceptStatus = null;
                 mold.RepairProblem = null;
+                mold.RepairRequestTime = null;
             }
 
             if(needPM){
