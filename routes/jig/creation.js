@@ -527,12 +527,12 @@ router.delete('/work-list/delete', async (req, res) => {
 
 
 //* ===== Modify Jig =====
-router.post('/modify', async (req, res) => { // Budget ดูจาก JigCreation
+router.post('/modify', async (req, res) => { // CustomerBudget เลือก
     try {
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
         let jigModify = await pool.request().query(`SELECT a.ModifyID, a.JigCreationID, a.ModifyNo, a.ModifyDate, a.Responsible,
-        a.Problem, a.Solution, a.Detail, a.Benefit, a.Cost, a.BeforeImagePath, a.AfterImagePath, b.Budget, b.CustomerBudget
+        a.Problem, a.Solution, a.Detail, a.Benefit, a.Cost, a.BeforeImagePath, a.AfterImagePath, b.Budget, a.CustomerBudget
         FROM [Jig].[JigModify] a
         LEFT JOIN [Jig].[JigCreation] b ON b.JigCreationID = a.JigCreationID
         WHERE a.JigCreationID = ${JigCreationID}
@@ -559,9 +559,9 @@ router.post('/modify/add', async (req, res) => {
 router.put('/modify/edit', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
-        let { ModifyID, ModifyNo, ModifyDate, Responsible, Problem, Solution, Detail, Benefit, Cost } = req.body;
+        let { ModifyID, ModifyNo, ModifyDate, Responsible, Problem, Solution, Detail, Benefit, Cost, CustomerBudget } = req.body;
         let updateModify = `UPDATE [Jig].[JigModify] SET ModifyNo = ${ModifyNo}, ModifyDate = '${ModifyDate}', Responsible = N'${Responsible}',
-        Problem = N'${Problem}', Solution = N'${Solution}', Detail = N'${Detail}', Benefit = N'${Benefit}', Cost = N'${Cost}'
+        Problem = N'${Problem}', Solution = N'${Solution}', Detail = N'${Detail}', Benefit = N'${Benefit}', Cost = N'${Cost}', CustomerBudget = ${CustomerBudget}
         WHERE ModifyID = ${ModifyID};
         `;
         await pool.request().query(updateModify);
@@ -760,7 +760,7 @@ router.post('/trial', async (req, res) => {
         CONVERT(NVARCHAR,a.ActualStart,108) AS ActualStart, CONVERT(NVARCHAR,a.ActualFinish,108) AS ActualFinish,
         DATEDIFF(HOUR, a.ActualStart, a.ActualFinish) AS ActualTime,
         a.Problem, a.Reason, a.FixDetail, a.Remark,
-        a.ActualStart AS ActualStartDate, a.ActualFinish AS ActualFinishDate
+        a.ActualStart AS ActualStartDate, a.ActualFinish AS ActualFinishDate,
         a.PlanStart AS PlanStartDate, a.PlanFinish AS PlanFinishDate
         FROM [Jig].[JigTrial] a
         WHERE a.JigCreationID = ${JigCreationID};
@@ -851,7 +851,7 @@ router.post('/evaluation', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.JigEvalBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.JigApproveBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = a.EnEvalBy
-        LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = a.EnEvalBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = a.EnApproveBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] f ON f.EmployeeID = a.QaEvalBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] g ON g.EmployeeID = a.QaApproveBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] h ON h.EmployeeID = a.PdEvalBy
@@ -892,12 +892,14 @@ router.post('/evaluation/item', async (req, res) => {
         f.FirstName AS QaEvalBy, g.FirstName AS QaApproveBy,
         h.FirstName AS PdEvalBy, i.FirstName AS PdApproveBy,
         j.FirstName AS PeEvalBy, k.FirstName AS PeApproveBy,
-        a.CustomerEval1, a.CustomerEval2
+        a.CustomerEval1, a.CustomerEval2,
+        a.CustomerEvalTime1, a.CustomerEvalTime2,
+        a.BeforeImage, a.BeforeImage, a.JigImage, a.ModifyImage, a.PartListImage, a.ProblemImage, a.SolutionImage
         FROM [Jig].[JigEvaluation] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.JigEvalBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.JigApproveBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = a.EnEvalBy
-        LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = a.EnEvalBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = a.EnApproveBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] f ON f.EmployeeID = a.QaEvalBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] g ON g.EmployeeID = a.QaApproveBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] h ON h.EmployeeID = a.PdEvalBy
@@ -930,7 +932,7 @@ router.post('/evaluation/add', async (req, res) => { // บล็อคตอน
         let { JigCreationID } = req.body;
 
         // Check if Pass
-        let evals = await pool.request().query(`SELECT a.JigCreationID, a.CustomerBudget, b.TsResult, b.CustomerResult
+        let evals = await pool.request().query(`SELECT a.JigCreationID, a.CustomerBudget, b.TsResult, b.CustomerResult, a.CustomerBudget
         FROM [Jig].[JigCreation] a
         LEFT JOIN [Jig].[JigEvaluation] b ON b.JigCreationID = a.JigCreationID
         WHERE a.JigCreationID = ${JigCreationID};
@@ -949,7 +951,9 @@ router.post('/evaluation/add', async (req, res) => { // บล็อคตอน
         }
         if(evalResult) return res.status(400).send({ message: 'มีผลการประเมินผ่านแล้ว' });
 
-        let insertEval = `INSERT INTO [Jig].[JigEvaluation](JigCreationID, EvalDateTime) VALUES(${JigCreationID}, GETDATE());`;
+        let CustomerBudget = evals.recordset[0].CustomerBudget;
+        let insertEval = `INSERT INTO [Jig].[JigEvaluation](JigCreationID, EvalDateTime, EvalType)
+        VALUES(${JigCreationID}, GETDATE(), ${!CustomerBudget ? 1 : 2});`;
         await pool.request().query(insertEval);
         res.json({ message: 'Success' });
     } catch (err) {
@@ -1006,7 +1010,7 @@ router.put('/evaluation/sign/approve', async (req, res) => { // finish Creation
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         // Check Eval
-        let getSignEval = await pool.request().query(`SELECT ${itemMap[itemNo]}EvalBy FROM [Jig].[JigEvaluation] WHERE EvalID = ${EvalID};`);
+        let getSignEval = await pool.request().query(`SELECT ${itemMap[itemNo]}EvalBy AS EvalBy FROM [Jig].[JigEvaluation] WHERE EvalID = ${EvalID};`);
         if(!getSignEval.recordset[0].EvalBy) return res.status(400).send({ message: `กรุณาลงชื่อ Evaluator ${itemMap[itemNo].toUpperCase()} ก่อน` });
 
         // Update ApproveSign
