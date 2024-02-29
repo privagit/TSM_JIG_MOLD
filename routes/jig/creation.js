@@ -1067,7 +1067,7 @@ router.put('/evaluation/sign/approve', async (req, res) => { // finish Creation
             VALUES`;
             let insertArr = [];
             for(let i = 0; i < Quantity; i++){
-                let JigNo = `JL-${('0000'+JlNo).substr(-4)}-${('00'+(date.getMonth()+1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
+                let JigNo = `JL-${('0000'+JlNo).substr(-4)}-${('00'+(cur.getMonth()+1)).substr(-2)}-${cur.getFullYear().toString().substr(-2)}`;
                 insertArr.push(`(${JigTypeID}, ${CustomerID}, N'${PartCode}', N'${PartName}', ${RequestSection}, ${UseIn}, '${JigNo}', 1, 1)`);
                 JlNo++;
             }
@@ -1137,7 +1137,7 @@ router.put('/evaluation/sign/customer', async (req, res) => { // finish Creation
             VALUES`;
             let insertArr = [];
             for(let i = 0; i < Quantity; i++){
-                let JigNo = `JL-${('0000'+JlNo).substr(-4)}-${('00'+(date.getMonth()+1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
+                let JigNo = `JL-${('0000'+JlNo).substr(-4)}-${('00'+(cur.getMonth()+1)).substr(-2)}-${cur.getFullYear().toString().substr(-2)}`;
                 insertArr.push(`(${JigTypeID}, ${CustomerID}, N'${PartCode}', N'${PartName}', ${RequestSection}, ${UseIn}, '${JigNo}', 1, 1)`);
                 JlNo++;
             }
