@@ -42,7 +42,8 @@ router.post('/plan', async (req, res) => { //TODO: Location, Status
                 WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) < 7 THEN 3
                 WHEN d.PmEnd IS NULL AND d.PlanDate > GETDATE() THEN 2
                 WHEN d.PmEnd IS NULL AND d.PlanDate < GETDATE() THEN 4
-            END AS PmStatus
+            END AS PmStatus,
+            CASE WHEN d.PmStart IN NULL THEN 0 ELSE 1 END AS IsStart
             FROM [Jig].[MasterJig] a
             LEFT JOIN [Jig].[MasterJigType] b ON b.JigTypeID = a.JigTypeID
             LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] c ON c.CustomerID = a.CustomerID
@@ -62,7 +63,8 @@ router.post('/plan', async (req, res) => { //TODO: Location, Status
                 WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) < 7 THEN 3
                 WHEN d.PmEnd IS NULL AND d.PlanDate > GETDATE() THEN 2
                 WHEN d.PmEnd IS NULL AND d.PlanDate < GETDATE() THEN 4
-            END AS PmStatus, CONVERT(NVARCHAR, d.PmEnd, 23) AS PmResult
+            END AS PmStatus, CONVERT(NVARCHAR, d.PmEnd, 23) AS PmResult,
+            CASE WHEN d.PmStart IN NULL THEN 0 ELSE 1 END AS IsStart
             FROM [Jig].[MasterJig] a
             LEFT JOIN [Jig].[MasterJigType] b ON b.JigTypeID = a.JigTypeID
             LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] c ON c.CustomerID = a.CustomerID
