@@ -42,7 +42,8 @@ router.post('/plan', async (req, res) => { //TODO: Location, Status
                 WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) < 7 THEN 3
                 WHEN d.PmEnd IS NULL AND d.PlanDate > GETDATE() THEN 2
                 WHEN d.PmEnd IS NULL AND d.PlanDate < GETDATE() THEN 4
-            END AS PmStatus
+            END AS PmStatus,
+            CASE WHEN d.PmStart IN NULL THEN 0 ELSE 1 END AS IsStart
             FROM [Jig].[MasterJig] a
             LEFT JOIN [Jig].[MasterJigType] b ON b.JigTypeID = a.JigTypeID
             LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] c ON c.CustomerID = a.CustomerID
@@ -62,7 +63,8 @@ router.post('/plan', async (req, res) => { //TODO: Location, Status
                 WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) < 7 THEN 3
                 WHEN d.PmEnd IS NULL AND d.PlanDate > GETDATE() THEN 2
                 WHEN d.PmEnd IS NULL AND d.PlanDate < GETDATE() THEN 4
-            END AS PmStatus, CONVERT(NVARCHAR, d.PmEnd, 23) AS PmResult
+            END AS PmStatus, CONVERT(NVARCHAR, d.PmEnd, 23) AS PmResult,
+            CASE WHEN d.PmStart IN NULL THEN 0 ELSE 1 END AS IsStart
             FROM [Jig].[MasterJig] a
             LEFT JOIN [Jig].[MasterJigType] b ON b.JigTypeID = a.JigTypeID
             LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] c ON c.CustomerID = a.CustomerID
@@ -129,16 +131,24 @@ router.post('/pm/topic', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { JigID } = req.body;
-        let pm = await pool.request().query(`SELECT a.JigID, a.Week, a.ImagePath, a.PmTopic
+        let pm = await pool.request().query(`SELECT a.PmID, a.JigID, a.Week, a.ImagePath, a.PmTopic
         FROM [Jig].[MasterPm] a
         WHERE a.JigID = ${JigID};
         `);
+        let PmID = pm.recordset[0]?.PmID;
+        if(!PmID) return res.status(400).send({ message: 'กรุณาตั้งค่า PM Topic ที่หน้า Setting ก่อน' });
+
         let topicId = JSON.parse(pm.recordset[0].PmTopic);
-        let topics = await pool.request().query(`SELECT a.PmTopicID, a.Topic, a.TopicType, a.StandardValue
-        FROM [Jig].[MasterPmTopic] a
-        WHERE a.PmTopicID IN (${topicId.join(',')}) AND a.Active = 1;
-        `);
-        pm.recordset[0].PmTopic = topics.recordset;
+        if(topicId.length){
+            let topics = await pool.request().query(`SELECT a.PmTopicID, a.Topic, a.TopicType, a.StandardValue
+            FROM [Jig].[MasterPmTopic] a
+            WHERE a.PmTopicID IN (${topicId.join(',')}) AND a.Active = 1;
+            `);
+            pm.recordset[0].PmTopic = topics.recordset;
+        } else{
+            pm.recordset[0].PmTopic = [];
+        }
+
         res.json(pm.recordset);
     } catch (err) {
         console.log(req.url, err);

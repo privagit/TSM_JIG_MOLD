@@ -384,35 +384,3 @@ router.post('/torque/sign/approve', async (req, res) => {
 })
 
 module.exports = router;
-
-const config_mold = require('../../lib/dbconfig').dbconfig_mold;
-let testMold = async () => {
-    try {
-        let pool_mold = new sql.ConnectionPool(config_mold);
-        // let pool_mold = await sql.connect(config_mold);
-        await pool_mold.connect();
-        let data = await pool_mold.request().query(`SELECT * FROM [Mold].[MasterMold]`);
-    } catch (err) {
-        console.log(err);
-    }
-}
-
-let testJig = async () => {
-    try {
-        let pool = new sql.ConnectionPool(config);
-        await pool.connect();
-        let data = await pool.request().query(`SELECT * FROM [Jig].[MasterJig]`);
-    } catch (err) {
-        console.log(err);
-    }
-}
-
-let main = async () => {
-    try {
-        await testMold();
-        await testJig();
-    } catch (err) {
-        console.log(err);
-    }
-}
-main()

@@ -104,7 +104,8 @@ router.post('/detail', async (req, res) => {
 router.post('/detail/edit', async (req, res) => { // Update Spec Status = 2(Wait Approve)
     try {
         let pool = await getPool('MoldPool', config);
-        let { MoldSpecID, MachineSpec, ProductSpec, MoldSpec } = req.body;
+        let { MoldSpecID, MachineSpec, ProductSpec, MoldSpec, BasicMold, DieNo, MoldControlNo, MaterialGrade,
+        GuaranteeShot, MoldWeight, Cavity, MoldSize, MoldType } = req.body;
         let updateSpecDetail = `
         DECLARE @MoldPicture NVARCHAR(255),
         @hvtPicture NVARCHAR(255),
@@ -123,7 +124,9 @@ router.post('/detail/edit', async (req, res) => { // Update Spec Status = 2(Wait
         VALUES(${MoldSpecID}, N'${MachineSpec}', N'${ProductSpec}', N'${MoldSpec}', GETDATE(),
             @MoldPicture, @hvtPicture, @MoldDrawing1, @MoldDrawing2, @MoldSpecFile);
 
-        UPDATE [Mold].[Specification] SET Status = 2 WHERE MoldSpecID = ${MoldSpecID}; -- Update Status to Wait Approve
+        UPDATE [Mold].[Specification] SET Status = 2, BasicMold = N'${BasicMold}', DieNo = N'${DieNo}', MoldControlNo = N'${MoldControlNo}',
+        MaterialGrade = N'${MaterialGrade}', GuaranteeShot = ${GuaranteeShot}, MoldWeight = ${MoldWeight}, Cavity = ${Cavity}, MoldSize = ${MoldSize},
+        MoldType = ${MoldType} WHERE MoldSpecID = ${MoldSpecID}; -- Update Status to Wait Approve
         `;
         await pool.request().query(updateSpecDetail);
         res.json({ message: 'Success' });
@@ -339,8 +342,7 @@ router.post('/receive/detail', async (req, res) => {
         let pool = await getPool('MoldPool', config);
         let { ReceiveID } = req.body;
         let moldReceive = await pool.request().query(`SELECT a.ReceiveID, a.TakeoutID,
-        a.BasicMold, a.DieNo, a.MoldControlNo, a.PartName, a.MaterialGrade, a.GuaranteeShot, a.MoldWeight, a.Cavity,
-        a.MoldSize, a.CustomerMoldWarranty, a.MoldType, a.Model, g.TakeoutType AS MoldStatus,
+        g.TakeoutType AS MoldStatus,
         a.AppearanceInspect, a.MoldStructure, a.Remark, a.ImagePath,
         b.FirstName AS MoldIssueBy, c.FirstName AS MoldCheckBy, d.FirstName AS MoldApproveBy,
         e.FirstName AS EnCheckBy, f.FirstName AS EnApproveBy, a.DocumentCtrlNo

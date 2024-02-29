@@ -18,7 +18,6 @@ router.post('/dropdown/category', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-
 router.post('/dropdown/supplier', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
@@ -32,7 +31,6 @@ router.post('/dropdown/supplier', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-
 router.post('/spare-part', async (req, res) => { //TODO: Used From PartList
     try {
         let pool = await getPool('JigPool', config);
@@ -51,12 +49,28 @@ router.post('/spare-part', async (req, res) => { //TODO: Used From PartList
         LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = b.RepairBy
         WHERE MONTH(b.RequestTime) = ${month} AND YEAR(b.RequestTime) = ${year};
         `);
+        let partLists = await pool.request().query(`SELECT SpareID, Qty, DAY(CreatedDate) AS D
+        FROM [Jig].[JigPartList]
+        WHERE MONTH(CreatedDate) = ${month} AND YEAR(CreatedDate) = ${year};
+        `);
 
         await Promise.all(spares.recordset.map(async (spare) => {
             let repairFiltered = repairs.recordset.filter(v => v.SpareID == spare.SpareID);
+            let partListFiltered = partLists.recordset.filter(v => v.SpareID == spare.SpareID);
 
+            // { Restock } != Restock, it is used wrong name.
             for(let item of repairFiltered){
                 item.UsedBy = !item.UsedBy ? null : atob(item.UsedBy);
+                if(typeof spare[`D${item.D}`] == 'number'){
+                    spare[`D${item.D}`] = {
+                        Used: spare[`D${item.D}`],
+                        Restock: [item]
+                    }
+                } else{
+                    spare[`D${item.D}`].Restock.push(item);
+                }
+            }
+            for(let item of partListFiltered){
                 if(typeof spare[`D${item.D}`] == 'number'){
                     spare[`D${item.D}`] = {
                         Used: spare[`D${item.D}`],
@@ -80,7 +94,6 @@ router.post('/spare-part', async (req, res) => { //TODO: Used From PartList
         res.status(500).send({ message: `${err}` });
     }
 })
-
 router.post('/spare-part/restock', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
@@ -128,7 +141,6 @@ router.post('/spare-part/restock', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-
 router.post('/spare-part/history', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
@@ -145,7 +157,6 @@ router.post('/spare-part/history', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-
 router.post('/spare-part/history/item', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
@@ -169,7 +180,6 @@ router.post('/spare-part/history/item', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-
 router.post('/spare-part/user/check', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
