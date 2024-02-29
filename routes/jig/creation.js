@@ -884,8 +884,6 @@ router.post('/evaluation/item', async (req, res) => {
         a.Solution, a.ModifyDetail,
         a.JigEvalTime, a.EnEvalTime, a.QaEvalTime, a.PdEvalTime, a.PeEvalTime,
         a.JigApproveTime, a.EnApproveTime, a.QaApproveTime, a.PdApproveTime, a.PeApproveTime,
-        a.CustomerEvalTime1, a.CustomerEvalTime2,
-        a.ProblemImage, a.SolutionImage, a.BeforeImage, a.AfterImage, a.JigImage, a.PartListImage, a.ModifyImage,
         b.FirstName AS JigEvalBy, c.FirstName AS JigApproveBy,
         d.FirstName AS EnEvalBy, e.FirstName AS EnApproveBy,
         f.FirstName AS QaEvalBy, g.FirstName AS QaApproveBy,
@@ -893,7 +891,7 @@ router.post('/evaluation/item', async (req, res) => {
         j.FirstName AS PeEvalBy, k.FirstName AS PeApproveBy,
         a.CustomerEval1, a.CustomerEval2,
         a.CustomerEvalTime1, a.CustomerEvalTime2,
-        a.BeforeImage, a.BeforeImage, a.JigImage, a.ModifyImage, a.PartListImage, a.ProblemImage, a.SolutionImage
+        a.BeforeImage, a.AfterImage, a.JigImage, a.ModifyImage, a.PartListImage, a.ProblemImage, a.SolutionImage
         FROM [Jig].[JigEvaluation] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.JigEvalBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.JigApproveBy
@@ -1066,7 +1064,7 @@ router.put('/evaluation/sign/approve', async (req, res) => { // finish Creation
             VALUES`;
             let insertArr = [];
             for(let i = 0; i < Quantity; i++){
-                let JigNo = `JL-${('0000'+JlNo).substr(-4)}-${('00'+(date.getMonth()+1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
+                let JigNo = `JL-${('0000'+JlNo).substr(-4)}-${('00'+(cur.getMonth()+1)).substr(-2)}-${cur.getFullYear().toString().substr(-2)}`;
                 insertArr.push(`(${JigTypeID}, ${CustomerID}, N'${PartCode}', N'${PartName}', ${RequestSection}, ${UseIn}, '${JigNo}', 1, 1)`);
                 JlNo++;
             }
@@ -1136,7 +1134,7 @@ router.put('/evaluation/sign/customer', async (req, res) => { // finish Creation
             VALUES`;
             let insertArr = [];
             for(let i = 0; i < Quantity; i++){
-                let JigNo = `JL-${('0000'+JlNo).substr(-4)}-${('00'+(date.getMonth()+1)).substr(-2)}-${date.getFullYear().toString().substr(-2)}`;
+                let JigNo = `JL-${('0000'+JlNo).substr(-4)}-${('00'+(cur.getMonth()+1)).substr(-2)}-${cur.getFullYear().toString().substr(-2)}`;
                 insertArr.push(`(${JigTypeID}, ${CustomerID}, N'${PartCode}', N'${PartName}', ${RequestSection}, ${UseIn}, '${JigNo}', 1, 1)`);
                 JlNo++;
             }

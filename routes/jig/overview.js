@@ -130,10 +130,11 @@ router.post('/pm/topic', async (req, res) => {
         let pool = await getPool('JigPool', config);
         let { JigID } = req.body;
         let pm = await pool.request().query(`SELECT a.JigID, a.Week, a.ImagePath, a.PmTopic
-        FROM [Jig].[MasterPm] a
+        FROM [TSM_Jig].[Jig].[MasterPm] a
         WHERE a.JigID = ${JigID};
         `);
-        let topicId = JSON.parse(pm.recordset[0].PmTopic);
+        console.log(pm)
+        let topicId = JSON.parse(pm.recordset[0]?.PmTopic);
         let topics = await pool.request().query(`SELECT a.PmTopicID, a.Topic, a.TopicType, a.StandardValue
         FROM [Jig].[MasterPmTopic] a
         WHERE a.PmTopicID IN (${topicId.join(',')}) AND a.Active = 1;
