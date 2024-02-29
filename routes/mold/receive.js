@@ -28,13 +28,13 @@ const uploadReceiveDetailImage = multer({ storage: storageReceiveDetailImage }).
 //* ========== Receive List ==========
 // TakeoutStatus : { 1: Wait Receive(New Mold), 2: Takeout, 3: Wait EN, 4: Complete }
 // TakeoutType : { 1: New Mold, 2: Tranfer Mold }
-router.post('/list', async (req, res) => { //TODO: where, 
+router.post('/list', async (req, res) => { //TODO: where, Location, Date
     try {
         let pool = await getPool('MoldPool', config);
         let { TakeoutStatus } = req.body;
         let receiveList = await pool.request().query(`
         WITH NewMold AS (
-            SELECT c.ReceiveID, b.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, b.BasicMold, b.DieNo, b.MoldControlNo,
+            SELECT a.TakeoutID, c.ReceiveID, b.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, b.BasicMold, b.DieNo, b.MoldControlNo,
             a.IssueTime, a.ReceiveTime,
             d.FirstName AS MoldApproveBy, c.MoldApproveTime,
             e.FirstName AS EnApproveBy, c.EnApproveTime,
@@ -47,7 +47,7 @@ router.post('/list', async (req, res) => { //TODO: where,
             LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] f ON f.CustomerID = b.CustomerID
             WHERE a.TakeoutType = 1
         ), TakeoutMold AS (
-            SELECT b.ReceiveID, a.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
+            SELECT a.TakeoutID, b.ReceiveID, a.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
             a.IssueTime, a.ReceiveTime,
             d.FirstName AS MoldApproveBy, b.MoldApproveTime,
             e.FirstName AS EnApproveBy, b.EnApproveTime,
@@ -64,7 +64,7 @@ router.post('/list', async (req, res) => { //TODO: where,
             UNION ALL
             SELECT * FROM [TakeoutMold]
         )
-        SELECT ReceiveID, MoldSpecID, MoldID, TakeoutType AS MoldStatus, TakeoutStatus, BasicMold, DieNo, MoldControlNo,
+        SELECT TakeoutID, ReceiveID, MoldSpecID, MoldID, TakeoutType AS MoldStatus, TakeoutStatus, BasicMold, DieNo, MoldControlNo,
             IssueTime, ReceiveTime, MoldApproveBy, EnApproveBy, MoldApproveTime, EnApproveTime, CustomerName, Cavity
         FROM [tbsum]
         `);
