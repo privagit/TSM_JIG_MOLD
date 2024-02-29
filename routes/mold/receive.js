@@ -28,40 +28,44 @@ const uploadReceiveDetailImage = multer({ storage: storageReceiveDetailImage }).
 //* ========== Receive List ==========
 // TakeoutStatus : { 1: Wait Receive(New Mold), 2: Takeout, 3: Wait EN, 4: Complete }
 // TakeoutType : { 1: New Mold, 2: Tranfer Mold }
-router.post('/list', async (req, res) => { //TODO: where
+router.post('/list', async (req, res) => { //TODO: where, Location, Date
     try {
         let pool = await getPool('MoldPool', config);
         let { TakeoutStatus } = req.body;
         let receiveList = await pool.request().query(`
         WITH NewMold AS (
-            SELECT c.ReceiveID, b.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
+            SELECT a.TakeoutID, c.ReceiveID, b.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, b.BasicMold, b.DieNo, b.MoldControlNo,
             a.IssueTime, a.ReceiveTime,
             d.FirstName AS MoldApproveBy, c.MoldApproveTime,
-            e.FirstName AS EnApproveBy, c.EnApproveTime
+            e.FirstName AS EnApproveBy, c.EnApproveTime,
+            f.CustomerName, b.Cavity
             FROM [Mold].[MoldTakeout] a
             INNER JOIN [Mold].[Specification] b ON b.MoldSpecID = a.MoldSpecID
             LEFT JOIN [Mold].[MoldReceive] c ON c.TakeoutID = a.TakeoutID
             LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = c.MoldApproveBy
             LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = c.EnApproveBy
+            LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] f ON f.CustomerID = b.CustomerID
             WHERE a.TakeoutType = 1
         ), TakeoutMold AS (
-            SELECT b.ReceiveID, a.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
+            SELECT a.TakeoutID, b.ReceiveID, a.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
             a.IssueTime, a.ReceiveTime,
             d.FirstName AS MoldApproveBy, b.MoldApproveTime,
-            e.FirstName AS EnApproveBy, b.EnApproveTime
+            e.FirstName AS EnApproveBy, b.EnApproveTime,
+            f.CustomerName, c.Cavity
             FROM [Mold].[MoldTakeout] a
             LEFT JOIN [Mold].[MoldReceive] b ON b.TakeoutID = a.TakeoutID
             LEFT JOIN [Mold].[MasterMold] c ON c.MoldID = a.MoldID
             LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = b.MoldApproveBy
             LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = b.EnApproveBy
+            LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] f ON f.CustomerID = c.CustomerID
             WHERE a.TakeoutType = 2
         ), tbsum AS (
             SELECT * FROM [NewMold]
             UNION ALL
             SELECT * FROM [TakeoutMold]
         )
-        SELECT ReceiveID, MoldSpecID, MoldID, TakeoutType AS MoldStatus, TakeoutStatus, BasicMold, DieNo, MoldControlNo,
-            IssueTime, ReceiveTime, MoldApproveBy, EnApproveBy, MoldApproveTime, EnApproveTime
+        SELECT TakeoutID, ReceiveID, MoldSpecID, MoldID, TakeoutType AS MoldStatus, TakeoutStatus, BasicMold, DieNo, MoldControlNo,
+            IssueTime, ReceiveTime, MoldApproveBy, EnApproveBy, MoldApproveTime, EnApproveTime, CustomerName, Cavity
         FROM [tbsum]
         `);
         for(let item of receiveList.recordset){
@@ -202,7 +206,7 @@ router.post('/specification/detail/history', async (req, res) => { // ดูอ�
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/specification/detail', async (req, res) => { //TODO: Header(Custoemr, PartCode, PartName),  ดูอย่างเดียว
+router.post('/specification/detail', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { DetailID } = req.body;
@@ -210,11 +214,13 @@ router.post('/specification/detail', async (req, res) => { //TODO: Header(Custoe
         a.hvtPicture, a.MoldSpecFile, a.MoldPicture, a.MoldDrawing1, a.MoldDrawing2,
         b.FirstName AS IssueBy, a.IssueSignTime,
         c.FirstName AS CheckBy, a.CheckSignTime,
-        d.FirstName AS ApproveBy, a.ApproveSignTime
+        d.FirstName AS ApproveBy, a.ApproveSignTime,
+        e.BasicMold, e.DieNo, e.MoldControlNo, e.MaterialGrade, e.Cavity, e.GuaranteeShot, e.MoldWeight, e.MoldSize, e.MoldType, e.Model
         FROM [Mold].[SpecificationDetail] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.IssueBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.CheckBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = a.ApproveBy
+        LEFT JOIN [Mold].[Specfification] e ON e.MoldSpecID = a.MoldSpecID
         WHERE a.DetailID = ${DetailID};
         `);
         res.json(moldDetail.recordset);
@@ -225,13 +231,12 @@ router.post('/specification/detail', async (req, res) => { //TODO: Header(Custoe
 })
 
 //* ========== Receive Detail ==========
-router.post('/receive/detail', async (req, res) => { //
+router.post('/receive/detail', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { ReceiveID } = req.body;
         let moldReceive = await pool.request().query(`SELECT a.ReceiveID, a.TakeoutID,
-        a.BasicMold, a.DieNo, a.MoldControlNo, a.PartName, a.MaterialGrade, a.GuaranteeShot, a.MoldWeight, a.Cavity,
-        a.MoldSize, a.MoldType, a.Model, g.TakeoutType AS MoldStatus,
+        g.TakeoutType AS MoldStatus,
         a.AppearanceInspect, a.MoldStructure, a.Remark,
         b.FirstName AS MoldIssueBy, a.MoldIssueTime,
         c.FirstName AS MoldCheckBy, a.MoldCheckTime,
@@ -268,12 +273,8 @@ router.post('/receive/detail', async (req, res) => { //
 router.post('/receive/detail/edit', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
-        let { ReceiveID, BasicMold, DieNo, MoldControlNo, PartName, MaterialGrade, GuaranteeShot, MoldWeight, Cavity,
-            MoldSize, MoldType, Model, AppearanceInspect, MoldStructure, Remark } = req.body;
-        let updateReceive = `UPDATE [Mold].[MoldReceive] SET BasicMold = N'${BasicMold}', DieNo = N'${DieNo}', MoldControlNo = N'${MoldControlNo}',
-        PartName = N'${PartName}', MaterialGrade = N'${MaterialGrade}', GuaranteeShot = N'${GuaranteeShot}', MoldWeight = N'${MoldWeight}',
-        Cavity = N'${Cavity}', MoldSize = N'${MoldSize}', MoldType = N'${MoldType}',
-        Model = N'${Model}', AppearanceInspect = N'${AppearanceInspect}', MoldStructure = N'${MoldStructure}', Remark = N'${Remark}'
+        let { ReceiveID, AppearanceInspect, MoldStructure, Remark } = req.body;
+        let updateReceive = `UPDATE [Mold].[MoldReceive] SET AppearanceInspect = N'${AppearanceInspect}', MoldStructure = N'${MoldStructure}', Remark = N'${Remark}'
         WHERE ReceiveID = ${ReceiveID};
         `;
         await pool.request().query(updateReceive);

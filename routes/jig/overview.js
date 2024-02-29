@@ -22,7 +22,7 @@ const whereClauseAnd = async (columns) => {
 }
 
 //* ========= overview ==========
-router.post('/plan', async (req, res) => { //TODO: Location, Status
+router.post('/plan', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { JigTypeID, Section, PlanFilter,  } = req.body;
@@ -42,11 +42,13 @@ router.post('/plan', async (req, res) => { //TODO: Location, Status
                 WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) < 7 THEN 3
                 WHEN d.PmEnd IS NULL AND d.PlanDate > GETDATE() THEN 2
                 WHEN d.PmEnd IS NULL AND d.PlanDate < GETDATE() THEN 4
-            END AS PmStatus
+            END AS PmStatus,
+            CASE WHEN d.PmStart IS NULL THEN 0 ELSE 1 END AS IsStart, e.Location, e.JigStatus
             FROM [Jig].[MasterJig] a
             LEFT JOIN [Jig].[MasterJigType] b ON b.JigTypeID = a.JigTypeID
             LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] c ON c.CustomerID = a.CustomerID
             LEFT JOIN [cte] d ON d.JigID = a.JigID AND d.RowNum = 1
+            LEFT JOIN [Jig].[JigStatus] e ON e.JigID = d.JigID
             ${filterString};
             `);
         } else{ // Today Plan
@@ -62,11 +64,13 @@ router.post('/plan', async (req, res) => { //TODO: Location, Status
                 WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) < 7 THEN 3
                 WHEN d.PmEnd IS NULL AND d.PlanDate > GETDATE() THEN 2
                 WHEN d.PmEnd IS NULL AND d.PlanDate < GETDATE() THEN 4
-            END AS PmStatus, CONVERT(NVARCHAR, d.PmEnd, 23) AS PmResult
+            END AS PmStatus, CONVERT(NVARCHAR, d.PmEnd, 23) AS PmResult,
+            CASE WHEN d.PmStart IS NULL THEN 0 ELSE 1 END AS IsStart, e.Location, e.JigStatus
             FROM [Jig].[MasterJig] a
             LEFT JOIN [Jig].[MasterJigType] b ON b.JigTypeID = a.JigTypeID
             LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] c ON c.CustomerID = a.CustomerID
             LEFT JOIN [cte] d ON d.JigID = a.JigID AND d.RowNum = 1
+            LEFT JOIN [Jig].[JigStatus] e ON e.JigID = d.JigID
             ${filterString};
             `);
         }
