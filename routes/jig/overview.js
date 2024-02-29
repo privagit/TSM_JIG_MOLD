@@ -26,7 +26,6 @@ router.post('/plan', async (req, res) => { //TODO: Location, Status
     try {
         let pool = await getPool('JigPool', config);
         let { JigTypeID, Section, PlanFilter  } = req.body;
-
         let filterString = await whereClauseAnd([{ column: 'a.JigTypeID', value: JigTypeID }, { column: 'a.Section', value: Section }]);
 
         // PlanFilter 1: All Plan, 2: Today Plan
@@ -174,7 +173,7 @@ router.post('/pm/sign', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { PmPlanID, ItemNo, EmployeeID } = req.body;
-
+        
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${EmployeeID};`);
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
