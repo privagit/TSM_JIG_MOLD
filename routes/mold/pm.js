@@ -121,7 +121,7 @@ router.post('/pm/item', async (req, res) => { //? Filter PmRequest
             pmList.push({
                 MoldID: mold.recordset[0].MoldID,
                 PmType: 1, PmTypeName: 'PM',
-                ActualShot: mold.recordset[0].PmShot,
+                ActualShot: mold.recordset[0].ActualPmShot,
                 WarningShot: mold.recordset[0].WarningShot,
                 DangerShot: mold.recordset[0].DangerShot
             })
@@ -130,7 +130,7 @@ router.post('/pm/item', async (req, res) => { //? Filter PmRequest
             pmList.push({
                 MoldID: mold.recordset[0].MoldID,
                 PmType: 2, PmTypeName: 'Warranty',
-                ActualShot: mold.recordset[0].WarrantyShot,
+                ActualShot: mold.recordset[0].ActualWarrantyShot,
                 WarningShot: mold.recordset[0].WarrantyWarningShot,
                 DangerShot: mold.recordset[0].WarrantyDangerShot
             })

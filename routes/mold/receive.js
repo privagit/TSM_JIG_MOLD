@@ -154,15 +154,14 @@ router.post('/receive/item/sign/receive', async (req, res) => { // Modal Receive
     }
 })
 
-//TODO: ReportNo.
-router.post('/takeout', async (req, res) => { // ดูใบ takeout
+router.post('/takeout', async (req, res) => { //TODO: ReportNo, ดูใบ takeout
     try {
         let pool = await getPool('MoldPool', config);
         let { TakeoutID } = req.body;
         let takeout = await pool.request().query(`SELECT a.Remark, a.Note, a.TakeoutImagePath, CarNo,
         b.FirstName AS IssueBy, a.IssueTime,
         c.FirstName AS ApproveBy, a.ApproveTime,
-        d.FirstName AS ReceiveBy, r.ReceiveTime
+        d.FirstName AS ReceiveBy, r.ReceiveTime, NULL AS ReportNo
         FROM [Mold].[MoldTakeout] a
         LEFT JOIN [Mold].[MoldReceive] r ON r.TakeoutID = a.TakeoutID
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.IssueBy = b.EmployeeID
