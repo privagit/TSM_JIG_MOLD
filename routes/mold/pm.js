@@ -4,13 +4,13 @@ const config = require('../../lib/dbconfig').dbconfig_mold;
 const { getPool } = require('../../middlewares/pool-manager');
 
 //* ========== PM ==========
-router.post('/', async (req, res) => { //TODO: Condition AcceptStatus
+router.post('/', async (req, res) => { //TODO: Condition AcceptStatus, Customer
     try {
         let pool = await getPool('MoldPool', config);
         let { Status } = req.body;
         // Status 1: Issue, 2: Cancel, 3: Reject, 4: Accept
         let pmList = await pool.request().query(`SELECT a.MoldID, a.BasicMold, a.DieNo, b.WarningShot, b.DangerShot, b.WarrantyWarningShot, b.WarrantyDangerShot, b.AlertPercent, b.AlertWarrantyPercent,
-        c.ActualPmShot, c.ActualWarrantyShot
+        c.ActualPmShot, c.ActualWarrantyShot, a.Cavity, a.LastProduction
         FROM [Mold].[MasterMold] a
         LEFT JOIN [Mold].[MasterPm] b ON b.MoldID = a.MoldID
         LEFT JOIN [Mold].[MoldShot] c ON c.MoldID = a.MoldID
