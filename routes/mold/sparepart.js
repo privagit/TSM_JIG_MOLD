@@ -59,11 +59,14 @@ router.post('/spare-part', async (req, res) => {
                 item.UsedBy = !item.UsedBy ? null : atob(item.UsedBy);
                 if(typeof spare[`D${item.D}`] == 'number'){
                     spare[`D${item.D}`] = {
-                        Used: spare[`D${item.D}`],
-                        Restock: [item]
+                        // Used: spare[`D${item.D}`],
+                        // Restock: [item]
+                        TotalUsed: spare[`D${item.D}`],
+                        List: [item]
                     }
                 } else{
-                    spare[`D${item.D}`].Restock.push(item);
+                    // spare[`D${item.D}`].Restock.push(item);
+                    spare[`D${item.D}`].List.push(item);
                 }
             }
         }))

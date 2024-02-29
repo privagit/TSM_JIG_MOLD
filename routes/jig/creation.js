@@ -1063,12 +1063,13 @@ router.put('/evaluation/sign/approve', async (req, res) => { // finish Creation
             let UseIn = eval.recordset[0].UseIn;
 
             let updateJigCreate = `UPDATE [Jig].[JigCreation] SET FinishDate = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
-            let insertStatement = `INSERT INTO [Jig].[MasterJig](JigTypeID, CustomerID, PartCode, PartName, Section, UseIn, JigNo, Active, Status)
-            VALUES`;
+            let insertStatement = ``;
             let insertArr = [];
             for(let i = 0; i < Quantity; i++){
                 let JigNo = `JL-${('0000'+JlNo).substr(-4)}-${('00'+(cur.getMonth()+1)).substr(-2)}-${cur.getFullYear().toString().substr(-2)}`;
-                insertArr.push(`(${JigTypeID}, ${CustomerID}, N'${PartCode}', N'${PartName}', ${RequestSection}, ${UseIn}, '${JigNo}', 1, 1)`);
+                insertArr.push(`INSERT INTO [Jig].[MasterJig](JigTypeID, CustomerID, PartCode, PartName, Section, UseIn, JigNo, Active, Status)
+                VALUES(${JigTypeID}, ${CustomerID}, N'${PartCode}', N'${PartName}', ${RequestSection}, ${UseIn}, '${JigNo}', 1, 1);
+                `);
                 JlNo++;
             }
             await pool.request().query(updateJigCreate + (insertStatement + insertArr.join(', ')));
@@ -1133,12 +1134,13 @@ router.put('/evaluation/sign/customer', async (req, res) => { // finish Creation
             let UseIn = eval.recordset[0].UseIn;
 
             let updateJigCreate = `UPDATE [Jig].[JigCreation] SET FinishDate = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
-            let insertStatement = `INSERT INTO [Jig].[MasterJig](JigTypeID, CustomerID, PartCode, PartName, Section, UseIn, JigNo, Active, Status)
-            VALUES`;
+            let insertStatement = ``;
             let insertArr = [];
             for(let i = 0; i < Quantity; i++){
                 let JigNo = `JL-${('0000'+JlNo).substr(-4)}-${('00'+(cur.getMonth()+1)).substr(-2)}-${cur.getFullYear().toString().substr(-2)}`;
-                insertArr.push(`(${JigTypeID}, ${CustomerID}, N'${PartCode}', N'${PartName}', ${RequestSection}, ${UseIn}, '${JigNo}', 1, 1)`);
+                insertArr.push(`INSERT INTO [Jig].[MasterJig](JigTypeID, CustomerID, PartCode, PartName, Section, UseIn, JigNo, Active, Status)
+                VALUES(${JigTypeID}, ${CustomerID}, N'${PartCode}', N'${PartName}', ${RequestSection}, ${UseIn}, '${JigNo}', 1, 1);
+                `);
                 JlNo++;
             }
             await pool.request().query(updateJigCreate + (insertStatement + insertArr.join(', ')));
