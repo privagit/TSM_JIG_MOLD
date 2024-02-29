@@ -60,18 +60,17 @@ router.post('/spare-part', async (req, res) => { //TODO: Used From PartList
 
             // { Restock } != Restock, it is used wrong name.
             for(let item of repairFiltered){
-                console.log(item.D);
                 item.UsedBy = !item.UsedBy ? null : atob(item.UsedBy);
                 if(typeof spare[`D${item.D}`] == 'number'){
                     spare[`D${item.D}`] = {
                         TotalUsed: spare[`D${item.D}`],
                         List: [item],
-                        Used: spare[`D${item.D}`],
-                        Restock: [item]
+                        // Used: spare[`D${item.D}`],
+                        // Restock: [item]
                     }
                 } else{
                     spare[`D${item.D}`].List.push(item);
-                    spare[`D${item.D}`].Restock.push(item);
+                    // spare[`D${item.D}`].Restock.push(item);
                 }
             }
             for(let item of partListFiltered){
@@ -79,12 +78,12 @@ router.post('/spare-part', async (req, res) => { //TODO: Used From PartList
                     spare[`D${item.D}`] = {
                         TotalUsed: spare[`D${item.D}`],
                         List: [item],
-                        Used: spare[`D${item.D}`],
-                        Restock: [item]
+                        // Used: spare[`D${item.D}`],
+                        // Restock: [item]
                     }
                 } else{
                     spare[`D${item.D}`].List.push(item);
-                    spare[`D${item.D}`].Restock.push(item);
+                    // spare[`D${item.D}`].Restock.push(item);
                 }
             }
         }))
