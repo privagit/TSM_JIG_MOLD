@@ -448,6 +448,6 @@ module.exports = router
 
 //* Receive Status
 // 1: Wait Receive => มาจาก New Mold หลังจาก EN Approve Specification
-// 2: Takeout => หลังจากกด Takeout
+// 2: Take out => หลังจากกด Takeout
 // 3: Wait EN => หลังจาก Mold Approve Receive
 // 4: Complete => หลังจาก Engineer Approve Receive
