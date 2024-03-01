@@ -82,7 +82,7 @@ router.post('/list', async (req, res) => { //TODO: where, Location, Date
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/receive/item', async (req, res) => { //TODO: BasicMold, DieNo, Qty, Location, Modal Receive
+router.post('/receive/item', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { ReceiveID } = req.body;

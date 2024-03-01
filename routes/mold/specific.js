@@ -88,7 +88,8 @@ router.post('/detail', async (req, res) => {
         a.hvtPicture, a.MoldSpecFile, a.MoldPicture, a.MoldDrawing1, a.MoldDrawing2,
         b.FirstName AS IssueBy, s.IssueTime,
         c.FirstName AS CheckBy, s.CheckTime,
-        d.FirstName AS ApproveBy, s.ApproveTime
+        d.FirstName AS ApproveBy, s.ApproveTime,
+        s.BasicMold, s.DieNo, s.MoldControlNo, s.MaterialGrade, s.Cavity, s.GuaranteeShot, s.MoldWeight, s.MoldSize, s.MoldType, s.Model
         FROM [Mold].[SpecificationDetail] a
         LEFT JOIN [Mold].[Specification] s ON s.MoldSpecID = a.MoldSpecID
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = s.IssueBy
