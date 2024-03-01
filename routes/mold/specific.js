@@ -112,6 +112,8 @@ router.post('/detail/edit', async (req, res) => { // Update Spec Status = 2(Wait
         let pool = await getPool('MoldPool', config);
         let { MoldSpecID, MachineSpec, ProductSpec, MoldSpec, BasicMold, DieNo, MoldControlNo, MaterialGrade,
         GuaranteeShot, MoldWeight, Cavity, MoldSize, MoldType } = req.body;
+        console.log(MoldType)
+      
         let updateSpecDetail = `
         DECLARE @MoldPicture NVARCHAR(255),
         @hvtPicture NVARCHAR(255),
@@ -131,7 +133,7 @@ router.post('/detail/edit', async (req, res) => { // Update Spec Status = 2(Wait
             @MoldPicture, @hvtPicture, @MoldDrawing1, @MoldDrawing2, @MoldSpecFile);
 
         UPDATE [Mold].[Specification] SET Status = 2, BasicMold = N'${BasicMold}', DieNo = N'${DieNo}', MoldControlNo = N'${MoldControlNo}',
-        MaterialGrade = N'${MaterialGrade}', GuaranteeShot = ${GuaranteeShot}, MoldWeight = ${MoldWeight}, Cavity = ${Cavity}, MoldSize = ${MoldSize},
+        MaterialGrade = N'${MaterialGrade}', GuaranteeShot = ${GuaranteeShot}, MoldWeight = ${MoldWeight}, Cavity = ${Cavity}, MoldSize = N'${MoldSize}',
         MoldType = ${MoldType} WHERE MoldSpecID = ${MoldSpecID}; -- Update Status to Wait Approve
         `;
         await pool.request().query(updateSpecDetail);
