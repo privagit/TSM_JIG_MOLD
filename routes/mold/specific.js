@@ -12,7 +12,7 @@ router.post('/list', async (req, res) => {
         let pool = await getPool('MoldPool', config);
         let { Status, month, year } = req.body;
         let moldSpecificList = await pool.request().query(`
-        SELECT a.MoldSpecID, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.AxMoldNo, a.Model, a.IssuedDate, a.Status
+        SELECT a.MoldSpecID, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.MoldNo, a.Model, a.IssuedDate, a.Status
         FROM [Mold].[Specification] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
         WHERE Active = 1 AND MONTH(a.IssuedDate) = ${month} AND YEAR(a.IssuedDate) = ${year};
@@ -31,11 +31,11 @@ router.post('/list', async (req, res) => {
 router.post('/add', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
-        let { CustomerID, PartCode, PartName, AxMoldNo, Model } = req.body;
+        let { CustomerID, PartCode, PartName, MoldNo, Model } = req.body;
 
         // insert Specific
-        let insertSpecific = `INSERT INTO [Mold].[Specification](CustomerID, PartCode, PartName, AxMoldNo, Model, Status, Active)
-        VALUES(${CustomerID}, N'${PartCode}', N'${PartName}', '${AxMoldNo}', N'${Model}', 1, 1);
+        let insertSpecific = `INSERT INTO [Mold].[Specification](CustomerID, PartCode, PartName, MoldNo, Model, Status, Active)
+        VALUES(${CustomerID}, N'${PartCode}', N'${PartName}', '${MoldNo}', N'${Model}', 1, 1);
 
         DECLARE @MoldSpecID INT;
         SET @MoldSpecID = (SELECT SCOPE_IDENTITY());

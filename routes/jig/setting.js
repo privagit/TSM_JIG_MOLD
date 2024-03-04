@@ -319,6 +319,12 @@ router.post('/daily/checkpoint', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { JigID } = req.body;
+        console.log(`
+        SELECT a.DailyCheckPointID, a.JigID, a.DailyCheckPoint, a.DailyCheckPointNo
+        FROM [Jig].[MasterDailyCheckPoint] a
+        WHERE a.JigID = ${JigID} AND a.Active = 1
+        ORDER BY DailyCheckPointNo;
+        `)
         let dailyCheckpoint = await pool.request().query(`
         SELECT a.DailyCheckPointID, a.JigID, a.DailyCheckPoint, a.DailyCheckPointNo
         FROM [Jig].[MasterDailyCheckPoint] a
