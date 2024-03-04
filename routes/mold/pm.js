@@ -96,7 +96,6 @@ router.post('/', async (req, res) => { //TODO: Condition AcceptStatus, Customer
         res.status(500).send({ message: `${err}` });
     }
 })
-
 router.post('/pm/item', async (req, res) => { //? Filter PmRequest
     try {
         let pool = await getPool('MoldPool', config);
@@ -186,7 +185,7 @@ router.post('/repair/item', async (req, res) => { // repair list that Status = i
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/repair/request', async (req, res) => { // request Repair
+router.post('/repair/request', async (req, res) => { //TODO: request Repair
     try {
         let pool = await getPool('MoldPool', config);
         let { RepairList, PlanStartTime } = req.body;
@@ -359,6 +358,24 @@ router.post('/plan/cancel', async (req, res) => { // Cancel Plan
     }
 })
 
+//* ========== Shot ==========
+router.post('/pm/shot/edit', async (req, res) => { //TODO: Check User Position, adjust Shot
+    try {
+        let pool = await getPool('MoldPool', config);
+        let { MoldID, AddShot } = req.body;
+
+        let updateShot = `UPDATE [Mold].[MasterMold] SET ActualPmShot = ISNULL(ActualPmShot,0) + ${AddShot}
+        ActualWarrantyShot = ISNULL(ActualWarrantyShot,0) + ${AddShot}
+        WHERE MoldID = ${MoldID};
+        `;
+        await pool.request().query(updateShot);
+
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
 
 
 module.exports = router
