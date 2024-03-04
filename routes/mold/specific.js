@@ -112,8 +112,6 @@ router.post('/detail/edit', async (req, res) => { // Update Spec Status = 2(Wait
         let pool = await getPool('MoldPool', config);
         let { MoldSpecID, MachineSpec, ProductSpec, MoldSpec, BasicMold, DieNo, MoldControlNo, MaterialGrade,
         GuaranteeShot, MoldWeight, Cavity, MoldSize, MoldType } = req.body;
-        console.log(MoldType)
-      
         let updateSpecDetail = `
         DECLARE @MoldPicture NVARCHAR(255),
         @hvtPicture NVARCHAR(255),
