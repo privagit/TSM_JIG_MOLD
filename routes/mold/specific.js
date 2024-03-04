@@ -7,7 +7,7 @@ const { getPool } = require('../../middlewares/pool-manager');
 
 //* ========== Mold Specific List ==========
 // Specific Status: { 1: Issue, 2: Wait Approve, 3: Wait Receive, 4: Mold Received, 5: Complete }
-router.post('/list', async (req, res) => {
+router.post('/list', async (req, res) => { //TODO: ReceiveID
     try {
         let pool = await getPool('MoldPool', config);
         let { Status, month, year } = req.body;
@@ -78,7 +78,7 @@ router.post('/detail/history', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/detail', async (req, res) => {
+router.post('/detail', async (req, res) => { //TODO: MoldStatus
     try {
         let pool = await getPool('MoldPool', config);
         let { DetailID } = req.body;
@@ -137,6 +137,18 @@ router.post('/detail/edit', async (req, res) => { // Update Spec Status = 2(Wait
         MoldType = ${MoldType} WHERE MoldSpecID = ${MoldSpecID}; -- Update Status to Wait Approve
         `;
         await pool.request().query(updateSpecDetail);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/detail/cooling-flow-rate/edit', async (req, res) => { // Update Spec CoolingFlowRate
+    try {
+        let pool = await getPool('MoldPool', config);
+        let { MoldSpecID, CoolingFlowRate } = req.body;
+        let updateCoolingFlowRate = `UPDATE [Mold].[Specification] SET CoolingFlowRate = ${CoolingFlowRate} WHERE MoldSpecID = ${MoldSpecID};`;
+        await pool.request().query(updateCoolingFlowRate);
         res.json({ message: 'Success' });
     } catch (err) {
         console.log(req.url, err);

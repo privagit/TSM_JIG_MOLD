@@ -28,10 +28,15 @@ const uploadReceiveDetailImage = multer({ storage: storageReceiveDetailImage }).
 //* ========== Receive List ==========
 // TakeoutStatus : { 1: Wait Receive(New Mold), 2: Takeout, 3: Wait EN, 4: Complete }
 // TakeoutType : { 1: New Mold, 2: Tranfer Mold }
-router.post('/list', async (req, res) => { //TODO: where, Location, Date
+router.post('/list', async (req, res) => { //TODO: where Date
     try {
         let pool = await getPool('MoldPool', config);
-        let { TakeoutStatus } = req.body;
+        let { TakeoutStatus, month, year } = req.body;
+
+        // Initial
+        month = !month ? new Date().getMonth()+1 : month;
+        year = !year ? new Date().getFullYear() : year;
+
         let receiveList = await pool.request().query(`
         WITH NewMold AS (
             SELECT a.TakeoutID, c.ReceiveID, b.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, b.BasicMold, b.DieNo, b.MoldControlNo,
@@ -45,7 +50,7 @@ router.post('/list', async (req, res) => { //TODO: where, Location, Date
             LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = c.MoldApproveBy
             LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = c.EnApproveBy
             LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] f ON f.CustomerID = b.CustomerID
-            WHERE a.TakeoutType = 1
+            WHERE a.TakeoutType = 1 AND MONTH(a.TakeoutDate) = ${month} AND YEAR(a.TakeoutDate) = ${year}
         ), TakeoutMold AS (
             SELECT a.TakeoutID, b.ReceiveID, a.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
             a.IssueTime, a.ReceiveTime,
@@ -58,15 +63,17 @@ router.post('/list', async (req, res) => { //TODO: where, Location, Date
             LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = b.MoldApproveBy
             LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = b.EnApproveBy
             LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] f ON f.CustomerID = c.CustomerID
-            WHERE a.TakeoutType = 2
+            WHERE a.TakeoutType = 2 AND MONTH(a.TakeoutDate) = ${month} AND YEAR(a.TakeoutDate) = ${year}
         ), tbsum AS (
             SELECT * FROM [NewMold]
             UNION ALL
             SELECT * FROM [TakeoutMold]
         )
-        SELECT TakeoutID, ReceiveID, MoldSpecID, MoldID, TakeoutType AS MoldStatus, TakeoutStatus, BasicMold, DieNo, MoldControlNo,
-            IssueTime, ReceiveTime, MoldApproveBy, EnApproveBy, MoldApproveTime, EnApproveTime, CustomerName, Cavity
-        FROM [tbsum]
+        SELECT TakeoutID, ReceiveID, MoldSpecID, a.MoldID, TakeoutType AS MoldStatus, TakeoutStatus, BasicMold, DieNo, MoldControlNo,
+            IssueTime, ReceiveTime, MoldApproveBy, EnApproveBy, MoldApproveTime, EnApproveTime, CustomerName, Cavity,
+            b.Location
+        FROM [tbsum] a
+        LEFT JOIN [Mold].[MoldStatus] b ON b.MoldID = a.MoldID
         `);
         for(let item of receiveList.recordset){
             item.MoldApproveBy = atob(item.MoldApproveBy || '');
