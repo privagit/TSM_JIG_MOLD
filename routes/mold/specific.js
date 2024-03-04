@@ -91,7 +91,7 @@ router.post('/detail', async (req, res) => { //TODO: MoldStatus
         b.FirstName AS IssueBy, s.IssueTime,
         c.FirstName AS CheckBy, s.CheckTime,
         d.FirstName AS ApproveBy, s.ApproveTime,
-        s.BasicMold, s.DieNo, s.MoldControlNo, s.MaterialGrade, s.Cavity, s.GuaranteeShot, s.MoldWeight, s.MoldSize, s.MoldType, s.Model, s.CoolingFlowRate
+        s.BasicMold, s.DieNo, s.MoldControlNo, s.MaterialGrade, s.Cavity, s.GuaranteeShot, s.MoldWeight, s.MoldSize, s.MoldType, s.Model, a.CoolingFlowRate
         FROM [Mold].[SpecificationDetail] a
         LEFT JOIN [Mold].[Specification] s ON s.MoldSpecID = a.MoldSpecID
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = s.IssueBy
@@ -147,7 +147,7 @@ router.post('/detail/cooling-flow-rate/edit', async (req, res) => { // Update Sp
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldSpecID, CoolingFlowRate } = req.body;
-        let updateCoolingFlowRate = `UPDATE [Mold].[Specification] SET CoolingFlowRate = ${CoolingFlowRate} WHERE MoldSpecID = ${MoldSpecID};`;
+        let updateCoolingFlowRate = `UPDATE [Mold].[SpecificationDetail] SET CoolingFlowRate = ${CoolingFlowRate} WHERE MoldSpecID = ${MoldSpecID};`;
         await pool.request().query(updateCoolingFlowRate);
         res.json({ message: 'Success' });
     } catch (err) {

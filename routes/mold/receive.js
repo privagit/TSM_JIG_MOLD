@@ -221,7 +221,8 @@ router.post('/specification/detail', async (req, res) => {
         b.FirstName AS IssueBy, a.IssueSignTime,
         c.FirstName AS CheckBy, a.CheckSignTime,
         d.FirstName AS ApproveBy, a.ApproveSignTime,
-        e.BasicMold, e.DieNo, e.MoldControlNo, e.MaterialGrade, e.Cavity, e.GuaranteeShot, e.MoldWeight, e.MoldSize, e.MoldType, e.Model
+        e.BasicMold, e.DieNo, e.MoldControlNo, e.MaterialGrade, e.Cavity, e.GuaranteeShot, e.MoldWeight, e.MoldSize, e.MoldType, e.Model,
+        a.CoolingFlowRate
         FROM [Mold].[SpecificationDetail] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.IssueBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.CheckBy
