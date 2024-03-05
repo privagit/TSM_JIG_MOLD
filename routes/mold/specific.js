@@ -74,7 +74,7 @@ router.post('/detail/history', async (req, res) => {
         
         let moldDetail = await pool.request().query(`SELECT DetailID, EditTime
         FROM [Mold].[SpecificationDetail]
-        WHERE SpecID = ${SpecID}
+        WHERE MoldSpecID = ${MoldSpecID}
         ORDER BY EditTime DESC;
         `);
         res.json(moldDetail.recordset);
