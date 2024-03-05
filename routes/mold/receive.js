@@ -170,7 +170,7 @@ router.post('/takeout', async (req, res) => { //TODO: ReportNo, Date, Location, 
         let takeout = await pool.request().query(`SELECT a.Remark, a.Note, a.TakeoutImagePath, a.CarNo, a.TakeoutDate, a.ReportNo, e.Location,
         b.FirstName AS IssueBy, a.IssueTime,
         c.FirstName AS ApproveBy, a.ApproveTime,
-        d.FirstName AS ReceiveBy, r.ReceiveTime, NULL AS ReportNo
+        d.FirstName AS ReceiveBy, r.ReceiveTime
         FROM [Mold].[MoldTakeout] a
         LEFT JOIN [Mold].[MoldReceive] r ON r.TakeoutID = a.TakeoutID
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.IssueBy = b.EmployeeID
