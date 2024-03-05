@@ -32,7 +32,7 @@ router.post('/list', async (req, res) => { //TODO: where Date
     try {
         let pool = await getPool('MoldPool', config);
         let { TakeoutStatus, month, year } = req.body;
-
+        console.log(TakeoutStatus, month, year)
         // Initial
         month = !month ? new Date().getMonth()+1 : month;
         year = !year ? new Date().getFullYear() : year;

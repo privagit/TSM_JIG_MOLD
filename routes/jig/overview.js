@@ -26,7 +26,6 @@ router.post('/plan', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { JigTypeID, Section, PlanFilter  } = req.body;
-
         let filterString = await whereClauseAnd([{ column: 'a.JigTypeID', value: JigTypeID }, { column: 'a.Section', value: Section }]);
 
         // PlanFilter 1: All Plan, 2: Today Plan
@@ -178,7 +177,7 @@ router.post('/pm/sign', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { PmPlanID, ItemNo, EmployeeID } = req.body;
-
+        
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${EmployeeID};`);
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
@@ -246,7 +245,6 @@ router.post('/technician', async (req, res) => { //TODO PM, Repair ?
         LEFT JOIN [Jig].[MasterTechnician] b ON a.UserID = b.UserID
         CROSS JOIN [cte2] c
         `);
-
         let PM_Month = maintenance.recordset[0]?.totalMonth || 0;
         let PM_Year = maintenance.recordset[0]?.totalYear || 0;
         for(let item of maintenance.recordset){

@@ -121,7 +121,7 @@ router.post('/issue', async (req, res) => {
                 let RequestImagePath = (req.file) ? "/jig/request/" + req.file.filename : "";
                 let { CustomerID, JigTypeID, PartCode, PartName, RequiredDate, RequestTime, Quantity, RequestSection, RequestType,
                     ProductionDate, Budget, CustomerBudget, FgMonthQty, FgYearQty, UseIn, Requirement, CsNo } = req.body;
-
+                
                 // Jig No.
                 let date = new Date();
                 let monthRunningNo = await pool.request().query(`SELECT a.MonthDate, a.JigRunningNo
@@ -260,7 +260,7 @@ router.post('/part-list', async (req, res) => { // เอา Receive ออก, 
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
         let jigPartList = await pool.request().query(`SELECT row_number() over(order by a.PartListID) AS ItemNo,
-        a.PartListID, a.List, a.Qty, a.OrderType, a.Remark, b.AxCode, a.UnitPrice, c.SupplierName, ModifyDate
+        a.PartListID, a.List, a.Qty, a.OrderType, a.Remark, a.SpareID, b.AxCode, a.UnitPrice, c.SupplierName, ModifyDate, a.SupplierID
         FROM [Jig].[JigPartList] a
         LEFT JOIN [Jig].[MasterSpare] b ON b.SpareID = a.SpareID
         LEFT JOIN [Jig].[MasterSupplier] c ON c.SupplierID = a.SupplierID
@@ -574,12 +574,13 @@ router.post('/modify/part-list', async (req, res) => { // same as PartList
         let pool = await getPool('JigPool', config);
         let { ModifyID } = req.body;
         let modifyPartList = await pool.request().query(`SELECT row_number() over(order by a.ModifyPartListID) AS ItemNo, a.ModifyPartListID,
-        a.List, a.Qty, a.OrderType, a.Remark, b.AxCode, a.UnitPrice, a.SupplierID, c.SupplierName, SpareID
+        a.List, a.Qty, a.OrderType, a.Remark, b.AxCode, a.UnitPrice, a.SupplierID, c.SupplierName, a.SpareID
         FROM [Jig].[JigModifyPartList] a
         LEFT JOIN [Jig].[MasterSpare] b ON b.SpareID = a.SpareID
         LEFT JOIN [Jig].[MasterSupplier] c ON c.SupplierID = a.SupplierID
         WHERE a.ModifyID = ${ModifyID} AND a.Active = 1;
         `);
+        console.log(modifyPartList.recordset)
         res.json(modifyPartList.recordset);
     } catch (err) {
         console.log(req.url, err);
@@ -749,6 +750,7 @@ router.post('/trial', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
+
         let jigTrial = await pool.request().query(`SELECT row_number() over(order by a.TrialID) AS Attempt,
         a.TrialID, CONVERT(NVARCHAR, a.PlanStart, 23) AS TestDate, a.Qty,
         CONVERT(NVARCHAR,a.PlanStart,108) AS PlanStart, CONVERT(NVARCHAR,a.PlanFinish,108) AS PlanFinish,
@@ -890,7 +892,7 @@ router.post('/evaluation/item', async (req, res) => {
         j.FirstName AS PeEvalBy, k.FirstName AS PeApproveBy,
         a.CustomerEval1, a.CustomerEval2,
         a.CustomerEvalTime1, a.CustomerEvalTime2,
-        a.BeforeImage, a.BeforeImage, a.JigImage, a.ModifyImage, a.PartListImage, a.ProblemImage, a.SolutionImage
+        a.BeforeImage, a.AfterImage, a.JigImage, a.ModifyImage, a.PartListImage, a.ProblemImage, a.SolutionImage
         FROM [Jig].[JigEvaluation] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.JigEvalBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.JigApproveBy
@@ -1001,10 +1003,10 @@ router.put('/evaluation/sign/approve', async (req, res) => { // finish Creation
     try {
         let pool = await getPool('JigPool', config);
         let { EvalID, ApproveBy, itemNo } = req.body;
+        console.log(req.body)
         let itemMap = { 1: 'Jig', 2: 'En', 3: 'Qa', 4: 'Pd', 5: 'Pe' };
         let getUser = await pool.request().query(`SELECT UserID, FirstName FROM [TSMolymer_F].[dbo].[User] WHERE EmployeeID = ${ApproveBy};`);
         if (!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
-
         // Check Eval
         let getSignEval = await pool.request().query(`SELECT ${itemMap[itemNo]}EvalBy AS EvalBy FROM [Jig].[JigEvaluation] WHERE EvalID = ${EvalID};`);
         if(!getSignEval.recordset[0].EvalBy) return res.status(400).send({ message: `กรุณาลงชื่อ Evaluator ${itemMap[itemNo].toUpperCase()} ก่อน` });
