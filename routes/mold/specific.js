@@ -343,7 +343,7 @@ router.post('/sign/approve', async (req, res) => { // Approve => Receive, Update
 
         DECLARE @TakeoutID INT;
         SET @TakeoutID = (SELECT SCOPE_IDENTITY());
-        INSERT INTO [Mold].[MoldReceive](TakeoutID,) VALUES(@TakeoutID);
+        INSERT INTO [Mold].[MoldReceive](TakeoutID) VALUES(@TakeoutID);
         `;
         await pool.request().query(insertReceive);
 
