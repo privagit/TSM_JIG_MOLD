@@ -117,7 +117,7 @@ router.post('/detail/edit', async (req, res) => { // Update Spec Status = 2(Wait
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldSpecID, MachineSpec, ProductSpec, MoldSpec, BasicMold, DieNo, MoldControlNo, MaterialGrade,
-        GuaranteeShot, MoldWeight, Cavity, MoldSize, MoldType } = req.body;
+        GuaranteeShot, MoldWeight, Cavity, MoldSize, MoldType, CoolingFlowRate } = req.body;
         let updateSpecDetail = `
         DECLARE @MoldPicture NVARCHAR(255),
         @hvtPicture NVARCHAR(255),
@@ -132,9 +132,9 @@ router.post('/detail/edit', async (req, res) => { // Update Spec Status = 2(Wait
         ORDER BY a.EditTime DESC;
 
         INSERT INTO [Mold].[SpecificationDetail](MoldSpecID, MachineSpec, ProductSpec, MoldSpec, EditTime,
-            MoldPicture, hvtPicture, MoldDrawing1, MoldDrawing2, MoldSpecFile)
+            MoldPicture, hvtPicture, MoldDrawing1, MoldDrawing2, MoldSpecFile, CoolingFlowRate)
         VALUES(${MoldSpecID}, N'${MachineSpec}', N'${ProductSpec}', N'${MoldSpec}', GETDATE(),
-            @MoldPicture, @hvtPicture, @MoldDrawing1, @MoldDrawing2, @MoldSpecFile);
+            @MoldPicture, @hvtPicture, @MoldDrawing1, @MoldDrawing2, @MoldSpecFile, ${CoolingFlowRate});
 
         UPDATE [Mold].[Specification] SET Status = 2, BasicMold = N'${BasicMold}', DieNo = N'${DieNo}', MoldControlNo = N'${MoldControlNo}',
         MaterialGrade = N'${MaterialGrade}', GuaranteeShot = ${GuaranteeShot}, MoldWeight = ${MoldWeight}, Cavity = ${Cavity}, MoldSize = N'${MoldSize}',
