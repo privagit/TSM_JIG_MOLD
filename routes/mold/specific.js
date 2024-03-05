@@ -72,6 +72,7 @@ router.post('/detail/history', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldSpecID } = req.body;
+        
         let moldDetail = await pool.request().query(`SELECT DetailID, EditTime
         FROM [Mold].[SpecificationDetail]
         WHERE MoldSpecID = ${MoldSpecID}
