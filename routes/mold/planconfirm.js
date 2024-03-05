@@ -8,6 +8,8 @@ router.post('/', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { Status, month, year } = req.body;
+
+        console.log(req.body)
         // Status 1: Issue, 2: Cancel, 3: Reject, 4: Accept
         let planConfirm = await pool.request().query(`WITH Repair AS (
             SELECT a.RepairCheckID, NULL AS PmPlanID, CONVERT(DATE, a.PlanStartTime) AS PmDate,
