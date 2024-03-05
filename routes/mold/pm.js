@@ -192,7 +192,7 @@ router.post('/repair/request', async (req, res) => { //TODO: request Repair
         let PlanTime = new Date(PlanStartTime);
         let FinishTime = new Date(PlanStartTime);
 
-        // RepairList = [{RepairCheckID, EstTime}]
+        // RepairList = [{RepairCheckID, EstTime, Remark}]
         for(let item of RepairList){
             FinishTime.setMinutes(PlanTime.getMinutes() + item.EstTime);
             let PlanTimeStr = `${PlanTime.getFullYear()}-${PlanTime.getMonth()+1}-${PlanTime.getDate()} ${PlanTime.getHours()}:${PlanTime.getMinutes()}:${PlanTime.getSeconds()}`;

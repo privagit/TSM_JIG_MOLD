@@ -161,11 +161,11 @@ router.post('/receive/item/sign/receive', async (req, res) => { // Modal Receive
     }
 })
 
-router.post('/takeout', async (req, res) => { //TODO: ReportNo, ดูใบ takeout
+router.post('/takeout', async (req, res) => { //TODO: ReportNo, Date, Location, ดูใบ takeout
     try {
         let pool = await getPool('MoldPool', config);
         let { TakeoutID } = req.body;
-        let takeout = await pool.request().query(`SELECT a.Remark, a.Note, a.TakeoutImagePath, CarNo,
+        let takeout = await pool.request().query(`SELECT a.Remark, a.Note, a.TakeoutImagePath, a.CarNo, a.TakeoutDate, a.ReportNo, e.Location,
         b.FirstName AS IssueBy, a.IssueTime,
         c.FirstName AS ApproveBy, a.ApproveTime,
         d.FirstName AS ReceiveBy, r.ReceiveTime, NULL AS ReportNo
@@ -174,6 +174,7 @@ router.post('/takeout', async (req, res) => { //TODO: ReportNo, ดูใบ tak
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.IssueBy = b.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.ApproveBy = c.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON r.ReceiveBy = d.EmployeeID
+        LEFT JOIN [Mold].[MoldStatus] e ON e.MoldID = a.MoldID
         WHERE a.TakeoutID = ${TakeoutID};
         `);
         takeout.recordset[0].IssueBy = atob(takeout.recordset[0]?.IssueBy || '');
