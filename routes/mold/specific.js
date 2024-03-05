@@ -338,12 +338,12 @@ router.post('/sign/approve', async (req, res) => { // Approve => Receive, Update
         
         // approve => Receive
         // Insert Takeout { TakeoutType = 1(New Mold)}
-        let insertReceive = `INSERT INTO [Mold].[MoldTakeout](MoldSpecID, TakeoutType, TakeoutDate)
-        VALUES(${MoldSpecID}, 1, GETDATE());
+        let insertReceive = `INSERT INTO [Mold].[MoldTakeout](MoldSpecID, TakeoutType, TakeoutDate, IssueTime)
+        VALUES(${MoldSpecID}, 1, GETDATE(), GETDATE());
 
         DECLARE @TakeoutID INT;
         SET @TakeoutID = (SELECT SCOPE_IDENTITY());
-        INSERT INTO [Mold].[MoldReceive](TakeoutID) VALUES(@TakeoutID);
+        INSERT INTO [Mold].[MoldReceive](TakeoutID,) VALUES(@TakeoutID);
         `;
         await pool.request().query(insertReceive);
 
@@ -399,3 +399,31 @@ module.exports = router;
 // 3: Wait Receive => หลังจาก Approve Specification
 // 4: Mold Receive(Wait EN) => หลังจาก Mold Approve Receive
 // 5: Complete => หลังจาก Engineer Approve Receive
+
+
+let insertStatusNoCur = (ProductionID, Status, MachineID) => {
+    try {
+        let insert = `INSERT INTO [Production].[MachineStatusLog](StatusID, startTime, stopTime, MachineID, ProductionID)
+        VALUES(${Status}, '2024-03-05 09:00:00.000', '2024-03-05 10:00:00.000', ${MachineID}, ${ProductionID}),
+              (${Status}, '2024-03-05 10:00:00.000', '2024-03-05 11:00:00.000', ${MachineID}, ${ProductionID}),
+              (${Status}, '2024-03-05 11:00:00.000', '2024-03-05 12:00:00.000', ${MachineID}, ${ProductionID}),
+              (${Status}, '2024-03-05 12:00:00.000', '2024-03-05 13:00:00.000', ${MachineID}, ${ProductionID}),
+              (${Status}, '2024-03-05 13:00:00.000', null, ${MachineID}, ${ProductionID})
+  `;
+        console.log(insert);
+    } catch (err) {
+        console.log(err);
+    }
+}
+// insertStatusNoCur(78157, 2, 108);
+
+let insertStatusCur = (ProductionID, Status, MachineID) => {
+    try {
+        let insert = `INSERT INTO [Production].[MachineStatusLog](StatusID, startTime, stopTime, MachineID, ProductionID)
+        VALUES(${Status}, '2024-03-05 09:00:00.000', '2024-03-05 10:00:00.000', ${MachineID}, ${ProductionID}),
+        (${Status}, '2024-03-05 10:00:00.000', '2024-03-05 11:00:00.000', ${MachineID}, ${ProductionID})`;
+        console.log(insert);
+    } catch (err) {
+        console.log(err);
+    }
+}
