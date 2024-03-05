@@ -28,14 +28,20 @@ const uploadReceiveDetailImage = multer({ storage: storageReceiveDetailImage }).
 //* ========== Receive List ==========
 // TakeoutStatus : { 1: Wait Receive(New Mold), 2: Takeout, 3: Wait EN, 4: Complete }
 // TakeoutType : { 1: New Mold, 2: Tranfer Mold }
-router.post('/list', async (req, res) => { //TODO: where, Location, Date
+router.post('/list', async (req, res) => { //TODO: where Date
     try {
         let pool = await getPool('MoldPool', config);
-        let { TakeoutStatus } = req.body;
+        let { TakeoutStatus, month, year } = req.body;
+
+        // Initial
+        month = !month ? new Date().getMonth()+1 : month;
+        year = !year ? new Date().getFullYear() : year;
+
         let receiveList = await pool.request().query(`
         WITH NewMold AS (
             SELECT a.TakeoutID, c.ReceiveID, b.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, b.BasicMold, b.DieNo, b.MoldControlNo,
-            a.IssueTime, a.ReceiveTime,
+            CONCAT(CONVERT(NVARCHAR, a.IssueTime, 23), ' ', CONVERT(NVARCHAR(5), a.IssueTime, 108)) AS IssueTime,
+            CONCAT(CONVERT(NVARCHAR, a.ReceiveTime, 23), ' ', CONVERT(NVARCHAR(5), a.ReceiveTime, 108)) AS ReceiveTime,
             d.FirstName AS MoldApproveBy, c.MoldApproveTime,
             e.FirstName AS EnApproveBy, c.EnApproveTime,
             f.CustomerName, b.Cavity
@@ -45,10 +51,11 @@ router.post('/list', async (req, res) => { //TODO: where, Location, Date
             LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = c.MoldApproveBy
             LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = c.EnApproveBy
             LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] f ON f.CustomerID = b.CustomerID
-            WHERE a.TakeoutType = 1
+            WHERE a.TakeoutType = 1 AND MONTH(a.TakeoutDate) = ${month} AND YEAR(a.TakeoutDate) = ${year}
         ), TakeoutMold AS (
             SELECT a.TakeoutID, b.ReceiveID, a.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
-            a.IssueTime, a.ReceiveTime,
+            CONCAT(CONVERT(NVARCHAR, a.IssueTime, 23), ' ', CONVERT(NVARCHAR(5), a.IssueTime, 108)) AS IssueTime,
+            CONCAT(CONVERT(NVARCHAR, a.ReceiveTime, 23), ' ', CONVERT(NVARCHAR(5), a.ReceiveTime, 108)) AS ReceiveTime,
             d.FirstName AS MoldApproveBy, b.MoldApproveTime,
             e.FirstName AS EnApproveBy, b.EnApproveTime,
             f.CustomerName, c.Cavity
@@ -58,15 +65,17 @@ router.post('/list', async (req, res) => { //TODO: where, Location, Date
             LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = b.MoldApproveBy
             LEFT JOIN [TSMolymer_F].[dbo].[User] e ON e.EmployeeID = b.EnApproveBy
             LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] f ON f.CustomerID = c.CustomerID
-            WHERE a.TakeoutType = 2
+            WHERE a.TakeoutType = 2 AND MONTH(a.TakeoutDate) = ${month} AND YEAR(a.TakeoutDate) = ${year}
         ), tbsum AS (
             SELECT * FROM [NewMold]
             UNION ALL
             SELECT * FROM [TakeoutMold]
         )
-        SELECT TakeoutID, ReceiveID, MoldSpecID, MoldID, TakeoutType AS MoldStatus, TakeoutStatus, BasicMold, DieNo, MoldControlNo,
-            IssueTime, ReceiveTime, MoldApproveBy, EnApproveBy, MoldApproveTime, EnApproveTime, CustomerName, Cavity
-        FROM [tbsum]
+        SELECT TakeoutID, ReceiveID, MoldSpecID, a.MoldID, TakeoutType AS MoldStatus, TakeoutStatus, BasicMold, DieNo, MoldControlNo,
+            IssueTime, ReceiveTime, MoldApproveBy, EnApproveBy, MoldApproveTime, EnApproveTime, CustomerName, Cavity,
+            b.Location
+        FROM [tbsum] a
+        LEFT JOIN [Mold].[MoldStatus] b ON b.MoldID = a.MoldID
         `);
         for(let item of receiveList.recordset){
             item.MoldApproveBy = atob(item.MoldApproveBy || '');
@@ -82,7 +91,7 @@ router.post('/list', async (req, res) => { //TODO: where, Location, Date
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/receive/item', async (req, res) => { //TODO: BasicMold, DieNo, Qty, Location, Modal Receive
+router.post('/receive/item', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { ReceiveID } = req.body;
@@ -154,20 +163,20 @@ router.post('/receive/item/sign/receive', async (req, res) => { // Modal Receive
     }
 })
 
-//TODO: ReportNo.
-router.post('/takeout', async (req, res) => { // ดูใบ takeout
+router.post('/takeout', async (req, res) => { //TODO: ReportNo, Date, Location, ดูใบ takeout
     try {
         let pool = await getPool('MoldPool', config);
         let { TakeoutID } = req.body;
-        let takeout = await pool.request().query(`SELECT a.Remark, a.Note, a.TakeoutImagePath, CarNo,
+        let takeout = await pool.request().query(`SELECT a.Remark, a.Note, a.TakeoutImagePath, a.CarNo, a.TakeoutDate, a.ReportNo, e.Location,
         b.FirstName AS IssueBy, a.IssueTime,
         c.FirstName AS ApproveBy, a.ApproveTime,
-        d.FirstName AS ReceiveBy, r.ReceiveTime
+        d.FirstName AS ReceiveBy, r.ReceiveTime, NULL AS ReportNo
         FROM [Mold].[MoldTakeout] a
         LEFT JOIN [Mold].[MoldReceive] r ON r.TakeoutID = a.TakeoutID
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.IssueBy = b.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.ApproveBy = c.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON r.ReceiveBy = d.EmployeeID
+        LEFT JOIN [Mold].[MoldStatus] e ON e.MoldID = a.MoldID
         WHERE a.TakeoutID = ${TakeoutID};
         `);
         takeout.recordset[0].IssueBy = atob(takeout.recordset[0]?.IssueBy || '');
@@ -215,7 +224,8 @@ router.post('/specification/detail', async (req, res) => {
         b.FirstName AS IssueBy, a.IssueSignTime,
         c.FirstName AS CheckBy, a.CheckSignTime,
         d.FirstName AS ApproveBy, a.ApproveSignTime,
-        e.BasicMold, e.DieNo, e.MoldControlNo, e.MaterialGrade, e.Cavity, e.GuaranteeShot, e.MoldWeight, e.MoldSize, e.MoldType, e.Model
+        e.BasicMold, e.DieNo, e.MoldControlNo, e.MaterialGrade, e.Cavity, e.GuaranteeShot, e.MoldWeight, e.MoldSize, e.MoldType, e.Model,
+        a.CoolingFlowRate
         FROM [Mold].[SpecificationDetail] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.IssueBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.CheckBy

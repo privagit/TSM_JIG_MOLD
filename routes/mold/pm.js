@@ -97,7 +97,6 @@ router.post('/', async (req, res) => { //TODO: Condition AcceptStatus, Customer
         res.status(500).send({ message: `${err}` });
     }
 })
-
 router.post('/pm/item', async (req, res) => { //? Filter PmRequest
     try {
         let pool = await getPool('MoldPool', config);
@@ -122,7 +121,7 @@ router.post('/pm/item', async (req, res) => { //? Filter PmRequest
             pmList.push({
                 MoldID: mold.recordset[0].MoldID,
                 PmType: 1, PmTypeName: 'PM',
-                ActualShot: mold.recordset[0].PmShot,
+                ActualShot: mold.recordset[0].ActualPmShot,
                 WarningShot: mold.recordset[0].WarningShot,
                 DangerShot: mold.recordset[0].DangerShot
             })
@@ -131,7 +130,7 @@ router.post('/pm/item', async (req, res) => { //? Filter PmRequest
             pmList.push({
                 MoldID: mold.recordset[0].MoldID,
                 PmType: 2, PmTypeName: 'Warranty',
-                ActualShot: mold.recordset[0].WarrantyShot,
+                ActualShot: mold.recordset[0].ActualWarrantyShot,
                 WarningShot: mold.recordset[0].WarrantyWarningShot,
                 DangerShot: mold.recordset[0].WarrantyDangerShot
             })
@@ -150,16 +149,17 @@ router.post('/pm/request', async (req, res) => { // request PM
         let PlanTime = new Date(PlanStartTime);
         let FinishTime = new Date(PlanStartTime);
 
+        console.log(req.body);
         // PmList = [{PmType, Actual, PmTime, Remark}]
         for(let item of PmList){
-            FinishTime.setMinutes(PlanTime.getMinutes() + item.PmTime);
+            FinishTime.setMinutes(PlanTime.getMinutes() + (item.PmTime || 0));
             let PlanTimeStr = `${PlanTime.getFullYear()}-${PlanTime.getMonth()+1}-${PlanTime.getDate()} ${PlanTime.getHours()}:${PlanTime.getMinutes()}:${PlanTime.getSeconds()}`;
             let FinishTimeStr = `${FinishTime.getFullYear()}-${FinishTime.getMonth()+1}-${FinishTime.getDate()} ${FinishTime.getHours()}:${FinishTime.getMinutes()}:${FinishTime.getSeconds()}`;
 
             // Insert PmPlan
             // PlanStatus = 0: Wait Accept, 1: Accept, 2: Reject, 3: Cancel
             let insertPlan = `INSERT INTO [Mold].[PmPlan](MoldID, PlanStartTime, PlanFinishTime, PmTime, PmType, ActualShot, Remark, RequestBy, RequestTime, AcceptStatus)
-            VALUES(${MoldID}, '${PlanTimeStr}', '${FinishTimeStr}', ${item.PmTime}, ${item.PmType}, ${item.Actual}, N'${item.Remark}', ${RequestBy}, GETDATE(), 0);
+            VALUES(${MoldID}, '${PlanTimeStr}', '${FinishTimeStr}', ${item.PmTime || 0}, ${item.PmType}, ${item.Actual}, N'${item.Remark}', ${RequestBy || 0}, GETDATE(), 0);
             `;
             await pool.request().query(insertPlan);
             PlanTime = FinishTime; // set next start plan time
@@ -186,14 +186,14 @@ router.post('/repair/item', async (req, res) => { // repair list that Status = i
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/repair/request', async (req, res) => { // request Repair
+router.post('/repair/request', async (req, res) => { //TODO: request Repair
     try {
         let pool = await getPool('MoldPool', config);
         let { RepairList, PlanStartTime } = req.body;
         let PlanTime = new Date(PlanStartTime);
         let FinishTime = new Date(PlanStartTime);
 
-        // RepairList = [{RepairCheckID, EstTime}]
+        // RepairList = [{RepairCheckID, EstTime, Remark}]
         for(let item of RepairList){
             FinishTime.setMinutes(PlanTime.getMinutes() + item.EstTime);
             let PlanTimeStr = `${PlanTime.getFullYear()}-${PlanTime.getMonth()+1}-${PlanTime.getDate()} ${PlanTime.getHours()}:${PlanTime.getMinutes()}:${PlanTime.getSeconds()}`;
@@ -359,19 +359,37 @@ router.post('/plan/cancel', async (req, res) => { // Cancel Plan
     }
 })
 
+//* ========== Shot ==========
+router.post('/pm/shot/edit', async (req, res) => { //TODO: Check User Position, adjust Shot
+    try {
+        let pool = await getPool('MoldPool', config);
+        let { MoldID, AddShot } = req.body;
+
+        let updateShot = `UPDATE [Mold].[MasterMold] SET ActualPmShot = ISNULL(ActualPmShot,0) + ${AddShot}
+        ActualWarrantyShot = ISNULL(ActualWarrantyShot,0) + ${AddShot}
+        WHERE MoldID = ${MoldID};
+        `;
+        await pool.request().query(updateShot);
+
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
 
 
 module.exports = router
 
 
-// RepairStatus
+//* RepairStatus
 // 1: Issue     => Issue Repair
 // 2: Plan      => Plan ที่ PM Plan
 // 3: Repair    => Start Repair
 // 4: Wait Sign => Sign Repair (Wait Inj,Qc,Mold Sign)
 // 5: Complete  => Sign Inj,Qc,Mold
 
-// Repair PlanStatus
+//* Repair PlanStatus
 // 1: Accept => Accept at ConfirmPlan
 // 2: Reject => Reject at ConfirmPlan
 // 3: Cancel => Cancel at PmPlan
