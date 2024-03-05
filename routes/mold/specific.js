@@ -54,6 +54,10 @@ router.delete('/delete', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldSpecID } = req.body;
+
+        let checkApprove = await pool.request().query(`SELECT ApproveBy FROM [Mold].[Specification] WHERE MoldSpecID = ${MoldSpecID};`);
+        if(checkApprove.recordset[0].ApproveBy) return res.status(400).send({ message: 'Approve แล้วไม่สามารถลบได้' });
+
         let deleteSpecific = `UPDATE [Mold].[Specification] SET Active = 0 WHERE MoldSpecID = ${MoldSpecID};`;
         await pool.request().query(deleteSpecific);
         res.json({ message: 'Success' });
@@ -345,7 +349,7 @@ router.post('/sign/approve', async (req, res) => { // Approve => Receive, Update
 
         DECLARE @TakeoutID INT;
         SET @TakeoutID = (SELECT SCOPE_IDENTITY());
-        INSERT INTO [Mold].[MoldReceive](TakeoutID,) VALUES(@TakeoutID);
+        INSERT INTO [Mold].[MoldReceive](TakeoutID) VALUES(@TakeoutID);
         `;
         await pool.request().query(insertReceive);
 
@@ -401,31 +405,3 @@ module.exports = router;
 // 3: Wait Receive => หลังจาก Approve Specification
 // 4: Mold Receive(Wait EN) => หลังจาก Mold Approve Receive
 // 5: Complete => หลังจาก Engineer Approve Receive
-
-
-let insertStatusNoCur = (ProductionID, Status, MachineID) => {
-    try {
-        let insert = `INSERT INTO [Production].[MachineStatusLog](StatusID, startTime, stopTime, MachineID, ProductionID)
-        VALUES(${Status}, '2024-03-05 09:00:00.000', '2024-03-05 10:00:00.000', ${MachineID}, ${ProductionID}),
-              (${Status}, '2024-03-05 10:00:00.000', '2024-03-05 11:00:00.000', ${MachineID}, ${ProductionID}),
-              (${Status}, '2024-03-05 11:00:00.000', '2024-03-05 12:00:00.000', ${MachineID}, ${ProductionID}),
-              (${Status}, '2024-03-05 12:00:00.000', '2024-03-05 13:00:00.000', ${MachineID}, ${ProductionID}),
-              (${Status}, '2024-03-05 13:00:00.000', null, ${MachineID}, ${ProductionID})
-  `;
-        console.log(insert);
-    } catch (err) {
-        console.log(err);
-    }
-}
-// insertStatusNoCur(78157, 2, 108);
-
-let insertStatusCur = (ProductionID, Status, MachineID) => {
-    try {
-        let insert = `INSERT INTO [Production].[MachineStatusLog](StatusID, startTime, stopTime, MachineID, ProductionID)
-        VALUES(${Status}, '2024-03-05 09:00:00.000', '2024-03-05 10:00:00.000', ${MachineID}, ${ProductionID}),
-        (${Status}, '2024-03-05 10:00:00.000', '2024-03-05 11:00:00.000', ${MachineID}, ${ProductionID})`;
-        console.log(insert);
-    } catch (err) {
-        console.log(err);
-    }
-}

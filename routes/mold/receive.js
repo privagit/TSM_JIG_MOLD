@@ -40,8 +40,10 @@ router.post('/list', async (req, res) => { //TODO: where Date
         let receiveList = await pool.request().query(`
         WITH NewMold AS (
             SELECT a.TakeoutID, c.ReceiveID, b.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, b.BasicMold, b.DieNo, b.MoldControlNo,
-            CONCAT(CONVERT(NVARCHAR, a.IssueTime, 23), ' ', CONVERT(NVARCHAR(5), a.IssueTime, 108)) AS IssueTime,
-            CONCAT(CONVERT(NVARCHAR, a.ReceiveTime, 23), ' ', CONVERT(NVARCHAR(5), a.ReceiveTime, 108)) AS ReceiveTime,
+            CASE WHEN a.IssueTime IS NOT NULL THEN CONCAT(CONVERT(NVARCHAR, a.IssueTime, 23), ' ', CONVERT(NVARCHAR(5), a.IssueTime, 108))
+            ELSE null END AS IssueTime,
+            CASE WHEN a.ReceiveTime IS NOT NULL THEN CONCAT(CONVERT(NVARCHAR, a.ReceiveTime, 23), ' ', CONVERT(NVARCHAR(5), a.ReceiveTime, 108))
+            ELSE null END AS ReceiveTime,
             d.FirstName AS MoldApproveBy, c.MoldApproveTime,
             e.FirstName AS EnApproveBy, c.EnApproveTime,
             f.CustomerName, b.Cavity
@@ -54,8 +56,10 @@ router.post('/list', async (req, res) => { //TODO: where Date
             WHERE a.TakeoutType = 1 AND MONTH(a.TakeoutDate) = ${month} AND YEAR(a.TakeoutDate) = ${year}
         ), TakeoutMold AS (
             SELECT a.TakeoutID, b.ReceiveID, a.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
-            CONCAT(CONVERT(NVARCHAR, a.IssueTime, 23), ' ', CONVERT(NVARCHAR(5), a.IssueTime, 108)) AS IssueTime,
-            CONCAT(CONVERT(NVARCHAR, a.ReceiveTime, 23), ' ', CONVERT(NVARCHAR(5), a.ReceiveTime, 108)) AS ReceiveTime,
+            CASE WHEN a.IssueTime IS NOT NULL THEN CONCAT(CONVERT(NVARCHAR, a.IssueTime, 23), ' ', CONVERT(NVARCHAR(5), a.IssueTime, 108))
+            ELSE null END AS IssueTime,
+            CASE WHEN a.ReceiveTime IS NOT NULL THEN CONCAT(CONVERT(NVARCHAR, a.ReceiveTime, 23), ' ', CONVERT(NVARCHAR(5), a.ReceiveTime, 108))
+            ELSE null END AS ReceiveTime,
             d.FirstName AS MoldApproveBy, b.MoldApproveTime,
             e.FirstName AS EnApproveBy, b.EnApproveTime,
             f.CustomerName, c.Cavity
