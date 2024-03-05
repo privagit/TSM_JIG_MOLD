@@ -132,7 +132,7 @@ router.post('/receive/item/image/upload', async (req, res) => { // Modal Receive
                 let pool = await getPool('MoldPool', config);
                 let { ReceiveID } = req.body;
                 let ImagePath = (req.file) ? "/mold/receive/" + req.file.filename : ""
-                let updateImagePath = `UPDATE [Mold].[MoldRceive] SET ReceiveImagePath = N'${ImagePath}' WHERE ReceiveID = ${ReceiveID};`;
+                let updateImagePath = `UPDATE [Mold].[MoldReceive] SET ReceiveImagePath = N'${ImagePath}' WHERE ReceiveID = ${ReceiveID};`;
                 await pool.request().query(updateImagePath);
 
                 res.header('Access-Control-Allow-Origin', req.headers.origin);
