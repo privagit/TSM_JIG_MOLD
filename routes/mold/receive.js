@@ -96,9 +96,11 @@ router.post('/receive/item', async (req, res) => {
         let pool = await getPool('MoldPool', config);
         let { ReceiveID } = req.body;
         let receive = await pool.request().query(`SELECT a.ReceiveRemark, a.ReceiveImagePath,
-        b.FirstName AS ReceiveBy, a.ReceiveTime
+        b.FirstName AS ReceiveBy, a.ReceiveTime, c.TakeoutDate, d.Location
         FROM [Mold].[MoldReceive] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.ReceiveBy
+        LEFT JOIN [Mold].[MoldTakeout] c ON c.TakeoutID = a.TakeoutID
+        LEFT JOIN [Mold].[MoldStatus] d ON d.MoldID = c.MoldID
         WHERE a.ReceiveID = ${ReceiveID};
         `);
         receive.recordset[0].ReceiveBy = atob(receive.recordset[0]?.ReceiveBy || '');
