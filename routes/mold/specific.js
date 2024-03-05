@@ -338,8 +338,8 @@ router.post('/sign/approve', async (req, res) => { // Approve => Receive, Update
         
         // approve => Receive
         // Insert Takeout { TakeoutType = 1(New Mold)}
-        let insertReceive = `INSERT INTO [Mold].[MoldTakeout](MoldSpecID, TakeoutType)
-        VALUES(${MoldSpecID}, 1);
+        let insertReceive = `INSERT INTO [Mold].[MoldTakeout](MoldSpecID, TakeoutType, TakeoutDate)
+        VALUES(${MoldSpecID}, 1, GETDATE());
 
         DECLARE @TakeoutID INT;
         SET @TakeoutID = (SELECT SCOPE_IDENTITY());

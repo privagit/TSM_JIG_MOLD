@@ -40,7 +40,8 @@ router.post('/list', async (req, res) => { //TODO: where Date
         let receiveList = await pool.request().query(`
         WITH NewMold AS (
             SELECT a.TakeoutID, c.ReceiveID, b.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, b.BasicMold, b.DieNo, b.MoldControlNo,
-            a.IssueTime, a.ReceiveTime,
+            CONCAT(CONVERT(NVARCHAR, a.IssueTime, 23), ' ', CONVERT(NVARCHAR(5), a.IssueTime, 108)) AS IssueTime,
+            CONCAT(CONVERT(NVARCHAR, a.ReceiveTime, 23), ' ', CONVERT(NVARCHAR(5), a.ReceiveTime, 108)) AS ReceiveTime,
             d.FirstName AS MoldApproveBy, c.MoldApproveTime,
             e.FirstName AS EnApproveBy, c.EnApproveTime,
             f.CustomerName, b.Cavity
@@ -53,7 +54,8 @@ router.post('/list', async (req, res) => { //TODO: where Date
             WHERE a.TakeoutType = 1 AND MONTH(a.TakeoutDate) = ${month} AND YEAR(a.TakeoutDate) = ${year}
         ), TakeoutMold AS (
             SELECT a.TakeoutID, b.ReceiveID, a.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
-            a.IssueTime, a.ReceiveTime,
+            CONCAT(CONVERT(NVARCHAR, a.IssueTime, 23), ' ', CONVERT(NVARCHAR(5), a.IssueTime, 108)) AS IssueTime,
+            CONCAT(CONVERT(NVARCHAR, a.ReceiveTime, 23), ' ', CONVERT(NVARCHAR(5), a.ReceiveTime, 108)) AS ReceiveTime,
             d.FirstName AS MoldApproveBy, b.MoldApproveTime,
             e.FirstName AS EnApproveBy, b.EnApproveTime,
             f.CustomerName, c.Cavity
@@ -94,9 +96,11 @@ router.post('/receive/item', async (req, res) => {
         let pool = await getPool('MoldPool', config);
         let { ReceiveID } = req.body;
         let receive = await pool.request().query(`SELECT a.ReceiveRemark, a.ReceiveImagePath,
-        b.FirstName AS ReceiveBy, a.ReceiveTime
+        b.FirstName AS ReceiveBy, a.ReceiveTime, c.TakeoutDate, d.Location
         FROM [Mold].[MoldReceive] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.ReceiveBy
+        LEFT JOIN [Mold].[MoldTakeout] c ON c.TakeoutID = a.TakeoutID
+        LEFT JOIN [Mold].[MoldStatus] d ON d.MoldID = c.MoldID
         WHERE a.ReceiveID = ${ReceiveID};
         `);
         receive.recordset[0].ReceiveBy = atob(receive.recordset[0]?.ReceiveBy || '');
@@ -161,19 +165,20 @@ router.post('/receive/item/sign/receive', async (req, res) => { // Modal Receive
     }
 })
 
-router.post('/takeout', async (req, res) => { //TODO: ReportNo, ดูใบ takeout
+router.post('/takeout', async (req, res) => { //TODO: ReportNo, Date, Location, ดูใบ takeout
     try {
         let pool = await getPool('MoldPool', config);
         let { TakeoutID } = req.body;
-        let takeout = await pool.request().query(`SELECT a.Remark, a.Note, a.TakeoutImagePath, CarNo,
+        let takeout = await pool.request().query(`SELECT a.Remark, a.Note, a.TakeoutImagePath, a.CarNo, a.TakeoutDate, a.ReportNo, e.Location,
         b.FirstName AS IssueBy, a.IssueTime,
         c.FirstName AS ApproveBy, a.ApproveTime,
-        d.FirstName AS ReceiveBy, r.ReceiveTime, NULL AS ReportNo
+        d.FirstName AS ReceiveBy, r.ReceiveTime
         FROM [Mold].[MoldTakeout] a
         LEFT JOIN [Mold].[MoldReceive] r ON r.TakeoutID = a.TakeoutID
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON a.IssueBy = b.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON a.ApproveBy = c.EmployeeID
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON r.ReceiveBy = d.EmployeeID
+        LEFT JOIN [Mold].[MoldStatus] e ON e.MoldID = a.MoldID
         WHERE a.TakeoutID = ${TakeoutID};
         `);
         takeout.recordset[0].IssueBy = atob(takeout.recordset[0]?.IssueBy || '');
