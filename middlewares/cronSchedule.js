@@ -3,7 +3,7 @@ const config_mold = require('../lib/dbconfig').dbconfig_mold;
 const sql = require('mssql');
 const cron = require('node-cron');
 
-let insertPreventPlanJig = async () => { //TODO:
+let insertPmJig = async () => { //TODO:
     try {
         console.log('start Predict', new Date());
         let pool = await sql.connect(config);

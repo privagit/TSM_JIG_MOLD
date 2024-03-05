@@ -7,13 +7,13 @@ const { getPool } = require('../../middlewares/pool-manager');
 
 //* ========== Mold Specific List ==========
 // Specific Status: { 1: Issue, 2: Wait Approve, 3: Wait Receive, 4: Mold Received, 5: Complete }
-router.post('/list', async (req, res) => {
+router.post('/list', async (req, res) => { //TODO: ReceiveID
     try {
         let pool = await getPool('MoldPool', config);
         let { Status, month, year } = req.body;
 
         let moldSpecificList = await pool.request().query(`
-        SELECT a.MoldSpecID, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.AxMoldNo, a.Model, a.IssuedDate, a.Status
+        SELECT a.MoldSpecID, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.MoldNo, a.Model, a.IssuedDate, a.Status
         FROM [Mold].[Specification] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
         WHERE Active = 1 AND MONTH(a.IssuedDate) = ${month} AND YEAR(a.IssuedDate) = ${year};
@@ -32,11 +32,11 @@ router.post('/list', async (req, res) => {
 router.post('/add', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
-        let { CustomerID, PartCode, PartName, AxMoldNo, Model } = req.body;
+        let { CustomerID, PartCode, PartName, MoldNo, Model } = req.body;
 
         // insert Specific
-        let insertSpecific = `INSERT INTO [Mold].[Specification](CustomerID, PartCode, PartName, AxMoldNo, Model, Status, Active)
-        VALUES(${CustomerID}, N'${PartCode}', N'${PartName}', '${AxMoldNo}', N'${Model}', 1, 1);
+        let insertSpecific = `INSERT INTO [Mold].[Specification](CustomerID, PartCode, PartName, MoldNo, Model, Status, Active)
+        VALUES(${CustomerID}, N'${PartCode}', N'${PartName}', '${MoldNo}', N'${Model}', 1, 1);
 
         DECLARE @MoldSpecID INT;
         SET @MoldSpecID = (SELECT SCOPE_IDENTITY());
@@ -79,7 +79,7 @@ router.post('/detail/history', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/detail', async (req, res) => {
+router.post('/detail', async (req, res) => { //TODO: MoldStatus
     try {
         let pool = await getPool('MoldPool', config);
         let { DetailID } = req.body;
@@ -90,7 +90,8 @@ router.post('/detail', async (req, res) => {
         a.hvtPicture, a.MoldSpecFile, a.MoldPicture, a.MoldDrawing1, a.MoldDrawing2,
         b.FirstName AS IssueBy, s.IssueTime,
         c.FirstName AS CheckBy, s.CheckTime,
-        d.FirstName AS ApproveBy, s.ApproveTime
+        d.FirstName AS ApproveBy, s.ApproveTime,
+        s.BasicMold, s.DieNo, s.MoldControlNo, s.MaterialGrade, s.Cavity, s.GuaranteeShot, s.MoldWeight, s.MoldSize, s.MoldType, s.Model, a.CoolingFlowRate
         FROM [Mold].[SpecificationDetail] a
         LEFT JOIN [Mold].[Specification] s ON s.MoldSpecID = a.MoldSpecID
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = s.IssueBy
@@ -132,10 +133,22 @@ router.post('/detail/edit', async (req, res) => { // Update Spec Status = 2(Wait
             @MoldPicture, @hvtPicture, @MoldDrawing1, @MoldDrawing2, @MoldSpecFile);
 
         UPDATE [Mold].[Specification] SET Status = 2, BasicMold = N'${BasicMold}', DieNo = N'${DieNo}', MoldControlNo = N'${MoldControlNo}',
-        MaterialGrade = N'${MaterialGrade}', GuaranteeShot = ${GuaranteeShot}, MoldWeight = ${MoldWeight}, Cavity = ${Cavity}, MoldSize = ${MoldSize},
+        MaterialGrade = N'${MaterialGrade}', GuaranteeShot = ${GuaranteeShot}, MoldWeight = ${MoldWeight}, Cavity = ${Cavity}, MoldSize = N'${MoldSize}',
         MoldType = ${MoldType} WHERE MoldSpecID = ${MoldSpecID}; -- Update Status to Wait Approve
         `;
         await pool.request().query(updateSpecDetail);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/detail/cooling-flow-rate/edit', async (req, res) => { // Update Spec CoolingFlowRate
+    try {
+        let pool = await getPool('MoldPool', config);
+        let { MoldSpecID, CoolingFlowRate } = req.body;
+        let updateCoolingFlowRate = `UPDATE [Mold].[SpecificationDetail] SET CoolingFlowRate = ${CoolingFlowRate} WHERE MoldSpecID = ${MoldSpecID};`;
+        await pool.request().query(updateCoolingFlowRate);
         res.json({ message: 'Success' });
     } catch (err) {
         console.log(req.url, err);
