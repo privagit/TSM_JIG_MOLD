@@ -12,9 +12,11 @@ router.post('/list', async (req, res) => { //TODO: ReceiveID
         let pool = await getPool('MoldPool', config);
         let { Status, month, year } = req.body;
         let moldSpecificList = await pool.request().query(`
-        SELECT a.MoldSpecID, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.MoldNo, a.Model, a.IssuedDate, a.Status
+        SELECT a.MoldSpecID, a.CustomerID, b.CustomerName, a.PartCode, a.PartName, a.MoldNo, a.Model, a.IssuedDate, a.Status, d.ReceiveID
         FROM [Mold].[Specification] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
+        LEFT JOIN [Mold].[MoldTakeout] c ON c.MoldSpecID = a.MoldSpecID
+        LEFT JOIN [Mold].[MoldReceive] d ON d.TakeoutID = c.TakeoutID
         WHERE Active = 1 AND MONTH(a.IssuedDate) = ${month} AND YEAR(a.IssuedDate) = ${year};
         `);
         if(Status){
