@@ -40,8 +40,10 @@ router.post('/list', async (req, res) => { //TODO: where Date
         let receiveList = await pool.request().query(`
         WITH NewMold AS (
             SELECT a.TakeoutID, c.ReceiveID, b.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, b.BasicMold, b.DieNo, b.MoldControlNo,
-            CONCAT(CONVERT(NVARCHAR, a.IssueTime, 23), ' ', CONVERT(NVARCHAR(5), a.IssueTime, 108)) AS IssueTime,
-            CONCAT(CONVERT(NVARCHAR, a.ReceiveTime, 23), ' ', CONVERT(NVARCHAR(5), a.ReceiveTime, 108)) AS ReceiveTime,
+            CASE WHEN a.IssueTime IS NOT NULL THEN CONCAT(CONVERT(NVARCHAR, a.IssueTime, 23), ' ', CONVERT(NVARCHAR(5), a.IssueTime, 108))
+            ELSE null END AS IssueTime,
+            CASE WHEN a.ReceiveTime IS NOT NULL THEN CONCAT(CONVERT(NVARCHAR, a.ReceiveTime, 23), ' ', CONVERT(NVARCHAR(5), a.ReceiveTime, 108))
+            ELSE null END AS ReceiveTime,
             d.FirstName AS MoldApproveBy, c.MoldApproveTime,
             e.FirstName AS EnApproveBy, c.EnApproveTime,
             f.CustomerName, b.Cavity
@@ -54,8 +56,10 @@ router.post('/list', async (req, res) => { //TODO: where Date
             WHERE a.TakeoutType = 1 AND MONTH(a.TakeoutDate) = ${month} AND YEAR(a.TakeoutDate) = ${year}
         ), TakeoutMold AS (
             SELECT a.TakeoutID, b.ReceiveID, a.MoldSpecID, a.MoldID, a.TakeoutType, a.TakeoutStatus, c.BasicMold, c.DieNo, c.MoldControlNo,
-            CONCAT(CONVERT(NVARCHAR, a.IssueTime, 23), ' ', CONVERT(NVARCHAR(5), a.IssueTime, 108)) AS IssueTime,
-            CONCAT(CONVERT(NVARCHAR, a.ReceiveTime, 23), ' ', CONVERT(NVARCHAR(5), a.ReceiveTime, 108)) AS ReceiveTime,
+            CASE WHEN a.IssueTime IS NOT NULL THEN CONCAT(CONVERT(NVARCHAR, a.IssueTime, 23), ' ', CONVERT(NVARCHAR(5), a.IssueTime, 108))
+            ELSE null END AS IssueTime,
+            CASE WHEN a.ReceiveTime IS NOT NULL THEN CONCAT(CONVERT(NVARCHAR, a.ReceiveTime, 23), ' ', CONVERT(NVARCHAR(5), a.ReceiveTime, 108))
+            ELSE null END AS ReceiveTime,
             d.FirstName AS MoldApproveBy, b.MoldApproveTime,
             e.FirstName AS EnApproveBy, b.EnApproveTime,
             f.CustomerName, c.Cavity
@@ -132,7 +136,7 @@ router.post('/receive/item/image/upload', async (req, res) => { // Modal Receive
                 let pool = await getPool('MoldPool', config);
                 let { ReceiveID } = req.body;
                 let ImagePath = (req.file) ? "/mold/receive/" + req.file.filename : ""
-                let updateImagePath = `UPDATE [Mold].[MoldRceive] SET ReceiveImagePath = N'${ImagePath}' WHERE ReceiveID = ${ReceiveID};`;
+                let updateImagePath = `UPDATE [Mold].[MoldReceive] SET ReceiveImagePath = N'${ImagePath}' WHERE ReceiveID = ${ReceiveID};`;
                 await pool.request().query(updateImagePath);
 
                 res.header('Access-Control-Allow-Origin', req.headers.origin);
@@ -447,10 +451,10 @@ router.post('/sign/en/approve', async (req, res) => { // update TakeoutStatus = 
         -- Check TakeoutType 1: New Mold
         IF(@TakeoutType = 1)
         BEGIN
-            UPDATE [Mold].[Specification] SET Status = 5 MoldSpecID = @MoldSpecID;
+            UPDATE [Mold].[Specification] SET Status = 5 WHERE MoldSpecID = @MoldSpecID;
 
             INSERT INTO [Mold].[MasterMold](MoldControlNo, BasicMold, DieNo, MoldName, CustomerID, Cavity, RawMaterial, ReceivedDate, MoldSpecID, Status, Active)
-            SELECT a.MoldControlNo, a.BasicMold, a.DieNo, a.PartName, c.CustomerID, a.Cavity, a.MaterialGrade, a.ReceiveTime, b.MoldSpecID, 1, 1
+            SELECT c.MoldControlNo, c.BasicMold, c.DieNo, c.PartName, c.CustomerID, c.Cavity, c.MaterialGrade, a.ReceiveTime, b.MoldSpecID, 1, 1
             FROM [Mold].[MoldReceive] a
             LEFT JOIN [Mold].[MoldTakeout] b ON b.TakeoutID = a.TakeoutID
             LEFT JOIN [Mold].[Specification] c ON c.MoldSpecID = b.MoldSpecID

@@ -54,6 +54,10 @@ router.delete('/delete', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldSpecID } = req.body;
+
+        let checkApprove = await pool.request().query(`SELECT ApproveBy FROM [Mold].[Specification] WHERE MoldSpecID = ${MoldSpecID};`);
+        if(checkApprove.recordset[0].ApproveBy) return res.status(400).send({ message: 'Approve แล้วไม่สามารถลบได้' });
+
         let deleteSpecific = `UPDATE [Mold].[Specification] SET Active = 0 WHERE MoldSpecID = ${MoldSpecID};`;
         await pool.request().query(deleteSpecific);
         res.json({ message: 'Success' });
@@ -113,7 +117,7 @@ router.post('/detail/edit', async (req, res) => { // Update Spec Status = 2(Wait
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldSpecID, MachineSpec, ProductSpec, MoldSpec, BasicMold, DieNo, MoldControlNo, MaterialGrade,
-        GuaranteeShot, MoldWeight, Cavity, MoldSize, MoldType } = req.body;
+        GuaranteeShot, MoldWeight, Cavity, MoldSize, MoldType, CoolingFlowRate } = req.body;
         let updateSpecDetail = `
         DECLARE @MoldPicture NVARCHAR(255),
         @hvtPicture NVARCHAR(255),
@@ -128,9 +132,9 @@ router.post('/detail/edit', async (req, res) => { // Update Spec Status = 2(Wait
         ORDER BY a.EditTime DESC;
 
         INSERT INTO [Mold].[SpecificationDetail](MoldSpecID, MachineSpec, ProductSpec, MoldSpec, EditTime,
-            MoldPicture, hvtPicture, MoldDrawing1, MoldDrawing2, MoldSpecFile)
+            MoldPicture, hvtPicture, MoldDrawing1, MoldDrawing2, MoldSpecFile, CoolingFlowRate)
         VALUES(${MoldSpecID}, N'${MachineSpec}', N'${ProductSpec}', N'${MoldSpec}', GETDATE(),
-            @MoldPicture, @hvtPicture, @MoldDrawing1, @MoldDrawing2, @MoldSpecFile);
+            @MoldPicture, @hvtPicture, @MoldDrawing1, @MoldDrawing2, @MoldSpecFile, ${CoolingFlowRate});
 
         UPDATE [Mold].[Specification] SET Status = 2, BasicMold = N'${BasicMold}', DieNo = N'${DieNo}', MoldControlNo = N'${MoldControlNo}',
         MaterialGrade = N'${MaterialGrade}', GuaranteeShot = ${GuaranteeShot}, MoldWeight = ${MoldWeight}, Cavity = ${Cavity}, MoldSize = N'${MoldSize}',
@@ -340,8 +344,8 @@ router.post('/sign/approve', async (req, res) => { // Approve => Receive, Update
 
         // approve => Receive
         // Insert Takeout { TakeoutType = 1(New Mold)}
-        let insertReceive = `INSERT INTO [Mold].[MoldTakeout](MoldSpecID, TakeoutType)
-        VALUES(${MoldSpecID}, 1);
+        let insertReceive = `INSERT INTO [Mold].[MoldTakeout](MoldSpecID, TakeoutType, TakeoutDate, IssueTime)
+        VALUES(${MoldSpecID}, 1, GETDATE(), GETDATE());
 
         DECLARE @TakeoutID INT;
         SET @TakeoutID = (SELECT SCOPE_IDENTITY());
@@ -401,3 +405,43 @@ module.exports = router;
 // 3: Wait Receive => หลังจาก Approve Specification
 // 4: Mold Receive(Wait EN) => หลังจาก Mold Approve Receive
 // 5: Complete => หลังจาก Engineer Approve Receive
+
+
+let linearSearch = (arr, targetVal) => {
+    for(let i = 0; i < arr.length; i++){
+        if(arr[i] === targetVal){
+            return i;
+        }
+    }
+    return -1;
+}
+
+let arr = [3, 7, 2, 9, 5];
+let targetVal = 9;
+result = linearSearch(arr, targetVal);
+// console.log(arr[result]);
+
+
+let binarySearch = (arr, targetVal) => {
+    let left = 0;
+    let right = arr.length - 1;
+
+    while(left <= right){
+        mid = Math.ceil((left + right) / 2);
+        console.log(mid);
+        if(arr[mid] === targetVal){
+            return mid
+        }
+        if(arr[mid] < targetVal){
+            left = mid + 1;
+        }else{
+            right = mid - 1;
+        }
+    }
+    return -1;
+}
+let myArray = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19]
+let myTarget = 15
+let resultBinary = binarySearch(myArray, myTarget);
+console.log(resultBinary);
+
