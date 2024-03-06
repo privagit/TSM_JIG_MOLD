@@ -455,7 +455,7 @@ router.post('/sign/en/approve', async (req, res) => { // update TakeoutStatus = 
             UPDATE [Mold].[Specification] SET Status = 5 WHERE MoldSpecID = @MoldSpecID;
 
             INSERT INTO [Mold].[MasterMold](MoldControlNo, BasicMold, DieNo, MoldName, CustomerID, Cavity, RawMaterial, ReceivedDate, MoldSpecID, Status, Active)
-            SELECT c.MoldControlNo, c.BasicMold, c.DieNo, c.PartName, c.CustomerID, a.Cavity, c.MaterialGrade, a.ReceiveTime, b.MoldSpecID, 1, 1
+            SELECT c.MoldControlNo, c.BasicMold, c.DieNo, c.PartName, c.CustomerID, c.Cavity, c.MaterialGrade, a.ReceiveTime, b.MoldSpecID, 1, 1
             FROM [Mold].[MoldReceive] a
             LEFT JOIN [Mold].[MoldTakeout] b ON b.TakeoutID = a.TakeoutID
             LEFT JOIN [Mold].[Specification] c ON c.MoldSpecID = b.MoldSpecID
