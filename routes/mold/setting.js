@@ -345,6 +345,122 @@ router.delete('/maintenace/process/delete', async (req, res) => {
     }
 })
 
+//* ========== Check Sheet ==========
+// Daily CheckPoint
+router.post('/daily/checkpoint', async (req, res) => {
+    try {
+        let pool = await getPool('MoldPool', config);
+        let { MoldID } = req.body;
+        let dailyCheckpoint = await pool.request().query(`
+        SELECT a.DailyCheckPointID, a.MoldID, a.DailyCheckPoint, a.DailyCheckPointNo
+        FROM [Mold].[MasterDailyCheckPoint] a
+        WHERE a.MoldID = ${MoldID} AND a.Active = 1
+        ORDER BY DailyCheckPointNo;
+        `);
+        res.json(dailyCheckpoint.recordset);
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/daily/checkpoint/add', async (req, res) => {
+    try {
+        let pool = await getPool('MoldPool', config);
+        let { MoldID, DailyCheckPoint, DailyCheckPointNo } = req.body;
+        let insertDailyCheckpoint = `INSERT INTO [Mold].[MasterDailyCheckPoint](MoldID, DailyCheckPoint, DailyCheckPointNo, Active)
+        VALUES(${MoldID}, N'${DailyCheckPoint}', ${DailyCheckPointNo}, 1);
+        `;
+        await pool.request().query(insertDailyCheckpoint);
+        res.json({ message: `Success` });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.put('/daily/checkpoint/edit', async (req, res) => {
+    try {
+        let pool = await getPool('MoldPool', config);
+        let { DailyCheckPointID, DailyCheckPoint, DailyCheckPointNo } = req.body;
+        let updateDailyCheckpoint = `UPDATE [Mold].[MasterDailyCheckPoint] SET DailyCheckPoint = N'${DailyCheckPoint}', DailyCheckPointNo = ${DailyCheckPointNo}
+        WHERE DailyCheckPointID = ${DailyCheckPointID};
+        `;
+        await pool.request().query(updateDailyCheckpoint);
+        res.json({ message: `Success` });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.delete('/daily/checkpoint/delete', async (req, res) => {
+    try {
+        let pool = await getPool('MoldPool', config);
+        let { DailyCheckPointID } = req.body;
+        let deleteDailyCheckpoint = `UPDATE [Mold].[MasterDailyCheckPoint] SET Active = 0 WHERE DailyCheckPointID = ${DailyCheckPointID};`;
+        await pool.request().query(deleteDailyCheckpoint);
+        res.json({ message: `Success` });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+// Daily CheckPoint Detail
+router.post('/daily/checkpoint/detail', async (req, res) => {
+    try {
+        let pool = await getPool('MoldPool', config);
+        let { DailyCheckPointID } = req.body;
+        let dailyCheckpointDetail = await pool.request().query(`
+        SELECT a.DailyCheckDetailID, a.DailyCheckDetail, a.DailyCheckDetailNo
+        FROM [Mold].[MasterDailyCheckDetail] a
+        WHERE a.DailyCheckPointID = ${DailyCheckPointID} AND Active = 1
+        ORDER BY DailyCheckDetailNo ;
+        `);
+        res.json(dailyCheckpointDetail.recordset);
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/daily/checkpoint/detail/add', async (req, res) => {
+    try {
+        let pool = await getPool('MoldPool', config);
+        let { DailyCheckPointID, DailyCheckDetail, DailyCheckDetailNo } = req.body;
+        let insertDailyCheckpointDetail = `INSERT INTO [Mold].[MasterDailyCheckDetail](DailyCheckPointID, DailyCheckDetail, DailyCheckDetailNo, Active)
+        VALUES(${DailyCheckPointID}, N'${DailyCheckDetail}', ${DailyCheckDetailNo}, 1);
+        `;
+        await pool.request().query(insertDailyCheckpointDetail);
+        res.json({ message: `Success` });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.put('/daily/checkpoint/detail/edit', async (req, res) => {
+    try {
+        let pool = await getPool('MoldPool', config);
+        let { DailyCheckDetailID, DailyCheckDetail, DailyCheckDetailNo } = req.body;
+        let updateDailyCheckpointDetail = `UPDATE [Mold].[MasterDailyCheckDetail] SET DailyCheckDetail = N'${DailyCheckDetail}', DailyCheckDetailNo = ${DailyCheckDetailNo}
+        WHERE DailyCheckDetailID = ${DailyCheckDetailID};
+        `;
+        await pool.request().query(updateDailyCheckpointDetail);
+        res.json({ message: `Success` });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.delete('/daily/checkpoint/detail/delete', async (req, res) => {
+    try {
+        let pool = await getPool('MoldPool', config);
+        let { DailyCheckDetailID } = req.body;
+        let deleteDailyCheckpointDetail = `UPDATE [Mold].[MasterDailyCheckDetail] SET Active = 0 WHERE DailyCheckDetailID = ${DailyCheckDetailID};`;
+        await pool.request().query(deleteDailyCheckpointDetail);
+        res.json({ message: `Success` });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+
 
 //* ========== Repair ==========
 // Repair Type
