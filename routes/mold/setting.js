@@ -13,6 +13,7 @@ router.post('/mold', async (req, res) => {
         a.CustomerAssetNo, a.Cavity, a.RawMaterial, a.ReceivedDate, a.LastProduction, a.Status, a.MoldSpecID
         FROM [Mold].[MasterMold] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
+        WHERE a.Active = 1
         ORDER BY a.ReceivedDate
         `);
         res.json(mold.recordset);
