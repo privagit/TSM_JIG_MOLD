@@ -44,21 +44,18 @@ const insertPmJig = async () => { //TODO:
 
         //* Loop Week
         for(let i = 0; i < weekDay.length; i++){
+            let PlanDate = weekDay[i];
             let jigFiltered = jigs.recordset.filter(v => v.Week == i+1);
-        
+            for(let jig of jigFiltered){
+                let Planning_No = `PM-${('0000'+RunningNo).substr(-4)}-${('00'+ month).substr(-2)}-${year.toString().substr(-2)}`;
+                totalQuery.push(`(${jig.JigID}, '${PlanDate}')`);
+
+                RunningNo++;
+            }
         }
 
         return
-        for(let jig of jigs.recordset){
-            //* Declare Parameter
-            let Planning_No = `EM-${('0000'+RunningNo).substr(-4)}-${('00'+ month).substr(-2)}-${year.toString().substr(-2)}`;
-            RunningNo++;
 
-            //* Map Quarter & Annual
-
-           
-
-        }
         let updateRunningNo = `UPDATE [MonthRunningNo] SET PreventRunningNo = ${RunningNo} WHERE MONTH(MonthDate) = ${month} AND YEAR(MonthDate) = ${year};`;
         await pool.request().query(totalQuery.join(''));
         await pool.request().query(updateRunningNo);

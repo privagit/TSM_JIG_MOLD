@@ -181,7 +181,19 @@ router.post('/pm/checksheet', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/pm/sign', async (req, res) => {
+router.post('/pm/checksheet/edit', async (req, res) => {
+    try {
+        let pool = await getPool('JigPool', config);
+        let { PmPlanID, PmResult, JigStatus } = req.body;
+        let updateChecksheet = `UPDATE [Jig].[PmPlan] SET PmResult = N'${PmResult}', JigStatus = ${JigStatus} WHERE PmPlanID = ${PmPlanID};`;
+        await pool.request().query(updateChecksheet);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/pm/sign', async (req, res) => { //TODO: if Inspect update stop time
     try {
         let pool = await getPool('JigPool', config);
         let { PmPlanID, ItemNo, EmployeeID } = req.body;
@@ -226,6 +238,7 @@ router.post('/pm/sign', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
+
 
 router.post('/technician', async (req, res) => { //TODO PM, Repair ?
     try {
