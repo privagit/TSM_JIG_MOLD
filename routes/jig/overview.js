@@ -184,8 +184,8 @@ router.post('/pm/checksheet', async (req, res) => {
 router.post('/pm/checksheet/edit', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
-        let { PmPlanID, PmResult, JigStatus } = req.body;
-        let updateChecksheet = `UPDATE [Jig].[PmPlan] SET PmResult = N'${PmResult}', JigStatus = ${JigStatus} WHERE PmPlanID = ${PmPlanID};`;
+        let { PmPlanID, PmResult, JigStatus, Remark } = req.body;
+        let updateChecksheet = `UPDATE [Jig].[PmPlan] SET PmResult = N'${PmResult}', JigStatus = ${JigStatus}, Remark = N'${Remark}' WHERE PmPlanID = ${PmPlanID};`;
         await pool.request().query(updateChecksheet);
         res.json({ message: 'Success' });
     } catch (err) {
