@@ -17,6 +17,8 @@ router.post('/list', async (req, res) => { //TODO: ReceiveID
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
         WHERE Active = 1 AND MONTH(a.IssuedDate) = ${month} AND YEAR(a.IssuedDate) = ${year};
         `);
+        let moldSpecificListV2 = await pool.request().query(`
+        `);
         if(Status){
             let moldSpecificListFiltered = moldSpecificList.recordset.filter(v => v.Status == Status);
             return res.json(moldSpecificListFiltered);
@@ -71,7 +73,6 @@ router.post('/detail/history', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldSpecID } = req.body;
-        
         let moldDetail = await pool.request().query(`SELECT DetailID, EditTime
         FROM [Mold].[SpecificationDetail]
         WHERE MoldSpecID = ${MoldSpecID}
@@ -403,3 +404,4 @@ module.exports = router;
 // 3: Wait Receive => หลังจาก Approve Specification
 // 4: Mold Receive(Wait EN) => หลังจาก Mold Approve Receive
 // 5: Complete => หลังจาก Engineer Approve Receive
+

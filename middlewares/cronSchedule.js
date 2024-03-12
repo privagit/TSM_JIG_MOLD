@@ -1,15 +1,26 @@
 const config_jig = require('../lib/dbconfig').dbconfig_jig;
 const config_mold = require('../lib/dbconfig').dbconfig_mold;
-const sql = require('mssql');
 const cron = require('node-cron');
+const { getPool } = require('../middlewares/pool-manager');
+const EMAIL = process.env.EMAIL;
 
-let insertPmJig = async () => { //TODO:
+const insertPmJig = async () => { //TODO:
     try {
         console.log('start Predict', new Date());
-        let pool = await sql.connect(config);
-        let date = new Date();
+        let pool = await getPool('JigPool', config_jig);
+        let date = new Date('2024-03-01');
+        // let date = new Date();
         let month = date.getMonth() + 1;
         let year = date.getFullYear();
+
+        let weekDay = [];
+        while(date.getMonth() + 1 === month){ // get Monday date of month
+            if(date.getDay() == 1){
+                weekDay.push(`${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`);
+            }
+            date.setDate(date.getDate() + 1);
+        }
+        if(weekDay.length == 4) weekDay.push(weekDay[3]);
 
         //* Get RunningNo
         let monthRunningNo = await pool.request().query(`SELECT a.MonthDate, a.RunningNo
@@ -22,76 +33,30 @@ let insertPmJig = async () => { //TODO:
             var RunningNo = 1;
             await pool.request().query(`INSERT INTO [MonthRunningNo](MonthDate) VALUES('${year}-${month}-1')`);
         }
-
+        
         //* Get Machine
-        let machines = await pool.request().query(`WITH EmMachine AS (
-            SELECT a.EmMachineID, a.MachineTypeID, c.Month, c.Quarter, c.Biannaul, c.Year, b.MonthDay, b.QuarterDay, b.QuarterMonth, b.BiannualDay, b.BiannualMonth, b.YearDay, b.YearMonth
-            FROM [Em].[MasterEmMachine] a
-            LEFT JOIN [Em].[MasterPredictDate] b ON a.EmMachineID = b.EmMachineID
-            LEFT JOIN [Em].[MasterPredictFreq] c ON a.MachineGroupID = c.MachineGroupID
-            WHERE a.Active = 1
-        ), AccMachine AS (
-            SELECT a.AccessoryID, a.MachineTypeID, c.Month, c.Quarter, c.Biannaul, c.Year, b.MonthDay, b.QuarterDay, b.QuarterMonth, b.BiannualDay, b.BiannualMonth, b.YearDay, b.YearMonth
-            FROM [Em].[MasterAccessory] a
-            LEFT JOIN [Em].[MasterPredictDate] b ON a.AccessoryID = b.AccessoryID
-            LEFT JOIN [Em].[MasterPredictFreq] c ON a.MachineGroupID = c.MachineGroupID
-            WHERE a.Active = 1
-        )
-        SELECT EmMachineID, NULL AS AccessoryID, MachineTypeID, Month, Quarter, Biannaul, Year, MonthDay, QuarterDay, QuarterMonth, BiannualDay, BiannualMonth, YearDay, YearMonth
-        FROM [EmMachine]
-        UNION ALL
-        SELECT NULL AS EmMachineID, AccessoryID, MachineTypeID, Month, Quarter, Biannaul, Year, MonthDay, QuarterDay, QuarterMonth, BiannualDay, BiannualMonth, YearDay, YearMonth
-        FROM [AccMachine]
+        let jigs = await pool.request().query(`SELECT a.JigID, b.Week
+        FROM [Jig].[MasterJig] a
+        LEFT JOIN [Jig].[MasterPm] b ON a.JigID = b.JigID
+        WHERE a.Active = 1;
         `);
         let totalQuery = [];
-        let QuaterMap = { 1: [1,5,9], 2: [2,6,10], 3: [3,7,11], 4: [4,8,12] };
-        let BiaanualMap = { 1: [1,7], 2: [2,8], 3: [3,9], 4: [4,10], 5: [5,11], 6: [6,12] };
-        for(let mc of machines.recordset){
+
+        //* Loop Week
+        for(let i = 0; i < weekDay.length; i++){
+            let jigFiltered = jigs.recordset.filter(v => v.Week == i+1);
+        
+        }
+
+        return
+        for(let jig of jigs.recordset){
             //* Declare Parameter
-            let MonthDay = mc.MonthDay;
-            let QuarterDay = mc.QuarterDay;
-            let QuarterMonth = mc.QuarterMonth; // {1: 1,5,9}, {2: 2,6,10}, {3: 3,7,11}, {4: 4,8,12}
-            let BiannualDay = mc.BiannualDay;
-            let BiannualMonth = mc.BiannualMonth; // {1: 1,7}, {2: 2,8}, {3: 3,9}, {4: 4,10}, {5: 5:11}, {6: 6:12}
-            let YearDay = mc.YearDay;
-            let YearMonth = mc.YearMonth;
+            let Planning_No = `EM-${('0000'+RunningNo).substr(-4)}-${('00'+ month).substr(-2)}-${year.toString().substr(-2)}`;
+            RunningNo++;
 
             //* Map Quarter & Annual
-            let QuarterFilter = !QuarterMonth ? [] : QuaterMap[QuarterMonth].filter(v => v == month);
-            let BiannualFilter = !BiannualMonth ? [] : BiaanualMap[BiannualMonth].filter(v => v == month);
 
-            if(MonthDay){ // Month
-                let Planning_No = `EM-${('0000'+RunningNo).substr(-4)}-${('00'+ month).substr(-2)}-${year.toString().substr(-2)}`;
-                let insertPredict = `INSERT INTO [Em].[PredictPlan](EmMachineID, AccessoryID, MachineTypeID, PlanDate, Planning_No)
-                VALUES(${mc.EmMachineID || null}, ${mc.AccessoryID || null}, ${mc.MachineTypeID}, '${year}-${month}-${MonthDay}', '${Planning_No}');
-                `;
-                totalQuery.push(insertPredict);
-                RunningNo++;
-            }
-            if(QuarterFilter.length){ // Quarter
-                let Planning_No = `EM-${('0000'+RunningNo).substr(-4)}-${('00'+ month).substr(-2)}-${year.toString().substr(-2)}`;
-                let insertPredict = `INSERT INTO [Em].[PredictPlan](EmMachineID, AccessoryID, MachineTypeID, PlanDate, Planning_No)
-                VALUES(${mc.EmMachineID || null}, ${mc.AccessoryID || null}, ${mc.MachineTypeID}, '${year}-${month}-${QuarterDay}', '${Planning_No}');
-                `;
-                totalQuery.push(insertPredict);
-                RunningNo++;
-            }
-            if(BiannualFilter.length){ // Biannual
-                let Planning_No = `EM-${('0000'+RunningNo).substr(-4)}-${('00'+ month).substr(-2)}-${year.toString().substr(-2)}`;
-                let insertPredict = `INSERT INTO [Em].[PredictPlan](EmMachineID, AccessoryID, MachineTypeID, PlanDate, Planning_No)
-                VALUES(${mc.EmMachineID || null}, ${mc.AccessoryID || null}, ${mc.MachineTypeID}, '${year}-${month}-${BiannualDay}', '${Planning_No}');
-                `;
-                totalQuery.push(insertPredict);
-                RunningNo++;
-            }
-            if(YearMonth == month){ // Year
-                let Planning_No = `EM-${('0000'+RunningNo).substr(-4)}-${('00'+ month).substr(-2)}-${year.toString().substr(-2)}`;
-                let insertPredict = `INSERT INTO [Em].[PredictPlan](EmMachineID, AccessoryID, MachineTypeID, PlanDate, Planning_No)
-                VALUES(${mc.EmMachineID || null}, ${mc.AccessoryID || null}, ${mc.MachineTypeID}, '${year}-${month}-${YearDay}', '${Planning_No}');
-                `;
-                totalQuery.push(insertPredict);
-                RunningNo++;
-            }
+           
 
         }
         let updateRunningNo = `UPDATE [MonthRunningNo] SET PreventRunningNo = ${RunningNo} WHERE MONTH(MonthDate) = ${month} AND YEAR(MonthDate) = ${year};`;
@@ -102,11 +67,12 @@ let insertPmJig = async () => { //TODO:
         console.log('insertPredictPlan', err);
     }
 }
+insertPmJig();
 
-let insertSpareMonthJig = async () => { // New Month: insert new [SpareMonth] and Remain is BF
+const insertSpareMonthJig = async () => { // New Month: insert new [SpareMonth] and Remain is BF
     try {
         console.log('start insertSpareMonth', new Date());
-        let pool = await sql.connect(config);
+        let pool = await getPool('JigPool', config_jig);
         let spare = await pool.request().query(`
         WITH SpareReceive AS(
             SELECT a.SpareID, a.BF, a.Received, a.Purchase
@@ -140,10 +106,10 @@ let insertSpareMonthJig = async () => { // New Month: insert new [SpareMonth] an
     }
 }
 
-let insertSpareMonthMold = async () => { // New Month: insert new [SpareMonth] and Remain is BF
+const insertSpareMonthMold = async () => { // New Month: insert new [SpareMonth] and Remain is BF
     try {
         console.log('start insertSpareMonth', new Date());
-        let pool = await sql.connect(config);
+        let pool = await getPool('MoldPool', config_mold);
         let spare = await pool.request().query(`
         WITH SpareReceive AS(
             SELECT a.SpareID, a.BF, a.Received, a.Purchase
@@ -174,6 +140,85 @@ let insertSpareMonthMold = async () => { // New Month: insert new [SpareMonth] a
         console.log('finish insertSpareMonth', new Date());
     } catch (err) {
         console.log('insertSpareMonth', err);
+    }
+}
+
+const alertShot = async () => {
+    try {
+        let pool = await getPool('MoldPool', config_mold);
+        let molds = await pool.request().query(`SELECT a.MoldID, c.BasicMold, c.DieNo, a.ActualPmShot, a.ActualWarrantyShot,
+        b.WarningShot, b.WarrantyWarningShot, b.AlertPercent, b.AlertWarrantyPercent
+        FROM [Mold].[MoldShot] a
+        LEFT JOIN [Mold].[MasterPm] b ON b.MoldID = a.MoldID
+        LEFT JOIN [Mold].[MasterMold] c ON c.MoldID = a.MoldID
+        `);
+
+        let moldList = [];
+        for(let mold of molds.recordset){
+            let pmShot = mold.ActualPmShot;
+            let warrantyShot = mold.ActualWarrantyShot;
+            let alertPm = mold.AlertPercent;
+            let alertWarranty = mold.AlertWarrantyPercent;
+            let pmWarningShot = mold.WarningShot;
+            let warrantyWarningShot = mold.WarrantyWarningShot;
+
+            let alertShot = pmWarningShot * alertPm;
+            let alertWarrantyShot = warrantyWarningShot * alertWarranty;
+
+            let arrMold = [];
+            if(pmShot >= alertShot || warrantyShot >= alertWarrantyShot){
+                arrMold.push(`<tr><td>${mold.BasicMold}</td><td>${mold.DieNo}</td><td>${mold.ActualPmShot}</td><td>${mold.WarningShot}</td><td>${mold.AlertPercent}</td></tr>`);
+            }
+        }
+    } catch (err) {
+        console.log('alertShot', err);
+    }
+}
+
+const sendMail = async (text) => {
+    try{
+        let transporter = nodemailer.createTransport({
+            host: EMAIL.host,
+            port: 587,
+            secure: false, // true for 465, false for other ports
+            auth: {
+              user: EMAIL.email, //  user
+              pass: EMAIL.ps, //  password
+            },
+            // debug: true, // show debug output
+            // logger: true // log information in console
+        });
+
+        let html = `
+        <h3>Updated Plan</h3>
+        <div class="table-responsive">
+        <table  style="width: 50%;">
+            <thead>
+                <tr>
+                    <th>BasicMold</th>
+                    <th>DieNo</th>
+                    <th>ActualShot</th>
+                    <th>WarningShort</th>
+                    <th>AlertPercent</th>
+                </tr>
+            </thead>
+            <tbody >
+                <tr class="text-center">
+                ${text}
+                </tr >
+                </tbody>
+        </table>
+        </div>
+        `;
+
+        let info = await transporter.sendMail({
+            from: `"Injection Planning" <${mail.sender.email}>`, // sender address
+            to: mail.receiversAuto, // list of receivers
+            subject: "Updated Plan", // Subject line
+            html: html, // html body
+        });
+    } catch(err){
+        console.log('sendMail', err);
     }
 }
 
@@ -187,7 +232,6 @@ let insertSpareMonthMold = async () => { // New Month: insert new [SpareMonth] a
 //         console.log('updateSpare', err);
 //     }
 // })
-
 
 
 

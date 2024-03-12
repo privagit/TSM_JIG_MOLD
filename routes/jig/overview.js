@@ -161,12 +161,19 @@ router.post('/pm/checksheet', async (req, res) => {
         let pool = await getPool('JigPool', config);
         let { PmPlanID } = req.body;
         var checksheet = await pool.request().query(`SELECT a.PmPlanID, a.PmStart, a.PmEnd, a.PmResult, a.JigStatus, a.PmPlanNo, a.Remark,
-        b.FirstName AS ConfirmBy, a.ConfirmTime, c.FirstName AS ApproveBy, a.ApproveTime
+        b.FirstName AS ConfirmBy, a.ConfirmTime, c.FirstName AS ApproveBy, a.ApproveTime,
+        d.FirstName AS InspectBy, a.InspectTime
         FROM [Jig].[PmPlan] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.ConfirmBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.ApproveBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = a.InspectBy
         WHERE a.PmPlanID = ${PmPlanID};
         `);
+        if(checksheet.recordset.length){
+            checksheet.recordset[0].ConfirmBy = atob(checksheet.recordset[0].ConfirmBy || '');
+            checksheet.recordset[0].ApproveBy = atob(checksheet.recordset[0].ApproveBy || '');
+            checksheet.recordset[0].InspectBy = atob(checksheet.recordset[0].InspectBy || '');
+        }
         res.json(checksheet.recordset);
     } catch (err) {
         console.log(req.url, err);
@@ -182,10 +189,10 @@ router.post('/pm/sign', async (req, res) => {
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         // Sign
-        let ItemMap = { 1: 'Pm', 2: 'Confirm', 3: 'Approve' };
+        let ItemMap = { 1: 'Inspect', 2: 'Confirm', 3: 'Approve' };
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let timeString = (ItemNo == 2 || ItemNo == 3) ? `, ${ItemMap[ItemNo]}Time = '${curStr}'` : '';
+        let timeString = `, ${ItemMap[ItemNo]}Time = '${curStr}'`;
         var sign = `UPDATE [Jig].[PmPlan] SET ${ItemMap[ItemNo]}By = ${EmployeeID} ${timeString} WHERE PmPlanID = ${PmPlanID};`;
         await pool.request().query(sign);
 
