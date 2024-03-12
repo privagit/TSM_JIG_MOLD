@@ -101,7 +101,6 @@ router.post('/jig/detail', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-
 router.post('/pm/history', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
@@ -120,6 +119,7 @@ router.post('/pm/start', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { PmPlanID } = req.body;
+        console.log(req.body)
         let startPredict = `UPDATE [Jig].[PmPlan] SET PmStart = GETDATE() WHERE PmPlanID = ${PmPlanID};`;
         await pool.request().query(startPredict);
         res.json({ message: `Success` });

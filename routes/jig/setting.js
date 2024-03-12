@@ -11,6 +11,7 @@ const { getPool } = require('../../middlewares/pool-manager');
 router.post('/jig', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
+        let { CustomerID } = req.body
         let jig = await pool.request().query(`
         SELECT a.JigID, a.JigTypeID, b.JigType, a.CustomerID, c.CustomerName, a.JigNo,
         a.PartCode, a.PartName, a.ToolingNo, a.Section, a.Active, a.UseIn, a.Status,
@@ -19,6 +20,11 @@ router.post('/jig', async (req, res) => {
         LEFT JOIN [Jig].[MasterJigType] b ON b.JigTypeID = a.JigTypeID AND b.Active = 1
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] c ON c.CustomerID = a.CustomerID
         `);
+
+        if (CustomerID) {
+            let jigFiltered = jig.recordset.filter(v => v.CustomerID == CustomerID);
+            return res.json(jigFiltered);
+        }
         res.json(jig.recordset);
     } catch (err) {
         console.log(req.url, err);
@@ -443,7 +449,7 @@ const storagePmImage = multer.diskStorage({
     filename: (req, file, cb) => {
         let { JigID } = req.query;
         let uploadDate = new Date();
-        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth()+1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
+        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth() + 1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
         const ext = file.mimetype.split('/')[1];
         cb(null, `${JigID}_${uploadDateStr}` + '.' + ext);
     }
@@ -523,12 +529,12 @@ router.put('/maintenace/inspect/edit', async (req, res) => { // select PM Topic 
         let pool = await getPool('JigPool', config);
         let { JigID, PmTopicID } = req.body;
         let getJigInspect = await pool.request().query(`SELECT PmID, JigID, PmTopic FROM [Jig].[MasterPm] WHERE JigID = ${JigID};`);
-        if(getJigInspect.recordset.length){
+        if (getJigInspect.recordset.length) {
             let PmID = getJigInspect.recordset[0].PmID;
             let PmTopic = JSON.parse(getJigInspect.recordset[0].PmTopic);
-            if(PmTopic.find(v=>v==PmTopicID)){
-                PmTopic = PmTopic.filter(v=>v!=PmTopicID);
-            } else{
+            if (PmTopic.find(v => v == PmTopicID)) {
+                PmTopic = PmTopic.filter(v => v != PmTopicID);
+            } else {
                 PmTopic.push(PmTopicID);
             }
             let updateJigInspect = `UPDATE [Jig].[MasterPm] SET PmTopic = N'[${PmTopic}]' WHERE PmID = ${PmID};`;
@@ -576,6 +582,7 @@ router.put('/maintenace/pm/topic/edit', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { PmTopicID, Topic, TopicType, StandardValue } = req.body;
+        console.log(req.body)
         let updatePmTopic = `UPDATE [Jig].[MasterPmTopic] SET Topic = N'${Topic}', TopicType = ${TopicType}, StandardValue = ${StandardValue}
         WHERE PmTopicID = ${PmTopicID};
         `;
@@ -924,7 +931,7 @@ const storageTechnicianImage = multer.diskStorage({
     filename: (req, file, cb) => {
         let { EmployeeID } = req.query;
         let uploadDate = new Date();
-        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth()+1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
+        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth() + 1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
         const ext = file.mimetype.split('/')[1];
         cb(null, `${EmployeeID}_${uploadDateStr}` + '.' + ext);
     }
@@ -936,7 +943,7 @@ const storageTechnicianSkill = multer.diskStorage({
     filename: (req, file, cb) => {
         let { EmployeeID, SkillID } = req.query;
         let uploadDate = new Date();
-        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth()+1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
+        let uploadDateStr = `${uploadDate.getFullYear()}-${uploadDate.getMonth() + 1}-${uploadDate.getDate()}_${uploadDate.getHours()}-${uploadDate.getMinutes()}-${uploadDate.getSeconds()}`;
         const ext = file.mimetype.split('/')[1];
         cb(null, `${EmployeeID}_SkillID_${uploadDateStr}` + '.' + ext);
     }
@@ -1020,12 +1027,12 @@ router.post('/skill/position/skill', async (req, res) => { //* initial Skill by 
         WHERE a.PositionID = ${PositionID};
         `);
 
-        if(positionSkill.recordset.length){
+        if (positionSkill.recordset.length) {
             let UsedSkillJson = JSON.parse(positionSkill.recordset[0].UsedSkill);
             let Skill = [];
-            for(let item of UsedSkillJson){
+            for (let item of UsedSkillJson) {
                 let getSkill = await pool.request().query(`SELECT a.SkillID, a.Skill FROM [Jig].[MasterSkill] a WHERE a.SkillID = ${item.SkillID} AND a.Active = 1;`);
-                if(getSkill.recordset.length){
+                if (getSkill.recordset.length) {
                     Skill.push(getSkill.recordset[0]);
                 }
             }
@@ -1075,7 +1082,7 @@ router.post('/skill/technician', async (req, res) => { // Where DepartmentID = 1
         LEFT JOIN [TSM_Jig].[Jig].[MasterTechnician] d ON a.UserID = d.UserID
         WHERE c.PositionName like '%tech%'
         `);
-        for(let user of skill.recordset){
+        for (let user of skill.recordset) {
             user.FirstName = atob(user.FirstName);
         }
         res.json(skill.recordset);
@@ -1092,12 +1099,12 @@ router.post('/skill/technician/skill', async (req, res) => { //* get Tech Skill
         FROM [TSM_Jig].[Jig].[MasterPositionSkill] a
         WHERE a.PositionID = ${PositionID};
         `);
-        if(PositionSkill.recordset.length){
+        if (PositionSkill.recordset.length) {
             let UsedSkillJson = JSON.parse(PositionSkill.recordset[0].UsedSkill);
             let Skill = [];
-            for(let item of UsedSkillJson){
+            for (let item of UsedSkillJson) {
                 let getSkill = await pool.request().query(`SELECT a.SkillID, a.Skill FROM [Jig].[MasterSkill] a WHERE a.SkillID = ${item.SkillID} AND a.Active = 1;`);
-                if(getSkill.recordset.length){
+                if (getSkill.recordset.length) {
                     Skill.push(getSkill.recordset[0]);
                 }
             }
@@ -1244,7 +1251,7 @@ router.post('/docctrl', async (req, res) => {
         FROM [Jig].[MasterDocumentCtrl];
         `);
         res.json(DocCtrl.recordset)
-    } catch(err){
+    } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
     }
@@ -1258,14 +1265,13 @@ router.post('/docctrl/item', async (req, res) => {
         WHERE DocumentName = '${DocumentName}';
         `);
         res.json(DocCtrl.recordset)
-    } catch(err){
+    } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
     }
 })
 router.put('/docctrl/edit', async (req, res) => {
-    try
-    {
+    try {
         let pool = await getPool('JigPool', config);
         let { DocumentName, DocumentCtrlNo } = req.body;
         console.log(req.body)
@@ -1283,9 +1289,9 @@ router.put('/docctrl/edit', async (req, res) => {
 	        END
         `;
         await pool.request().query(updateDocCrtl);
-        res.json({ message:`Success` });
+        res.json({ message: `Success` });
     }
-    catch(err){
+    catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
     }
