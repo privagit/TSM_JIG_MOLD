@@ -162,12 +162,19 @@ router.post('/pm/checksheet', async (req, res) => {
         let pool = await getPool('JigPool', config);
         let { PmPlanID } = req.body;
         var checksheet = await pool.request().query(`SELECT a.PmPlanID, a.PmStart, a.PmEnd, a.PmResult, a.JigStatus, a.PmPlanNo, a.Remark,
-        b.FirstName AS ConfirmBy, a.ConfirmTime, c.FirstName AS ApproveBy, a.ApproveTime
+        b.FirstName AS ConfirmBy, a.ConfirmTime, c.FirstName AS ApproveBy, a.ApproveTime,
+        d.FirstName AS InspectBy, a.InspectTime
         FROM [Jig].[PmPlan] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.ConfirmBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.ApproveBy
+        LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = a.InspectBy
         WHERE a.PmPlanID = ${PmPlanID};
         `);
+        if(checksheet.recordset.length){
+            checksheet.recordset[0].ConfirmBy = atob(checksheet.recordset[0].ConfirmBy || '');
+            checksheet.recordset[0].ApproveBy = atob(checksheet.recordset[0].ApproveBy || '');
+            checksheet.recordset[0].InspectBy = atob(checksheet.recordset[0].InspectBy || '');
+        }
         res.json(checksheet.recordset);
     } catch (err) {
         console.log(req.url, err);

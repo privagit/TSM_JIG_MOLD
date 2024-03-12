@@ -18,6 +18,8 @@ router.post('/list', async (req, res) => { //TODO: ReceiveID
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
         WHERE Active = 1 AND MONTH(a.IssuedDate) = ${month} AND YEAR(a.IssuedDate) = ${year};
         `);
+        let moldSpecificListV2 = await pool.request().query(`
+        `);
         if(Status){
             let moldSpecificListFiltered = moldSpecificList.recordset.filter(v => v.Status == Status);
             return res.json(moldSpecificListFiltered);
