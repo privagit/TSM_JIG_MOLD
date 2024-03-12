@@ -14,14 +14,14 @@ const insertPmJig = async () => { //TODO:
         let year = date.getFullYear();
 
         let weekDay = [];
-        while(date.getMonth() + 1 === month){
+        while(date.getMonth() + 1 === month){ // get Monday date of month
             if(date.getDay() == 1){
                 weekDay.push(`${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`);
             }
             date.setDate(date.getDate() + 1);
         }
-        console.log(weekDay);
-        return
+        if(weekDay.length == 4) weekDay.push(weekDay[3]);
+
         //* Get RunningNo
         let monthRunningNo = await pool.request().query(`SELECT a.MonthDate, a.RunningNo
         FROM [MonthRunningNo] a
@@ -33,7 +33,7 @@ const insertPmJig = async () => { //TODO:
             var RunningNo = 1;
             await pool.request().query(`INSERT INTO [MonthRunningNo](MonthDate) VALUES('${year}-${month}-1')`);
         }
-
+        
         //* Get Machine
         let jigs = await pool.request().query(`SELECT a.JigID, b.Week
         FROM [Jig].[MasterJig] a
@@ -41,6 +41,14 @@ const insertPmJig = async () => { //TODO:
         WHERE a.Active = 1;
         `);
         let totalQuery = [];
+
+        //* Loop Week
+        for(let i = 0; i < weekDay.length; i++){
+            let jigFiltered = jigs.recordset.filter(v => v.Week == i+1);
+        
+        }
+
+        return
         for(let jig of jigs.recordset){
             //* Declare Parameter
             let Planning_No = `EM-${('0000'+RunningNo).substr(-4)}-${('00'+ month).substr(-2)}-${year.toString().substr(-2)}`;
