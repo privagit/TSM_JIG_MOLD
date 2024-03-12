@@ -85,6 +85,8 @@ const swaggerOptions = {
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 
+const scheduleTask = require('./middlewares/cronSchedule');
+
 app.all('*', (req, res) => {
     res.status(404).send('<h1>resource not found</h1>')
 })

@@ -18,6 +18,8 @@ router.post('/list', async (req, res) => { //TODO: ReceiveID
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
         WHERE Active = 1 AND MONTH(a.IssuedDate) = ${month} AND YEAR(a.IssuedDate) = ${year};
         `);
+        let moldSpecificListV2 = await pool.request().query(`
+        `);
         if(Status){
             let moldSpecificListFiltered = moldSpecificList.recordset.filter(v => v.Status == Status);
             return res.json(moldSpecificListFiltered);
@@ -405,43 +407,4 @@ module.exports = router;
 // 3: Wait Receive => หลังจาก Approve Specification
 // 4: Mold Receive(Wait EN) => หลังจาก Mold Approve Receive
 // 5: Complete => หลังจาก Engineer Approve Receive
-
-
-let linearSearch = (arr, targetVal) => {
-    for(let i = 0; i < arr.length; i++){
-        if(arr[i] === targetVal){
-            return i;
-        }
-    }
-    return -1;
-}
-
-let arr = [3, 7, 2, 9, 5];
-let targetVal = 9;
-result = linearSearch(arr, targetVal);
-// console.log(arr[result]);
-
-
-let binarySearch = (arr, targetVal) => {
-    let left = 0;
-    let right = arr.length - 1;
-
-    while(left <= right){
-        mid = Math.ceil((left + right) / 2);
-        console.log(mid);
-        if(arr[mid] === targetVal){
-            return mid
-        }
-        if(arr[mid] < targetVal){
-            left = mid + 1;
-        }else{
-            right = mid - 1;
-        }
-    }
-    return -1;
-}
-let myArray = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19]
-let myTarget = 15
-let resultBinary = binarySearch(myArray, myTarget);
-console.log(resultBinary);
 
