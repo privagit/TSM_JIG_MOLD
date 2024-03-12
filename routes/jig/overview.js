@@ -189,10 +189,10 @@ router.post('/pm/sign', async (req, res) => {
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         // Sign
-        let ItemMap = { 1: 'Pm', 2: 'Confirm', 3: 'Approve' };
+        let ItemMap = { 1: 'Inspect', 2: 'Confirm', 3: 'Approve' };
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let timeString = (ItemNo == 2 || ItemNo == 3) ? `, ${ItemMap[ItemNo]}Time = '${curStr}'` : '';
+        let timeString = `, ${ItemMap[ItemNo]}Time = '${curStr}'`;
         var sign = `UPDATE [Jig].[PmPlan] SET ${ItemMap[ItemNo]}By = ${EmployeeID} ${timeString} WHERE PmPlanID = ${PmPlanID};`;
         await pool.request().query(sign);
 
