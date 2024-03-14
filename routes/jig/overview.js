@@ -183,8 +183,8 @@ router.post('/pm/checksheet', async (req, res) => {
 router.post('/pm/checksheet/edit', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
-        let { PmPlanID, PmResult, JigStatus } = req.body;
-        let updateChecksheet = `UPDATE [Jig].[PmPlan] SET PmResult = N'${PmResult}', JigStatus = ${JigStatus} WHERE PmPlanID = ${PmPlanID};`;
+        let { PmPlanID, PmResult, JigStatus, Remark } = req.body;
+        let updateChecksheet = `UPDATE [Jig].[PmPlan] SET PmResult = N'${PmResult}', JigStatus = ${JigStatus}, Remark = N'${Remark}' WHERE PmPlanID = ${PmPlanID};`;
         await pool.request().query(updateChecksheet);
         res.json({ message: 'Success' });
     } catch (err) {
@@ -286,7 +286,7 @@ router.post("/jig/specification", async (req, res) => { //TODO: ReceiveDate, Ass
     try {
         let pool = await getPool('JigPool', config);
         let { JigID } = req.body;
-        let specification = await pool.request().query(`SELECT a.JigNo, a.PartCode, a.PartName, b.CustomerName, c.JigType, a.Asset
+        let specification = await pool.request().query(`SELECT a.JigNo, a.PartCode, a.PartName,  b.CustomerName, c.JigType, a.Asset
         FROM [Jig].[MasterJig] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
         LEFT JOIN [Jig].[MasterJigType] c ON c.JigTypeID = a.JigTypeID
@@ -380,9 +380,11 @@ router.post("/jig/plan", async (req, res) => {
 			WHEN a.PmEnd IS NOT NULL AND DATEDIFF(DAY, a.PmEnd, GETDATE()) < 7 THEN 3
 			WHEN a.PmEnd IS NULL AND a.PlanDate > GETDATE() THEN 2
 			WHEN a.PmEnd IS NULL AND a.PlanDate < GETDATE() THEN 4
-		END AS PmStatus
+		END AS PmStatus,
+        CASE WHEN a.PmStart IS NULL THEN 0 ELSE 1 END AS IsStart, c.Location
         FROM [cte] a
         LEFT JOIN [Jig].[MasterJig] b ON b.JigID = a.JigID
+        LEFT JOIN [Jig].[JigStatus] c ON c.JigID = a.JigID
         WHERE RowNum = 1;
         `);
         // PmStatus { 1: เทา, 2: แดง, 3: เขียว, 4: เหลือง }

@@ -556,6 +556,10 @@ router.put('/modify/edit', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { ModifyID, ModifyNo, ModifyDate, Responsible, Problem, Solution, Detail, Benefit, Cost, CustomerBudget } = req.body;
+        console.log( `UPDATE [Jig].[JigModify] SET ModifyNo = ${ModifyNo}, ModifyDate = '${ModifyDate}', Responsible = N'${Responsible}',
+        Problem = N'${Problem}', Solution = N'${Solution}', Detail = N'${Detail}', Benefit = N'${Benefit}', Cost = N'${Cost}', CustomerBudget = ${CustomerBudget}
+        WHERE ModifyID = ${ModifyID};
+        `)
         let updateModify = `UPDATE [Jig].[JigModify] SET ModifyNo = ${ModifyNo}, ModifyDate = '${ModifyDate}', Responsible = N'${Responsible}',
         Problem = N'${Problem}', Solution = N'${Solution}', Detail = N'${Detail}', Benefit = N'${Benefit}', Cost = N'${Cost}', CustomerBudget = ${CustomerBudget}
         WHERE ModifyID = ${ModifyID};
