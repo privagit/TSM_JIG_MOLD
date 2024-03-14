@@ -162,11 +162,12 @@ router.post('/pm/checksheet', async (req, res) => {
         let { PmPlanID } = req.body;
         var checksheet = await pool.request().query(`SELECT a.PmPlanID, a.PmStart, a.PmEnd, a.PmResult, a.JigStatus, a.PmPlanNo, a.Remark,
         b.FirstName AS ConfirmBy, a.ConfirmTime, c.FirstName AS ApproveBy, a.ApproveTime,
-        d.FirstName AS InspectBy, a.InspectTime
+        d.FirstName AS InspectBy, a.InspectTime, e.RepairCheckID
         FROM [Jig].[PmPlan] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.ConfirmBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.ApproveBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = a.InspectBy
+        LEFT JOIN [Jig].[RepairCheck] e ON e.PmPlanID = a.PmPlanID
         WHERE a.PmPlanID = ${PmPlanID};
         `);
         if(checksheet.recordset.length){
@@ -204,8 +205,9 @@ router.post('/pm/sign', async (req, res) => { //TODO: if Inspect update stop tim
         let ItemMap = { 1: 'Inspect', 2: 'Confirm', 3: 'Approve' };
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let timeString = `, ${ItemMap[ItemNo]}Time = '${curStr}'`;
-        var sign = `UPDATE [Jig].[PmPlan] SET ${ItemMap[ItemNo]}By = ${EmployeeID} ${timeString} WHERE PmPlanID = ${PmPlanID};`;
+        let timeStr = `, ${ItemMap[ItemNo]}Time = '${curStr}'`;
+        let pmEndStr = ItemNo == 1 ? `, PmEnd = '${curStr}'` : '';
+        var sign = `UPDATE [Jig].[PmPlan] SET ${ItemMap[ItemNo]}By = ${EmployeeID} ${timeStr} ${pmEndStr} WHERE PmPlanID = ${PmPlanID};`;
         await pool.request().query(sign);
 
         // io
@@ -396,3 +398,4 @@ router.post("/jig/plan", async (req, res) => {
 });
 
 module.exports = router;
+
