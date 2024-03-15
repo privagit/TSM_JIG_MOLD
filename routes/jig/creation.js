@@ -793,9 +793,9 @@ router.post('/trial/add', async (req, res) => { // Approve PartList ครั้
 router.put('/trial/edit', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
-        let { TrialID, PlanStart, PlanFinish, ActualStart, ActualFinish, Qty, Problem, Reason, FixDetail, Remark } = req.body;
-        let updateTrial = `UPDATE [Jig].[JigTrial] SET PlanStart = '${PlanStart}', PlanFinish = '${PlanFinish}', ActualStart = '${ActualStart}',
-        ActualFinish = '${ActualFinish}', Qty = ${Qty}, Problem = N'${Problem}', Reason = N'${Reason}', FixDetail = N'${FixDetail}', Remark = N'${Remark}'
+        let { TrialID, PlanStart, PlanFinish, Qty, Problem, Reason, FixDetail, Remark } = req.body;
+        let updateTrial = `UPDATE [Jig].[JigTrial] SET PlanStart = '${PlanStart}', PlanFinish = '${PlanFinish}', 
+        Qty = ${Qty}, Problem = N'${Problem}', Reason = N'${Reason}', FixDetail = N'${FixDetail}', Remark = N'${Remark}'
         WHERE TrialID = ${TrialID};
         `;
         await pool.request().query(updateTrial);
