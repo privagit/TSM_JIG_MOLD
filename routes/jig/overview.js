@@ -109,7 +109,7 @@ router.post('/pm/history', async (req, res) => {
         let { JigID } = req.body;
         var historys = await pool.request().query(`SELECT a.PlanDate, a.PmStart, a.PmPlanID, a.PmPlanNo
         FROM [Jig].[PmPlan] a
-        WHERE a.JigID = ${JigID};
+        WHERE a.JigID = ${JigID} AND a.PmEnd IS NOT NULL;
         `);
         res.json(historys.recordset);
     } catch (err) {
@@ -194,7 +194,7 @@ router.post('/pm/checksheet/edit', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/pm/sign', async (req, res) => { //TODO: if Inspect update stop time
+router.post('/pm/sign', async (req, res) => { // if Inspect update stop time
     try {
         let pool = await getPool('JigPool', config);
         let { PmPlanID, ItemNo, EmployeeID } = req.body;

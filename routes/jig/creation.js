@@ -1159,7 +1159,7 @@ router.put('/evaluation/sign/customer', async (req, res) => { // finish Creation
                 `);
                 JlNo++;
             }
-            await pool.request().query(updateJigCreate + (insertStatement + insertArr.join(', ')));
+            await pool.request().query(updateJigCreate + (insertStatement + insertArr.join(' ')));
         }
 
         res.json({ message: 'Success', SignTime: curStr });
