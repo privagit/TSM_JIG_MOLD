@@ -107,7 +107,7 @@ router.post('/pm/history', async (req, res) => {
         let { JigID } = req.body;
         var historys = await pool.request().query(`SELECT a.PlanDate, a.PmStart, a.PmPlanID, a.PmPlanNo
         FROM [Jig].[PmPlan] a
-        WHERE a.JigID = ${JigID};
+        WHERE a.JigID = ${JigID} AND a.PmEnd IS NOT NULL;
         `);
         res.json(historys.recordset);
     } catch (err) {
@@ -193,7 +193,7 @@ router.post('/pm/checksheet/edit', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/pm/sign', async (req, res) => { //TODO: if Inspect update stop time
+router.post('/pm/sign', async (req, res) => { // if Inspect update stop time
     try {
         let pool = await getPool('JigPool', config);
         let { PmPlanID, ItemNo, EmployeeID } = req.body;
@@ -284,11 +284,11 @@ router.post('/technician', async (req, res) => { //TODO PM, Repair ?
 
 //* ========== JigNo ==========
 // Jig Data
-router.post("/jig/specification", async (req, res) => { //TODO: ReceiveDate, Asset, UseIn
+router.post("/jig/specification", async (req, res) => { //TODO: ReceiveDate
     try {
         let pool = await getPool('JigPool', config);
         let { JigID } = req.body;
-        let specification = await pool.request().query(`SELECT a.JigNo, a.PartCode, a.PartName,  b.CustomerName, c.JigType, a.Asset
+        let specification = await pool.request().query(`SELECT a.JigNo, a.PartCode, a.PartName, b.CustomerName, c.JigType, a.Asset, a.UseIn
         FROM [Jig].[MasterJig] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
         LEFT JOIN [Jig].[MasterJigType] c ON c.JigTypeID = a.JigTypeID
