@@ -1073,7 +1073,7 @@ router.put('/evaluation/sign/approve', async (req, res) => { // finish Creation
                 `);
                 JlNo++;
             }
-            await pool.request().query(updateJigCreate + (insertStatement + insertArr.join(', ')));
+            await pool.request().query(updateJigCreate + (insertStatement + insertArr.join(' ')));
         }
 
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
@@ -1086,11 +1086,18 @@ router.put('/evaluation/sign/customer', async (req, res) => { // finish Creation
     try {
         let pool = await getPool('JigPool', config);
         let { EvalID, CustomerNo, CustomerName } = req.body;
+        console.log(EvalID, CustomerNo, CustomerName)
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00' + (cur.getMonth() + 1)).substr(-2)}-${('00' + cur.getDate()).substr(-2)} ${('00' + cur.getHours()).substr(-2)}:${('00' + cur.getMinutes()).substr(-2)}`;
         let signEval = `UPDATE [Jig].[JigEvaluation] SET CustomerEval${CustomerNo} = N'${CustomerName}', CustomerEvalTime${CustomerNo} = GETDATE() WHERE EvalID = ${EvalID};`;
         await pool.request().query(signEval);
-
+        console.log(`SELECT a.JigApproveBy, a.EnApproveBy, a.QaApproveBy, a.PdApproveBy, a.PeApproveBy,
+        a.CustomerEval1, a.CustomerEval2, b.CustomerBudget, a.TsResult, a.CustomerResult,
+        b.JigCreationID, b.Quantity, b.JlNo, b.JigTypeID, b.CustomerID, b.PartCode, b.PartName, b.RequestSection, b.UseIn
+        FROM [Jig].[JigEvaluation] a
+        LEFT JOIN [Jig].[JigCreation] b ON b.JigCreationID = a.JigCreationID
+        WHERE a.EvalID = ${EvalID};
+        `)
         // Check Finish
         let eval = await pool.request().query(`SELECT a.JigApproveBy, a.EnApproveBy, a.QaApproveBy, a.PdApproveBy, a.PeApproveBy,
         a.CustomerEval1, a.CustomerEval2, b.CustomerBudget, a.TsResult, a.CustomerResult,
@@ -1144,7 +1151,7 @@ router.put('/evaluation/sign/customer', async (req, res) => { // finish Creation
                 `);
                 JlNo++;
             }
-            await pool.request().query(updateJigCreate + (insertStatement + insertArr.join(', ')));
+            await pool.request().query(updateJigCreate + (insertStatement + insertArr.join(' ')));
         }
 
         res.json({ message: 'Success', SignTime: curStr });
