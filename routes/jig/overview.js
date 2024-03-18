@@ -109,7 +109,8 @@ router.post('/pm/history', async (req, res) => {
         let { JigID } = req.body;
         var historys = await pool.request().query(`SELECT a.PlanDate, a.PmStart, a.PmPlanID, a.PmPlanNo
         FROM [Jig].[PmPlan] a
-        WHERE a.JigID = ${JigID} AND a.PmEnd IS NOT NULL;
+        WHERE a.JigID = ${JigID} AND a.PmEnd IS NOT NULL
+        ORDER BY a.PmStart DESC;
         `);
         res.json(historys.recordset);
     } catch (err) {

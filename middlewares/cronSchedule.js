@@ -68,7 +68,7 @@ const insertPmJig = async () => { //TODO:
         console.log('insertPredictPlan', err);
     }
 }
-insertPmJig();
+// insertPmJig();
 
 const insertSpareMonthJig = async () => { // New Month: insert new [SpareMonth] and Remain is BF
     try {
@@ -233,7 +233,6 @@ const sendMail = async (text) => {
 //         console.log('updateSpare', err);
 //     }
 // })
-
 
 
 

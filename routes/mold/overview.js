@@ -14,50 +14,95 @@ router.post('/plan', async (req, res) => {
 
         // PlanFilter 1: All Plan, 2: Today Plan
         if(PlanFilter == 1){ // All Plan
-            var plans = await pool.request().query(`WITH cte AS (
-                SELECT ROW_NUMBER() OVER (PARTITION BY a.MoldID ORDER BY a.PlanDate DESC) AS RowNum,
-                a.PmPlanID, a.MoldID, a.PlanDate, a.PmStart, a.PmEnd, a.PmPlanNo
+            var plans = await pool.request().query(`WITH PlanType1 AS (
+                SELECT ROW_NUMBER() OVER (PARTITION BY a.MoldID ORDER BY a.PlanStartTime DESC) AS RowNum,
+                a.PmPlanID, a.MoldID, a.PlanStartTime, a.PmStart, a.PmEnd, a.PmPlanNo
                 FROM [Mold].[PmPlan] a
+                WHERE a.PmType = 1
+            ), PlanType2 AS (
+                SELECT ROW_NUMBER() OVER (PARTITION BY a.MoldID ORDER BY a.PlanStartTime DESC) AS RowNum,
+                a.PmPlanID, a.MoldID, a.PlanStartTime, a.PmStart, a.PmEnd, a.PmPlanNo
+                FROM [Mold].[PmPlan] a
+                WHERE a.PmType = 2
+            ), Repair AS (
+                SELECT ROW_NUMBER() OVER (PARTITION BY a.MoldID ORDER BY b.PlanStartTime DESC) AS RowNum,
+                b.RepairPlanID, a.MoldID, b.PlanStartTime, a.StartTime, a.EndTime, a.ReportNo
+                FROM [Mold].[RepairCheck] a
+                LEFT JOIN [Mold].[RepairPlan] b ON b.RepairCheckID = a.RepairCheckID
             )
-            SELECT a.MoldID, a.MoldNo, b.MoldType, a.Section, c.CustomerName, d.PmPlanID, d.PmStart, d.PmEnd,
+            SELECT a.MoldID, a.BasicMold, a.DieNo,
+            b.PmPlanID AS PmPlanID1, b.PlanStartTime AS PlanStartTime1, b.PmStart AS PmStart1, b.PmEnd AS PmEnd1, b.PmPlanNo AS PmPlanNo1,
             CASE
-                WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) >= 7 THEN 1
-                WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) < 7 THEN 3
-                WHEN d.PmEnd IS NULL AND d.PlanDate > GETDATE() THEN 2
-                WHEN d.PmEnd IS NULL AND d.PlanDate < GETDATE() THEN 4
-            END AS PmStatus,
-            CASE WHEN d.PmStart IS NULL THEN 0 ELSE 1 END AS IsStart, e.Location, e.MoldStatus
+                WHEN b.PmEnd IS NOT NULL AND DATEDIFF(DAY, b.PmEnd, GETDATE()) >= 7 THEN 1
+                WHEN b.PmEnd IS NOT NULL AND DATEDIFF(DAY, b.PmEnd, GETDATE()) < 7 THEN 3
+                WHEN b.PmEnd IS NULL AND b.PlanStartTime > GETDATE() THEN 2
+                WHEN b.PmEnd IS NULL AND b.PlanStartTime < GETDATE() THEN 4
+            END AS Status1,
+            c.PmPlanID AS PmPlanID2, c.PlanStartTime AS PlanStartTime2, c.PmStart AS PmStart2, c.PmEnd AS PmEnd2, c.PmPlanNo AS PmPlanNo2,
+            CASE
+                WHEN c.PmEnd IS NOT NULL AND DATEDIFF(DAY, c.PmEnd, GETDATE()) >= 7 THEN 1
+                WHEN c.PmEnd IS NOT NULL AND DATEDIFF(DAY, c.PmEnd, GETDATE()) < 7 THEN 3
+                WHEN c.PmEnd IS NULL AND c.PlanStartTime > GETDATE() THEN 2
+                WHEN c.PmEnd IS NULL AND c.PlanStartTime < GETDATE() THEN 4
+            END AS Status2,
+            d.RepairPlanID, d.PlanStartTime AS RepairPlanStartTime, d.StartTime AS RepairStartTime, d.EndTime AS RepairEndTime, d.ReportNo AS RepairReportNo,
+            CASE
+                WHEN d.EndTime IS NOT NULL AND DATEDIFF(DAY, d.EndTime, GETDATE()) >= 7 THEN 1
+                WHEN d.EndTime IS NOT NULL AND DATEDIFF(DAY, d.EndTime, GETDATE()) < 7 THEN 3
+                WHEN d.EndTime IS NULL AND d.PlanStartTime > GETDATE() THEN 2
+                WHEN d.EndTime IS NULL AND d.PlanStartTime < GETDATE() THEN 4
+            END AS RepairStatus
             FROM [Mold].[MasterMold] a
-            LEFT JOIN [Mold].[MasterMoldType] b ON b.MoldTypeID = a.MoldTypeID
-            LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] c ON c.CustomerID = a.CustomerID
-            LEFT JOIN [cte] d ON d.MoldID = a.MoldID AND d.RowNum = 1
-            LEFT JOIN [Mold].[MoldStatus] e ON e.MoldID = d.MoldID
-            ${filterString};
+            LEFT JOIN [PlanType1] b ON b.MoldID = a.MoldID AND b.RowNum = 1 
+            LEFT JOIN [PlanType2] c ON c.MoldID = a.MoldID AND c.RowNum = 1
+            LEFT JOIN [Repair] d ON d.MoldID = a.MoldID AND d. RowNum = 1
             `);
-        } else{ // Today Plan
-            var plans = await pool.request().query(`WITH cte AS (
-                SELECT ROW_NUMBER() OVER (PARTITION BY a.MoldID ORDER BY a.PlanDate DESC) AS RowNum,
-                a.PmPlanID, a.MoldID, a.PlanDate, a.PmStart, a.PmEnd, a.PmPlanNo
+        } else{ //TODO: Today Plan
+            var plans = await pool.request().query(`WITH PlanType1 AS (
+                SELECT ROW_NUMBER() OVER (PARTITION BY a.MoldID ORDER BY a.PlanStartTime DESC) AS RowNum,
+                a.PmPlanID, a.MoldID, a.PlanStartTime, a.PmStart, a.PmEnd, a.PmPlanNo
                 FROM [Mold].[PmPlan] a
-                WHERE a.PlanDate = GETDATE()
+                WHERE a.PmType = 1
+            ), PlanType2 AS (
+                SELECT ROW_NUMBER() OVER (PARTITION BY a.MoldID ORDER BY a.PlanStartTime DESC) AS RowNum,
+                a.PmPlanID, a.MoldID, a.PlanStartTime, a.PmStart, a.PmEnd, a.PmPlanNo
+                FROM [Mold].[PmPlan] a
+                WHERE a.PmType = 2
+            ), Repair AS (
+                SELECT ROW_NUMBER() OVER (PARTITION BY a.MoldID ORDER BY b.PlanStartTime DESC) AS RowNum,
+                b.RepairPlanID, a.MoldID, b.PlanStartTime, a.StartTime, a.EndTime, a.ReportNo
+                FROM [Mold].[RepairCheck] a
+                LEFT JOIN [Mold].[RepairPlan] b ON b.RepairCheckID = a.RepairCheckID
             )
-            SELECT a.MoldID, a.MoldNo, b.MoldType, a.Section, c.CustomerName, d.PmPlanID, d.PmStart, d.PmEnd,
+            SELECT a.MoldID, a.BasicMold, a.DieNo,
+            b.PmPlanID AS PmPlanID1, b.PlanStartTime AS PlanStartTime1, b.PmStart AS PmStart1, b.PmEnd AS PmEnd1, b.PmPlanNo AS PmPlanNo1,
             CASE
-                WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) >= 7 THEN 1
-                WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) < 7 THEN 3
-                WHEN d.PmEnd IS NULL AND d.PlanDate > GETDATE() THEN 2
-                WHEN d.PmEnd IS NULL AND d.PlanDate < GETDATE() THEN 4
-            END AS PmStatus, CONVERT(NVARCHAR, d.PmEnd, 23) AS PmResult,
-            CASE WHEN d.PmStart IS NULL THEN 0 ELSE 1 END AS IsStart, e.Location, e.MoldStatus
+                WHEN b.PmEnd IS NOT NULL AND DATEDIFF(DAY, b.PmEnd, GETDATE()) >= 7 THEN 1
+                WHEN b.PmEnd IS NOT NULL AND DATEDIFF(DAY, b.PmEnd, GETDATE()) < 7 THEN 3
+                WHEN b.PmEnd IS NULL AND b.PlanStartTime > GETDATE() THEN 2
+                WHEN b.PmEnd IS NULL AND b.PlanStartTime < GETDATE() THEN 4
+            END AS Status1,
+            c.PmPlanID AS PmPlanID2, c.PlanStartTime AS PlanStartTime2, c.PmStart AS PmStart2, c.PmEnd AS PmEnd2, c.PmPlanNo AS PmPlanNo2,
+            CASE
+                WHEN c.PmEnd IS NOT NULL AND DATEDIFF(DAY, c.PmEnd, GETDATE()) >= 7 THEN 1
+                WHEN c.PmEnd IS NOT NULL AND DATEDIFF(DAY, c.PmEnd, GETDATE()) < 7 THEN 3
+                WHEN c.PmEnd IS NULL AND c.PlanStartTime > GETDATE() THEN 2
+                WHEN c.PmEnd IS NULL AND c.PlanStartTime < GETDATE() THEN 4
+            END AS Status2,
+            d.RepairPlanID, d.PlanStartTime AS RepairPlanStartTime, d.StartTime AS RepairStartTime, d.EndTime AS RepairEndTime, d.ReportNo AS RepairReportNo,
+            CASE
+                WHEN d.EndTime IS NOT NULL AND DATEDIFF(DAY, d.EndTime, GETDATE()) >= 7 THEN 1
+                WHEN d.EndTime IS NOT NULL AND DATEDIFF(DAY, d.EndTime, GETDATE()) < 7 THEN 3
+                WHEN d.EndTime IS NULL AND d.PlanStartTime > GETDATE() THEN 2
+                WHEN d.EndTime IS NULL AND d.PlanStartTime < GETDATE() THEN 4
+            END AS RepairStatus
             FROM [Mold].[MasterMold] a
-            LEFT JOIN [Mold].[MasterMoldType] b ON b.MoldTypeID = a.MoldTypeID
-            LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] c ON c.CustomerID = a.CustomerID
-            LEFT JOIN [cte] d ON d.MoldID = a.MoldID AND d.RowNum = 1
-            LEFT JOIN [Mold].[MoldStatus] e ON e.MoldID = d.MoldID
-            ${filterString};
+            LEFT JOIN [PlanType1] b ON b.MoldID = a.MoldID AND b.RowNum = 1 
+            LEFT JOIN [PlanType2] c ON c.MoldID = a.MoldID AND c.RowNum = 1
+            LEFT JOIN [Repair] d ON d.MoldID = a.MoldID AND d. RowNum = 1
             `);
         }
-        await Promise.all(plans.recordset.map(async v => {
+        await Promise.all(plans.recordset.map(async v => { //TODO:
             // PmStatus { 1: เทา, 2: แดง, 3: เขียว, 4: เหลือง }
             v.PmPlan = (v.PmStatus == 2 || v.PmStatus == 3 || v.PmStatus == 4) ? v.PlanDate : null;
             v.PmPlan = v.PmStatus == 3 ? v.PmResult : null;
@@ -69,14 +114,13 @@ router.post('/plan', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/mold/detail', async (req, res) => {
+router.post('/mold/detail', async (req, res) => { //TODO: PartCode
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldID } = req.body;
-        var detail = await pool.request().query(`SELECT a.MoldNo, a.PartCode, a.PartName, c.MoldType, b.CustomerName
+        var detail = await pool.request().query(`SELECT b.CustomerName, a.BasicMold, a.DieNo, a.MoldName, a.Cavity
         FROM [Mold].[MasterMold] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
-        LEFT JOIN [Mold].[MasterMoldType] c ON c.MoldTypeID = a.MoldTypeID
         WHERE a.MoldID = ${MoldID};
         `);
         res.json(detail.recordset);
@@ -92,9 +136,21 @@ router.post('/pm/history', async (req, res) => {
         let { MoldID } = req.body;
         var historys = await pool.request().query(`SELECT a.PlanDate, a.PmStart, a.PmPlanID, a.PmPlanNo
         FROM [Mold].[PmPlan] a
-        WHERE a.MoldID = ${MoldID};
+        WHERE a.MoldID = ${MoldID} AND a.PmEnd IS NOT NULL
+        ORDER BY a.PmStart DESC;
         `);
         res.json(historys.recordset);
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/pm/data', async (req, res) => { //TODO: Type, MoldLife Shot, PmShot, TotalShot
+    try {
+        let pool = await getPool('MoldPool', config);
+        let { MoldID } = req.body;
+
+        res.json(pm.recordset);
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -112,7 +168,7 @@ router.post('/pm/start', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/pm/topic', async (req, res) => {
+router.post('/pm/topic', async (req, res) => { //TODO: Check
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldID } = req.body;
@@ -140,7 +196,7 @@ router.post('/pm/topic', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/pm/checksheet', async (req, res) => {
+router.post('/pm/checksheet', async (req, res) => { //TODO:
     try {
         let pool = await getPool('MoldPool', config);
         let { PmPlanID } = req.body;
@@ -165,7 +221,7 @@ router.post('/pm/checksheet', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/pm/checksheet/edit', async (req, res) => {
+router.post('/pm/checksheet/edit', async (req, res) => { //TODO:
     try {
         let pool = await getPool('MoldPool', config);
         let { PmPlanID, PmResult, MoldStatus, Remark } = req.body;
@@ -286,7 +342,7 @@ router.post("/mold/specification", async (req, res) => { //TODO: ReceiveDate, As
     }
 });
 // Repair History
-router.post("/mold/repair/history", async (req, res) => {
+router.post("/mold/repair/history", async (req, res) => { //TODO:
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldID, year } = req.body;
@@ -310,7 +366,7 @@ router.post("/mold/repair/history", async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 });
-router.post("/mold/chart", async (req, res) => {
+router.post("/mold/chart", async (req, res) => { //TODO:
     try {
         let pool = await getPool('MoldPool', config);
         let { ChartType, year, MoldID } = req.body
@@ -347,7 +403,7 @@ router.post("/mold/chart", async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 });
-router.post("/mold/plan", async (req, res) => {
+router.post("/mold/plan", async (req, res) => { //TODO:
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldID } = req.body;
