@@ -105,8 +105,9 @@ router.post('/pm/history', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { JigID } = req.body;
-        var historys = await pool.request().query(`SELECT a.PlanDate, a.PmStart, a.PmPlanID, a.PmPlanNo
+        var historys = await pool.request().query(`SELECT a.PlanDate, a.PmStart, a.PmPlanID, a.PmPlanNo, b.RepairCheckID
         FROM [Jig].[PmPlan] a
+        LEFT JOIN [Jig].[RepairCheck] b ON b.PmPlanID = a.PmPlanID
         WHERE a.JigID = ${JigID} AND a.PmEnd IS NOT NULL
         ORDER BY a.PmStart DESC;
         `);
