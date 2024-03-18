@@ -942,14 +942,13 @@ router.post('/evaluation/add', async (req, res) => { // Check ExamResult, บล
     try {
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
-
         // Check ExamResult
         let getExamResult = await pool.request().query(`SELECT ExamResult FROM [Jig].[JigCreation] WHERE JigCreationID = ${JigCreationID};`);
         if(!getExamResult.recordset[0].ExamResult == null) return res.status(400).send({ message: 'ไม่สามารถเพิ่มได้ ต้องทำการอนุมัติก่อนใบแจ้งสร้างก่อน' });
-        if(!getExamResult.recordset[0].ExamResult != 1) return res.status(400).send({ message: 'ไม่สามารถเพิ่มได้ ใบแจ้งสร้างไม่อนุมัติ' });
+        if(getExamResult.recordset[0].ExamResult != 1) return res.status(400).send({ message: 'ไม่สามารถเพิ่มได้ ใบแจ้งสร้างไม่อนุมัติ' });
 
         // Check if Pass
-        let evals = await pool.request().query(`SELECT a.JigCreationID, a.CustomerBudget, b.TsResult, b.CustomerResult, a.CustomerBudget
+        let evals = await pool.request().query(`SELECT a.JigCreationID, a.CustomerBudget, b.TsResult, b.CustomerResult
         FROM [Jig].[JigCreation] a
         LEFT JOIN [Jig].[JigEvaluation] b ON b.JigCreationID = a.JigCreationID
         WHERE a.JigCreationID = ${JigCreationID};
