@@ -785,7 +785,6 @@ router.post('/trial/add', async (req, res) => { // Check ExamResult, Approve Par
 
         // Check ExamResult
         let getExamResult = await pool.request().query(`SELECT ExamResult FROM [Jig].[JigCreation] WHERE JigCreationID = ${JigCreationID};`);
-        console.log(getExamResult.recordset[0].ExamResult)
         if(!getExamResult.recordset[0].ExamResult == null) return res.status(400).send({ message: 'ไม่สามารถเพิ่มได้ ต้องทำการอนุมัติก่อนใบแจ้งสร้างก่อน' });
         if(getExamResult.recordset[0].ExamResult != 1) return res.status(400).send({ message: 'ไม่สามารถเพิ่มได้ ใบแจ้งสร้างไม่อนุมัติ' });
 
@@ -1101,18 +1100,10 @@ router.put('/evaluation/sign/customer', async (req, res) => { // finish Creation
     try {
         let pool = await getPool('JigPool', config);
         let { EvalID, CustomerNo, CustomerName } = req.body;
-        console.log(EvalID, CustomerNo, CustomerName)
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00' + (cur.getMonth() + 1)).substr(-2)}-${('00' + cur.getDate()).substr(-2)} ${('00' + cur.getHours()).substr(-2)}:${('00' + cur.getMinutes()).substr(-2)}`;
         let signEval = `UPDATE [Jig].[JigEvaluation] SET CustomerEval${CustomerNo} = N'${CustomerName}', CustomerEvalTime${CustomerNo} = GETDATE() WHERE EvalID = ${EvalID};`;
         await pool.request().query(signEval);
-        console.log(`SELECT a.JigApproveBy, a.EnApproveBy, a.QaApproveBy, a.PdApproveBy, a.PeApproveBy,
-        a.CustomerEval1, a.CustomerEval2, b.CustomerBudget, a.TsResult, a.CustomerResult,
-        b.JigCreationID, b.Quantity, b.JlNo, b.JigTypeID, b.CustomerID, b.PartCode, b.PartName, b.RequestSection, b.UseIn
-        FROM [Jig].[JigEvaluation] a
-        LEFT JOIN [Jig].[JigCreation] b ON b.JigCreationID = a.JigCreationID
-        WHERE a.EvalID = ${EvalID};
-        `)
         // Check Finish
         let eval = await pool.request().query(`SELECT a.JigApproveBy, a.EnApproveBy, a.QaApproveBy, a.PdApproveBy, a.PeApproveBy,
         a.CustomerEval1, a.CustomerEval2, b.CustomerBudget, a.TsResult, a.CustomerResult,
