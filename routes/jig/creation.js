@@ -1044,8 +1044,9 @@ router.put('/evaluation/sign/approve', async (req, res) => { // Check TsResult, 
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         // Check Eval
-        let getSignEval = await pool.request().query(`SELECT ${itemMap[itemNo]}EvalBy AS EvalBy, TsResult FROM [Jig].[JigEvaluation] WHERE EvalID = ${EvalID};`);
+        let getSignEval = await pool.request().query(`SELECT ${itemMap[itemNo]}EvalBy AS EvalBy, TsResult, ${itemMap[itemNo]}ApproveBy AS ApproveBy FROM [Jig].[JigEvaluation] WHERE EvalID = ${EvalID};`);
         if(!getSignEval.recordset[0].EvalBy) return res.status(400).send({ message: `กรุณาลงชื่อ Evaluator ${itemMap[itemNo].toUpperCase()} ก่อน` });
+        if(getSignEval.recordset[0].ApproveBy) return res.status(400).send({ message: `มีการลงชื่อไปแล้ว` });
         if(getSignEval.recordset[0].TsResult == null) return res.status(400).send({ message: `กรุณาบันทึกผลการประเมิน(TS Result) ก่อน` });
 
         // Update ApproveSign
@@ -1098,7 +1099,7 @@ router.put('/evaluation/sign/approve', async (req, res) => { // Check TsResult, 
                 let PartName = eval.recordset[0].PartName;
                 let RequestSection = eval.recordset[0].RequestSection;
                 let UseIn = eval.recordset[0].UseIn;
-    
+
                 let updateJigCreate = `UPDATE [Jig].[JigCreation] SET FinishDate = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
                 let insertStatement = ``;
                 let insertArr = [];
@@ -1113,7 +1114,7 @@ router.put('/evaluation/sign/approve', async (req, res) => { // Check TsResult, 
             }
         }
 
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
+        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr, isFinish: finish });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -1129,7 +1130,8 @@ router.put('/evaluation/sign/customer', async (req, res) => { // Check CustomerR
         await pool.request().query(signEval);
 
         // Check Eval
-        let getEval = await pool.request().query(`SELECT CustomerResult FROM [Jig].[JigEvaluation] WHERE EvalID = ${EvalID};`);
+        let getEval = await pool.request().query(`SELECT CustomerResult, CustomerEval${CustomerNo} AS CustomerEval FROM [Jig].[JigEvaluation] WHERE EvalID = ${EvalID};`);
+        if(getSignEval.recordset[0].CustomerEval) return res.status(400).send({ message: `มีการลงชื่อไปแล้ว` });
         if(getEval.recordset[0].CustomerResult == null) return res.status(400).send({ message: `กรุณาบันทึกผลการประเมิน(Customer Result) ก่อน` });
 
         // Check Finish
@@ -1191,7 +1193,7 @@ router.put('/evaluation/sign/customer', async (req, res) => { // Check CustomerR
             }
         }
 
-        res.json({ message: 'Success', SignTime: curStr });
+        res.json({ message: 'Success', SignTime: curStr, isFinish: finish });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
