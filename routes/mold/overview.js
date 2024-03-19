@@ -114,13 +114,14 @@ router.post('/plan', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/mold/detail', async (req, res) => { //TODO: PartCode
+router.post('/mold/detail', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldID } = req.body;
-        var detail = await pool.request().query(`SELECT b.CustomerName, a.BasicMold, a.DieNo, a.MoldName, a.Cavity
+        var detail = await pool.request().query(`SELECT b.CustomerName, a.BasicMold, a.DieNo, a.MoldName, a.Cavity, c.PartCode
         FROM [Mold].[MasterMold] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
+        LEFT JOIN [Mold].[Specification] c ON c.MoldSpecID = a.MoldSpecID
         WHERE a.MoldID = ${MoldID};
         `);
         res.json(detail.recordset);
@@ -134,8 +135,9 @@ router.post('/pm/history', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldID } = req.body;
-        var historys = await pool.request().query(`SELECT a.PlanDate, a.PmStart, a.PmPlanID, a.PmPlanNo
+        var historys = await pool.request().query(`SELECT a.PlanStartTime, a.PmStart, a.PmPlanID, a.PmPlanNo, b.RepairCheckID
         FROM [Mold].[PmPlan] a
+        LEFT JOIN [Mold].[RepairCheck] b ON b.PmPlanID = a.PmPlanID
         WHERE a.MoldID = ${MoldID} AND a.PmEnd IS NOT NULL
         ORDER BY a.PmStart DESC;
         `);
@@ -168,22 +170,19 @@ router.post('/pm/start', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/pm/topic', async (req, res) => { //TODO: Check
+router.post('/pm/topic', async (req, res) => {
     try {
         let pool = await getPool('MoldPool', config);
         let { MoldID } = req.body;
-        let pm = await pool.request().query(`SELECT a.PmID, a.MoldID, a.Week, a.ImagePath, a.PmTopic
-        FROM [Mold].[MasterPm] a
-        WHERE a.MoldID = ${MoldID};
-        `);
+        let pm = await pool.request().query(`SELECT PmID, PmTopic, ImagePath FROM [Mold].[MasterPm] WHERE MoldID = ${MoldID};`);
         let PmID = pm.recordset[0]?.PmID;
         if(!PmID) return res.status(400).send({ message: 'กรุณาตั้งค่า PM Topic ที่หน้า Setting ก่อน' });
 
         let topicId = JSON.parse(pm.recordset[0].PmTopic);
         if(topicId.length){
-            let topics = await pool.request().query(`SELECT a.PmTopicID, a.Topic, a.TopicType, a.StandardValue
-            FROM [Mold].[MasterPmTopic] a
-            WHERE a.PmTopicID IN (${topicId.join(',')}) AND a.Active = 1;
+            let topics = await pool.request().query(`SELECT InspectionID, Detail, Description
+            FROM [Mold].[MasterInspectionDetail]
+            WHERE InspectionID IN (${topicId.join(',')}) AND Active = 1;
             `);
             pm.recordset[0].PmTopic = topics.recordset;
         } else{
@@ -233,7 +232,7 @@ router.post('/pm/checksheet/edit', async (req, res) => { //TODO:
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/pm/sign', async (req, res) => { //TODO: if Inspect update stop time
+router.post('/pm/sign', async (req, res) => { // if Tech update stop time
     try {
         let pool = await getPool('MoldPool', config);
         let { PmPlanID, ItemNo, EmployeeID } = req.body;
@@ -242,7 +241,7 @@ router.post('/pm/sign', async (req, res) => { //TODO: if Inspect update stop tim
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         // Sign
-        let ItemMap = { 1: 'Inspect', 2: 'Confirm', 3: 'Approve' };
+        let ItemMap = { 1: 'Tech', 2: 'SrTech', 3: 'FinalCheck', 4: 'FinalApprove' };
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
         let timeStr = `, ${ItemMap[ItemNo]}Time = '${curStr}'`;
@@ -255,12 +254,12 @@ router.post('/pm/sign', async (req, res) => { //TODO: if Inspect update stop tim
         let alertTime = `${date.getHours()}:${('00'+date.getMinutes()).substr(-2)}`;
         let alertDate = `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`;
         const io = req.app.get('socketio');
-        let mold = await pool.request().query(`SELECT b.MoldNo
+        let mold = await pool.request().query(`SELECT b.BasicMold, b.DieNo
         FROM [Mold].[PmPlan] a
         LEFT JOIN [Mold].[MasterMold] b ON b.MoldID = a.MoldID
         WHERE a.PmPlanID = ${PmPlanID};
         `);
-        let alertLog = { MoldNo: mold.recordset[0]?.MoldNo, Module: 2, Action: 3, time: alertTime, date: alertDate }
+        let alertLog = { MoldNo: `${mold.recordset[0].BasicMold}(${mold.recordset[0].DieNo})`, Module: 2, Action: 3, time: alertTime, date: alertDate }
         io.emit('mold-alert-log', alertLog);
         let cacheAlertLog = await redis.get('mold-alert-log');
         if(!cacheAlertLog){
