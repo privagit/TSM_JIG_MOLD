@@ -76,7 +76,7 @@ router.post('/repair-issue/dropdown/problem', async (req, res) => {
 router.post('/repair-issue/request/issue', async (req, res) => { //TODO: Socket io., ReportNo., cache, RunningNo., io
     try {
         let pool = await getPool('MoldPool', config);
-        let { MoldID, CavityStd, CavityAct, RepairTypeID, RepairProblemID, Complaint, Attachment, OccurTime, RequestBy, RequestTime, Section } = req.body;
+        let { MoldID, CavityStd, CavityAct, RepairTypeID, RepairProblemID, Complaint, Attachment, OccurTime, RequestBy, RequestTime, Section, PmPlan } = req.body;
 
          //* Get RunningNo
         let date = new Date();
@@ -95,10 +95,10 @@ router.post('/repair-issue/request/issue', async (req, res) => { //TODO: Socket 
 
 
         let issueRepair = await pool.request().query(`INSERT INTO [Mold].[RepairCheck](MoldID, CavityStd, CavityAct, RepairTypeID, RepairProblemID,
-        Complaint, Attachment, OccurTime, RequestBy, RequestTime, Section, ReportNo, RepairStatus)
+        Complaint, Attachment, OccurTime, RequestBy, RequestTime, Section, ReportNo, RepairStatus, PmPlan)
         VALUES(${MoldID}, ${CavityStd}, ${CavityAct}, ${RepairTypeID}, ${RepairProblemID},
         N'${Complaint}', N'${Attachment}', N'${OccurTime}',
-        N'${RequestBy}', '${RequestTime}', '${Section}', '${ReportNo}', 1);
+        N'${RequestBy}', '${RequestTime}', '${Section}', '${ReportNo}', 1, ${PmPlan || null});
 
         SELECT SCOPE_IDENTITY() AS RepairCheckID;
         `);

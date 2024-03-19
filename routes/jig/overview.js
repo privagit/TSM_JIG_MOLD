@@ -107,9 +107,11 @@ router.post('/pm/history', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { JigID } = req.body;
-        var historys = await pool.request().query(`SELECT a.PlanDate, a.PmStart, a.PmPlanID, a.PmPlanNo
+        var historys = await pool.request().query(`SELECT a.PlanDate, a.PmStart, a.PmPlanID, a.PmPlanNo, b.RepairCheckID
         FROM [Jig].[PmPlan] a
-        WHERE a.JigID = ${JigID};
+        LEFT JOIN [Jig].[RepairCheck] b ON b.PmPlanID = a.PmPlanID
+        WHERE a.JigID = ${JigID} AND a.PmEnd IS NOT NULL
+        ORDER BY a.PmStart DESC;
         `);
         res.json(historys.recordset);
     } catch (err) {
@@ -163,11 +165,12 @@ router.post('/pm/checksheet', async (req, res) => {
         let { PmPlanID } = req.body;
         var checksheet = await pool.request().query(`SELECT a.PmPlanID, a.PmStart, a.PmEnd, a.PmResult, a.JigStatus, a.PmPlanNo, a.Remark,
         b.FirstName AS ConfirmBy, a.ConfirmTime, c.FirstName AS ApproveBy, a.ApproveTime,
-        d.FirstName AS InspectBy, a.InspectTime
+        d.FirstName AS InspectBy, a.InspectTime, e.RepairCheckID
         FROM [Jig].[PmPlan] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.ConfirmBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.ApproveBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = a.InspectBy
+        LEFT JOIN [Jig].[RepairCheck] e ON e.PmPlanID = a.PmPlanID
         WHERE a.PmPlanID = ${PmPlanID};
         `);
         if(checksheet.recordset.length){
@@ -181,7 +184,19 @@ router.post('/pm/checksheet', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/pm/sign', async (req, res) => {
+router.post('/pm/checksheet/edit', async (req, res) => {
+    try {
+        let pool = await getPool('JigPool', config);
+        let { PmPlanID, PmResult, JigStatus, Remark } = req.body;
+        let updateChecksheet = `UPDATE [Jig].[PmPlan] SET PmResult = N'${PmResult}', JigStatus = ${JigStatus}, Remark = N'${Remark}' WHERE PmPlanID = ${PmPlanID};`;
+        await pool.request().query(updateChecksheet);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/pm/sign', async (req, res) => { // if Inspect update stop time
     try {
         let pool = await getPool('JigPool', config);
         let { PmPlanID, ItemNo, EmployeeID } = req.body;
@@ -193,8 +208,9 @@ router.post('/pm/sign', async (req, res) => {
         let ItemMap = { 1: 'Inspect', 2: 'Confirm', 3: 'Approve' };
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let timeString = `, ${ItemMap[ItemNo]}Time = '${curStr}'`;
-        var sign = `UPDATE [Jig].[PmPlan] SET ${ItemMap[ItemNo]}By = ${EmployeeID} ${timeString} WHERE PmPlanID = ${PmPlanID};`;
+        let timeStr = `, ${ItemMap[ItemNo]}Time = '${curStr}'`;
+        let pmEndStr = ItemNo == 1 ? `, PmEnd = '${curStr}'` : '';
+        var sign = `UPDATE [Jig].[PmPlan] SET ${ItemMap[ItemNo]}By = ${EmployeeID} ${timeStr} ${pmEndStr} WHERE PmPlanID = ${PmPlanID};`;
         await pool.request().query(sign);
 
         // io
@@ -226,6 +242,7 @@ router.post('/pm/sign', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
+
 
 router.post('/technician', async (req, res) => { //TODO PM, Repair ?
     try {
@@ -271,11 +288,11 @@ router.post('/technician', async (req, res) => { //TODO PM, Repair ?
 
 //* ========== JigNo ==========
 // Jig Data
-router.post("/jig/specification", async (req, res) => { //TODO: ReceiveDate, Asset, UseIn
+router.post("/jig/specification", async (req, res) => { //TODO: ReceiveDate
     try {
         let pool = await getPool('JigPool', config);
         let { JigID } = req.body;
-        let specification = await pool.request().query(`SELECT a.JigNo, a.PartCode, a.PartName, b.CustomerName, c.JigType, a.Asset
+        let specification = await pool.request().query(`SELECT a.JigNo, a.PartCode, a.PartName, b.CustomerName, c.JigType, a.Asset, a.UseIn
         FROM [Jig].[MasterJig] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
         LEFT JOIN [Jig].[MasterJigType] c ON c.JigTypeID = a.JigTypeID
@@ -383,3 +400,4 @@ router.post("/jig/plan", async (req, res) => {
 });
 
 module.exports = router;
+

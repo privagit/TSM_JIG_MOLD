@@ -532,7 +532,7 @@ router.post('/modify', async (req, res) => { // CustomerBudget เลือก
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
         let jigModify = await pool.request().query(`SELECT a.ModifyID, a.JigCreationID, a.ModifyNo, a.ModifyDate, a.Responsible,
-        a.Problem, a.Solution, a.Detail, a.Benefit, a.Cost, a.BeforeImagePath, a.AfterImagePath, b.Budget, a.CustomerBudget
+        a.Problem, a.Solution, a.Detail, a.Benefit, a.Cost, a.BeforeImagePath, a.AfterImagePath, a.CustomerBudget
         FROM [Jig].[JigModify] a
         LEFT JOIN [Jig].[JigCreation] b ON b.JigCreationID = a.JigCreationID
         WHERE a.JigCreationID = ${JigCreationID}
@@ -544,10 +544,16 @@ router.post('/modify', async (req, res) => { // CustomerBudget เลือก
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/modify/add', async (req, res) => {
+router.post('/modify/add', async (req, res) => { // Check ExamResult
     try {
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
+
+        // Check ExamResult
+        let getExamResult = await pool.request().query(`SELECT ExamResult FROM [Jig].[JigCreation] WHERE JigCreationID = ${JigCreationID};`);
+        if(!getExamResult.recordset[0].ExamResult == null) return res.status(400).send({ message: 'ไม่สามารถเพิ่มได้ ต้องทำการอนุมัติก่อนใบแจ้งสร้างก่อน' });
+        if(!getExamResult.recordset[0].ExamResult != 1) return res.status(400).send({ message: 'ไม่สามารถเพิ่มได้ ใบแจ้งสร้างไม่อนุมัติ' });
+
         let insertModify = `INSERT INTO [Jig].[JigModify](JigCreationID) VALUES(${JigCreationID});`;
         await pool.request().query(insertModify);
         res.json({ message: 'Success' });
@@ -771,10 +777,15 @@ router.post('/trial', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/trial/add', async (req, res) => { // Approve PartList ครั้งแรกแล้ว Trial ได้เลย
+router.post('/trial/add', async (req, res) => { // Check ExamResult, Approve PartList ครั้งแรกแล้ว Trial ได้เลย
     try {
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
+
+        // Check ExamResult
+        let getExamResult = await pool.request().query(`SELECT ExamResult FROM [Jig].[JigCreation] WHERE JigCreationID = ${JigCreationID};`);
+        if(!getExamResult.recordset[0].ExamResult == null) return res.status(400).send({ message: 'ไม่สามารถเพิ่มได้ ต้องทำการอนุมัติก่อนใบแจ้งสร้างก่อน' });
+        if(!getExamResult.recordset[0].ExamResult != 1) return res.status(400).send({ message: 'ไม่สามารถเพิ่มได้ ใบแจ้งสร้างไม่อนุมัติ' });
 
         //? deprecate: ต้อง Receive PartList ให้ครบก่อน
         // Approve PartList ครั้งแรกแล้ว Trial ได้เลย
@@ -792,9 +803,9 @@ router.post('/trial/add', async (req, res) => { // Approve PartList ครั้
 router.put('/trial/edit', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
-        let { TrialID, PlanStart, PlanFinish, ActualStart, ActualFinish, Qty, Problem, Reason, FixDetail, Remark } = req.body;
-        let updateTrial = `UPDATE [Jig].[JigTrial] SET PlanStart = '${PlanStart}', PlanFinish = '${PlanFinish}', ActualStart = '${ActualStart}',
-        ActualFinish = '${ActualFinish}', Qty = ${Qty}, Problem = N'${Problem}', Reason = N'${Reason}', FixDetail = N'${FixDetail}', Remark = N'${Remark}'
+        let { TrialID, PlanStart, PlanFinish, Qty, Problem, Reason, FixDetail, Remark } = req.body;
+        let updateTrial = `UPDATE [Jig].[JigTrial] SET PlanStart = '${PlanStart}', PlanFinish = '${PlanFinish}', Qty = ${Qty},
+        Problem = N'${Problem}', Reason = N'${Reason}', FixDetail = N'${FixDetail}', Remark = N'${Remark}'
         WHERE TrialID = ${TrialID};
         `;
         await pool.request().query(updateTrial);
@@ -926,13 +937,18 @@ router.post('/evaluation/item', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/evaluation/add', async (req, res) => { // บล็อคตอนที่มี Pass แล้ว
+router.post('/evaluation/add', async (req, res) => { // Check ExamResult, บล็อคตอนที่มี Pass แล้ว
     try {
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
 
+        // Check ExamResult
+        let getExamResult = await pool.request().query(`SELECT ExamResult FROM [Jig].[JigCreation] WHERE JigCreationID = ${JigCreationID};`);
+        if(!getExamResult.recordset[0].ExamResult == null) return res.status(400).send({ message: 'ไม่สามารถเพิ่มได้ ต้องทำการอนุมัติก่อนใบแจ้งสร้างก่อน' });
+        if(getExamResult.recordset[0].ExamResult != 1) return res.status(400).send({ message: 'ไม่สามารถเพิ่มได้ ใบแจ้งสร้างไม่อนุมัติ' });
+
         // Check if Pass
-        let evals = await pool.request().query(`SELECT a.JigCreationID, a.CustomerBudget, b.TsResult, b.CustomerResult, a.CustomerBudget
+        let evals = await pool.request().query(`SELECT a.JigCreationID, a.CustomerBudget, b.TsResult, b.CustomerResult
         FROM [Jig].[JigCreation] a
         LEFT JOIN [Jig].[JigEvaluation] b ON b.JigCreationID = a.JigCreationID
         WHERE a.JigCreationID = ${JigCreationID};
@@ -1072,7 +1088,7 @@ router.put('/evaluation/sign/approve', async (req, res) => { // finish Creation
                 `);
                 JlNo++;
             }
-            await pool.request().query(updateJigCreate + (insertStatement + insertArr.join(', ')));
+            await pool.request().query(updateJigCreate + insertArr.join(' '));
         }
 
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
@@ -1143,7 +1159,7 @@ router.put('/evaluation/sign/customer', async (req, res) => { // finish Creation
                 `);
                 JlNo++;
             }
-            await pool.request().query(updateJigCreate + (insertStatement + insertArr.join(', ')));
+            await pool.request().query(updateJigCreate + (insertStatement + insertArr.join(' ')));
         }
 
         res.json({ message: 'Success', SignTime: curStr });
