@@ -949,7 +949,7 @@ router.post('/evaluation/add', async (req, res) => { // Check not approve record
 
         // Check if Pass & Not Approve Record
         let evals = await pool.request().query(`SELECT a.JigCreationID, a.CustomerBudget, b.TsResult, b.CustomerResult,
-        b.JigApproveBy, b.EnApproveBy, b.QaApproveBy, b.PdApproveBy, b.PeApproveBy, b.CustomerEval1, b.CustomerEval2
+        b.JigApproveBy, b.EnApproveBy, b.QaApproveBy, b.PdApproveBy, b.PeApproveBy, b.CustomerEval1, b.CustomerEval2, b.EvalID
         FROM [Jig].[JigCreation] a
         LEFT JOIN [Jig].[JigEvaluation] b ON b.JigCreationID = a.JigCreationID
         WHERE a.JigCreationID = ${JigCreationID};
@@ -957,26 +957,27 @@ router.post('/evaluation/add', async (req, res) => { // Check not approve record
         let evalResult = 0;
         let notApprove = 0;
         for(let item of evals.recordset){
-            let JigApproveBy = item.recordset[0].JigApproveBy;
-            let EnApproveBy = item.recordset[0].EnApproveBy;
-            let QaApproveBy = item.recordset[0].QaApproveBy;
-            let PdApproveBy = item.recordset[0].PdApproveBy;
-            let PeApproveBy = item.recordset[0].PeApproveBy;
-            let CustomerEval1 = item.recordset[0].CustomerEval1;
-            let CustomerEval2 = item.recordset[0].CustomerEval2;
+            let EvalID = item.EvalID;
+            let JigApproveBy = item.JigApproveBy;
+            let EnApproveBy = item.EnApproveBy;
+            let QaApproveBy = item.QaApproveBy;
+            let PdApproveBy = item.PdApproveBy;
+            let PeApproveBy = item.PeApproveBy;
+            let CustomerEval1 = item.CustomerEval1;
+            let CustomerEval2 = item.CustomerEval2;
 
             if(!item.CustomerBudget){ // TS ทำเอง
                 if(item.TsResult == 1){
                     evalResult = 1;
                 }
-                if(!JigApproveBy || !EnApproveBy || !QaApproveBy || !PdApproveBy || !PeApproveBy){
+                if(EvalID && (!JigApproveBy || !EnApproveBy || !QaApproveBy || !PdApproveBy || !PeApproveBy)){
                     notApprove = 1;
                 }
             } else { // Customer Budget
                 if(item.TsResult == 1 && item.CustomerResult == 1){
                     evalResult = 1;
                 }
-                if(!JigApproveBy || !EnApproveBy || !QaApproveBy || !PdApproveBy || !PeApproveBy || !(CustomerEval1 || CustomerEval2)){
+                if(EvalID && (!JigApproveBy || !EnApproveBy || !QaApproveBy || !PdApproveBy || !PeApproveBy || !(CustomerEval1 || CustomerEval2))){
                     notApprove = 1;
                 }
             }
