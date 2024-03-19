@@ -53,8 +53,9 @@ router.post('/jig', async (req, res) => {
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON a.InstallBy = d.UserID
         LEFT JOIN [TSMolymer_F].[dbo].[MasterMachine] e ON a.MachineID = e.MachineID
         LEFT JOIN [Jig].[MasterJig] f ON f.JigID = a.JigID
-        WHERE CONVERT(VARCHAR, a.ProductionDateTime, 23) = '${ProductionDate}';
         `);
+        // WHERE CONVERT(VARCHAR, a.ProductionDateTime, 23) = '${ProductionDate}';
+        
         let jigs = selectJigs.recordset;
 
         //* Filter
