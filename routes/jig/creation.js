@@ -1088,8 +1088,7 @@ router.put('/evaluation/sign/approve', async (req, res) => { // Check TsResult, 
                 }
             }
         }
-        if(RequestType == 0 && finish){ // New Mold,  update Finish & Insert to Master
-            let JigCreationID = eval.recordset[0].JigCreationID;
+        if(RequestType == 0 && finish){ // New Mold, Insert to Master
             let Quantity = eval.recordset[0].Quantity;
             let JlNo = eval.recordset[0].JlNo.split('-')[1];
             let JigTypeID = eval.recordset[0].JigTypeID;
@@ -1099,7 +1098,6 @@ router.put('/evaluation/sign/approve', async (req, res) => { // Check TsResult, 
             let RequestSection = eval.recordset[0].RequestSection;
             let UseIn = eval.recordset[0].UseIn;
 
-            let updateJigCreate = `UPDATE [Jig].[JigCreation] SET FinishDate = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
             let insertStatement = ``;
             let insertArr = [];
             for(let i = 0; i < Quantity; i++){
@@ -1109,7 +1107,12 @@ router.put('/evaluation/sign/approve', async (req, res) => { // Check TsResult, 
                 `);
                 JlNo++;
             }
-            await pool.request().query(updateJigCreate + insertArr.join(' '));
+            await pool.request().query(insertArr.join(' '));
+        }
+        if(finish){ // update finish
+            let JigCreationID = eval.recordset[0].JigCreationID;
+            let updateJigCreate = `UPDATE [Jig].[JigCreation] SET FinishDate = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
+            await pool.request().query(updateJigCreate);
         }
 
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr, isFinish: finish });
@@ -1167,7 +1170,6 @@ router.put('/evaluation/sign/customer', async (req, res) => { // Check CustomerR
             }
         }
         if(RequestType == 0 && finish){ // New Mold, update Finish & Insert to Master
-            let JigCreationID = eval.recordset[0].JigCreationID;
             let Quantity = eval.recordset[0].Quantity;
             let JlNo = eval.recordset[0].JlNo.split('-')[1];
             let JigTypeID = eval.recordset[0].JigTypeID;
@@ -1177,7 +1179,6 @@ router.put('/evaluation/sign/customer', async (req, res) => { // Check CustomerR
             let RequestSection = eval.recordset[0].RequestSection;
             let UseIn = eval.recordset[0].UseIn;
 
-            let updateJigCreate = `UPDATE [Jig].[JigCreation] SET FinishDate = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
             let insertStatement = ``;
             let insertArr = [];
             for(let i = 0; i < Quantity; i++){
@@ -1187,7 +1188,12 @@ router.put('/evaluation/sign/customer', async (req, res) => { // Check CustomerR
                 `);
                 JlNo++;
             }
-            await pool.request().query(updateJigCreate + (insertStatement + insertArr.join(' ')));
+            await pool.request().query(insertStatement + insertArr.join(' '));
+        }
+        if(finish){ // update finish
+            let JigCreationID = eval.recordset[0].JigCreationID;
+            let updateJigCreate = `UPDATE [Jig].[JigCreation] SET FinishDate = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
+            await pool.request().query(updateJigCreate);
         }
 
         res.json({ message: 'Success', SignTime: curStr, isFinish: finish });
