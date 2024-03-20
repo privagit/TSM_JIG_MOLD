@@ -1073,7 +1073,7 @@ router.put('/evaluation/sign/approve', async (req, res) => { // Check TsResult, 
         let PeApproveBy = eval.recordset[0].PeApproveBy;
         let CustomerEval1 = eval.recordset[0].CustomerEval1;
         let CustomerEval2 = eval.recordset[0].CustomerEval2;
-        let finish;
+        let finish = false;
         if(RequestType == 0){ // New Mold
             if(!CustomerBudget){ // TS ทำเอง
                 if(TsResult){ // Pass
@@ -1112,7 +1112,7 @@ router.put('/evaluation/sign/approve', async (req, res) => { // Check TsResult, 
                 await pool.request().query(updateJigCreate + insertArr.join(' '));
             }
         }
-
+        console.log({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr, isFinish: finish })
         res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr, isFinish: finish });
     } catch (err) {
         console.log(req.url, err);
