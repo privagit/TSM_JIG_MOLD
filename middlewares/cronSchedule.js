@@ -4,7 +4,7 @@ const cron = require('node-cron');
 const { getPool } = require('../middlewares/pool-manager');
 const EMAIL = process.env.EMAIL;
 
-const insertPmJig = async () => { //TODO:
+const insertPmJig = async () => {
     try {
         console.log('start Predict', new Date());
         let pool = await getPool('JigPool', config_jig);
@@ -21,19 +21,18 @@ const insertPmJig = async () => { //TODO:
             date.setDate(date.getDate() + 1);
         }
         if(weekDay.length == 4) weekDay.push(weekDay[3]);
-
         //* Get RunningNo
         let monthRunningNo = await pool.request().query(`SELECT a.MonthDate, a.RunningNo
         FROM [MonthRunningNo] a
-        WHERE Month(MonthDate) = ${date.getMonth()+1} AND YEAR(MonthDate) = ${date.getFullYear()};
+        WHERE Month(MonthDate) = ${month} AND YEAR(MonthDate) = ${year};
         `);
         if(monthRunningNo.recordset.length){
-            var RunningNo = monthRunningNo.recordset[0].PreventRunningNo + 1;
+            var RunningNo = monthRunningNo.recordset[0].RunningNo + 1;
         } else{
             var RunningNo = 1;
             await pool.request().query(`INSERT INTO [MonthRunningNo](MonthDate) VALUES('${year}-${month}-1')`);
         }
-        
+
         //* Get Machine
         let jigs = await pool.request().query(`SELECT a.JigID, b.Week
         FROM [Jig].[MasterJig] a
@@ -55,17 +54,13 @@ const insertPmJig = async () => { //TODO:
             }
         }
         let insertPmPlan = `INSERT INTO [Jig].[PmPlan](JigID, PlanDate, PmPlanNo) VALUES` + totalQuery.join(',');
-        let updateRunningNo = `UPDATE [MonthRunningNo] SET PreventRunningNo = ${RunningNo} WHERE MONTH(MonthDate) = ${month} AND YEAR(MonthDate) = ${year};`;
-        console.log(insertPmPlan);
-        console.log(updateRunningNo);
+        let updateRunningNo = `UPDATE [MonthRunningNo] SET RunningNo = ${RunningNo} WHERE MONTH(MonthDate) = ${month} AND YEAR(MonthDate) = ${year};`;
 
-        return
-
-        // await pool.request().query('INSERT INTO [Jig].[PmPlan](JigID, PlanDate, PmPlanNo)',totalQuery.join(''));
+        await pool.request().query(insertPmPlan);
         await pool.request().query(updateRunningNo);
         console.log('finish Predict', new Date());
     } catch (err) {
-        console.log('insertPredictPlan', err);
+        console.log('insertJigPmPlan', err);
     }
 }
 // insertPmJig();
