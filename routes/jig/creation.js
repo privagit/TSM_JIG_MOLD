@@ -1123,15 +1123,15 @@ router.put('/evaluation/sign/customer', async (req, res) => { // Check CustomerR
     try {
         let pool = await getPool('JigPool', config);
         let { EvalID, CustomerNo, CustomerName } = req.body;
+        // Check Eval
+        let getEval = await pool.request().query(`SELECT CustomerResult, CustomerEval${CustomerNo} AS CustomerEval FROM [Jig].[JigEvaluation] WHERE EvalID = ${EvalID};`);
+        if(getEval.recordset[0].CustomerResult == null) return res.status(400).send({ message: `กรุณาบันทึกผลการประเมิน(Customer Result) ก่อน` });
+        if(getEval.recordset[0].CustomerEval) return res.status(400).send({ message: `มีการลงชื่อไปแล้ว` });
+
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00' + (cur.getMonth() + 1)).substr(-2)}-${('00' + cur.getDate()).substr(-2)} ${('00' + cur.getHours()).substr(-2)}:${('00' + cur.getMinutes()).substr(-2)}`;
         let signEval = `UPDATE [Jig].[JigEvaluation] SET CustomerEval${CustomerNo} = N'${CustomerName}', CustomerEvalTime${CustomerNo} = GETDATE() WHERE EvalID = ${EvalID};`;
         await pool.request().query(signEval);
-
-        // Check Eval
-        let getEval = await pool.request().query(`SELECT CustomerResult, CustomerEval${CustomerNo} AS CustomerEval FROM [Jig].[JigEvaluation] WHERE EvalID = ${EvalID};`);
-        if(getSignEval.recordset[0].CustomerEval) return res.status(400).send({ message: `มีการลงชื่อไปแล้ว` });
-        if(getEval.recordset[0].CustomerResult == null) return res.status(400).send({ message: `กรุณาบันทึกผลการประเมิน(Customer Result) ก่อน` });
 
         // Check Finish
         let eval = await pool.request().query(`SELECT a.JigApproveBy, a.EnApproveBy, a.QaApproveBy, a.PdApproveBy, a.PeApproveBy,

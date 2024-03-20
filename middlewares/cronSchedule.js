@@ -62,6 +62,7 @@ const insertPmJig = async () => { //TODO:
         return
 
         // await pool.request().query('INSERT INTO [Jig].[PmPlan](JigID, PlanDate, PmPlanNo)',totalQuery.join(''));
+        await pool.request().query(insertPmPlan);
         await pool.request().query(updateRunningNo);
         console.log('finish Predict', new Date());
     } catch (err) {
