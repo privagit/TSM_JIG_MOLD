@@ -35,7 +35,7 @@ router.post('/plan', async (req, res) => {
                 a.PmPlanID, a.JigID, a.PlanDate, a.PmStart, a.PmEnd, a.PmPlanNo
                 FROM [Jig].[PmPlan] a
             )
-            SELECT a.JigID, a.JigNo, b.JigType, a.Section, c.CustomerName, d.PmPlanID, d.PmStart, d.PmEnd,
+            SELECT a.JigID, a.JigNo, b.JigType, a.Section, c.CustomerName, d.PmPlanID, d.PmStart, d.PmEnd, d.PlanDate,
             CASE
                 WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) >= 7 THEN 1
                 WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) < 7 THEN 3
@@ -57,7 +57,7 @@ router.post('/plan', async (req, res) => {
                 FROM [Jig].[PmPlan] a
                 WHERE a.PlanDate = GETDATE()
             )
-            SELECT a.JigID, a.JigNo, b.JigType, a.Section, c.CustomerName, d.PmPlanID, d.PmStart, d.PmEnd,
+            SELECT a.JigID, a.JigNo, b.JigType, a.Section, c.CustomerName, d.PmPlanID, d.PmStart, d.PmEnd, d.PlanDate,
             CASE
                 WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) >= 7 THEN 1
                 WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) < 7 THEN 3

@@ -1129,7 +1129,7 @@ router.put('/evaluation/sign/customer', async (req, res) => { // Check CustomerR
         if(getEval.recordset[0].CustomerEval) return res.status(400).send({ message: `มีการลงชื่อไปแล้ว` });
 
         let cur = new Date();
-        let curStr = `${cur.getFullYear()}-${('00' + (cur.getMonth() + 1)).substr(-2)}-${('00' + cur.getDate()).substr(-2)} ${('00' + cur.getHours()).substr(-2)}:${('00' + cur.getMinutes()).substr(-2)}`;
+        let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
         let signEval = `UPDATE [Jig].[JigEvaluation] SET CustomerEval${CustomerNo} = N'${CustomerName}', CustomerEvalTime${CustomerNo} = GETDATE() WHERE EvalID = ${EvalID};`;
         await pool.request().query(signEval);
 
