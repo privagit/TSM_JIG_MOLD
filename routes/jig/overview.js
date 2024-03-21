@@ -140,9 +140,9 @@ router.post('/pm/topic', async (req, res) => {
         WHERE a.JigID = ${JigID};
         `);
         let PmID = pm.recordset[0]?.PmID;
-        if(!PmID) return res.status(400).send({ message: 'กรุณาตั้งค่า PM Topic ที่หน้า Setting ก่อน' });
-
         let topicId = JSON.parse(pm.recordset[0].PmTopic);
+
+        if(!PmID || !topicId.length) return res.status(400).send({ message: 'กรุณาตั้งค่า PM Topic ที่หน้า Setting ก่อน' });
         if(topicId.length){
             let topics = await pool.request().query(`SELECT a.PmTopicID, a.Topic, a.TopicType, a.StandardValue
             FROM [Jig].[MasterPmTopic] a
