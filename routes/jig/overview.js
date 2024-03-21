@@ -36,7 +36,7 @@ router.post('/plan', async (req, res) => {
                 a.PmPlanID, a.JigID, a.PlanDate, a.PmStart, a.PmEnd, a.PmPlanNo
                 FROM [Jig].[PmPlan] a
             )
-            SELECT a.JigID, a.JigNo, b.JigType, a.Section, c.CustomerName, d.PmPlanID, d.PmStart, d.PmEnd,
+            SELECT a.JigID, a.JigNo, b.JigType, a.Section, c.CustomerName, d.PmPlanID, d.PmStart, d.PmEnd, d.PlanDate,
             CASE
                 WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) >= 7 THEN 1
                 WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) < 7 THEN 3
@@ -58,7 +58,7 @@ router.post('/plan', async (req, res) => {
                 FROM [Jig].[PmPlan] a
                 WHERE a.PlanDate = GETDATE()
             )
-            SELECT a.JigID, a.JigNo, b.JigType, a.Section, c.CustomerName, d.PmPlanID, d.PmStart, d.PmEnd,
+            SELECT a.JigID, a.JigNo, b.JigType, a.Section, c.CustomerName, d.PmPlanID, d.PmStart, d.PmEnd, d.PlanDate,
             CASE
                 WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) >= 7 THEN 1
                 WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) < 7 THEN 3
@@ -244,42 +244,71 @@ router.post('/pm/sign', async (req, res) => { // if Inspect update stop time
 })
 
 
-router.post('/technician', async (req, res) => { //TODO PM, Repair ?
+router.post('/technician', async (req, res) => { // PM, Repair
     try {
         let pool = await getPool('JigPool', config);
-        let maintenance = await pool.request().query(`WITH cte AS (
+        let maintenance = await pool.request().query(`WITH RepairTech AS (
             SELECT b.UserID, b.FirstName, b.LastName,
             COUNT(a.RepairCheckID) AS CntYear,
             COUNT(CASE WHEN MONTH(a.RequestTime) = MONTH(GETDATE()) THEN a.RepairCheckID END) AS CntMonth,
             d.PositionName
             FROM [Jig].[RepairCheck] a
-            INNER JOIN [TSMolymer_F].[dbo].[User] b ON a.RepairBy = b.EmployeeID
+            INNER JOIN [TSMolymer_F].[dbo].[User] b ON a.RepairBy = b.EmployeeID AND b.Active = 1
             LEFT JOIN [Jig].[MasterTechnician] c ON b.UserID = c.UserID
             LEFT JOIN [TSMolymer_F].[dbo].[MasterPosition] d ON b.PositionID = d.PositionID
             WHERE YEAR(a.RequestTime) = YEAR(GETDATE())
             GROUP BY b.UserID, b.FirstName, b.LastName, d.PositionName
-        ), cte2 AS (
+        ), PmTech AS (
+            SELECT b.UserID, b.FirstName, b.LastName,
+            COUNT(a.PmPlanID) AS CntYear,
+            COUNT(CASE WHEN MONTH(a.PlanDate) = MONTH(GETDATE()) THEN a.PmPlanID END) AS CntMonth,
+            d.PositionName
+            FROM [Jig].[PmPlan] a
+            INNER JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.InspectBy AND b.Active = 1
+            LEFT JOIN [Jig].[MasterTechnician] c ON b.UserID = c.UserID
+            LEFT JOIN [TSMolymer_F].[dbo].[MasterPosition] d ON b.PositionID = d.PositionID
+            WHERE YEAR(a.PlanDate) = YEAR(GETDATE())
+            GROUP BY b.UserID, b.FirstName, b.LastName, d.PositionName 
+        ), tbsum AS (
+            SELECT UserID, FirstName, LastName, PositionName, CntYear AS RepairCntYear, CntMonth AS RepairCntMonth, NULL AS PmCntYear, NULL AS PmCntMonth FROM [RepairTech]
+            UNION ALL
+            SELECT UserID, FirstName, LastName, PositionName, NULL AS RepairCntYear, NULL AS RepairCntMonth, CntYear AS PmCntYear, CntMonth AS PmCntMonth FROM [PmTech]
+        )
+        SELECT UserID, FirstName, LastName, PositionName, SUM(RepairCntYear) AS RepairCntYear, SUM(RepairCntMonth) AS RepairCntMonth,
+        SUM(PmCntYear) AS PmCntYear, SUM(PmCntMonth) AS PmCntMonth
+        FROM [tbsum]
+        GROUP BY UserID, FirstName, LastName, PositionName
+        `);
+        let total = await pool.request().query(`WITH totalRepair AS (
             SELECT COUNT(a.RepairCheckID) AS totalYear,
             COUNT(CASE WHEN MONTH(a.RequestTime) = MONTH(GETDATE()) THEN a.RepairCheckID END) AS totalMonth
             FROM [Jig].[RepairCheck] a
             WHERE YEAR(a.RequestTime) = YEAR(GETDATE())
+        ), totalPm AS (
+            SELECT COUNT(a.PmPlanID) AS totalYear,
+            COUNT(CASE WHEN MONTH(a.PlanDate) = MONTH(GETDATE()) THEN a.PmPlanID END) AS totalMonth
+            FROM [Jig].[PmPlan] a
+            WHERE YEAR(a.PlanDate) = YEAR(GETDATE())
+        ), tbsum AS (
+            SELECT totalYear AS RepairTotalYear, totalMonth AS RepairTotalMonth, NULL AS PmTotalYear, NULL AS PmTotalMonth FROM [totalRepair]
+            UNION ALL
+            SELECT NULL AS RepairTotalYear, NULL AS RepairTotalMonth, totalYear AS PmTotalYear, totalMonth AS PmTotalMonth FROM [totalPm]
         )
-        SELECT a.UserID, a.FirstName, a.LastName, a.PositionName, b.ImagePath, b.SkillScore, a.CntMonth, a.CntYear,
-        c.totalMonth, c.totalYear
-        FROM [cte] a
-        LEFT JOIN [Jig].[MasterTechnician] b ON a.UserID = b.UserID
-        CROSS JOIN [cte2] c
+        SELECT SUM(RepairTotalYear) AS RepairTotalYear, SUM(RepairTotalMonth) AS RepairTotalMonth, SUM(PmTotalYear) AS PmTotalYear, SUM(PmTotalMonth) AS PmTotalMonth
+        FROM [tbsum]
         `);
 
-        let PM_Month = maintenance.recordset[0]?.totalMonth || 0;
-        let PM_Year = maintenance.recordset[0]?.totalYear || 0;
+        let PM_Month = total.recordset[0]?.PmTotalMonth || 0;
+        let PM_Year = total.recordset[0]?.PmTotalYear || 0;
+        let Repair_Month = total.recordset[0]?.RepairTotalMonth || 0;
+        let Repair_Year = total.recordset[0]?.RepairTotalYear || 0;
         for(let item of maintenance.recordset){
             item.name = `${atob(item.FirstName)} ${atob(item.LastName)}`;
             item.PercentPMYear = Math.round(item.CntYear / PM_Year);
             item.PercentPMMonth = Math.round(item.CntMonth / PM_Month);
         }
 
-        res.json({ PM_Month, PM_Year, tech: maintenance.recordset });
+        res.json({ PM_Month, PM_Year, Repair_Month, Repair_Year, tech: maintenance.recordset });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });

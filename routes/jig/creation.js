@@ -785,7 +785,7 @@ router.post('/trial/add', async (req, res) => { // Check ExamResult, Approve Par
         // Check ExamResult
         let getExamResult = await pool.request().query(`SELECT ExamResult FROM [Jig].[JigCreation] WHERE JigCreationID = ${JigCreationID};`);
         if(!getExamResult.recordset[0].ExamResult == null) return res.status(400).send({ message: 'ไม่สามารถเพิ่มได้ ต้องทำการอนุมัติก่อนใบแจ้งสร้างก่อน' });
-        if(!getExamResult.recordset[0].ExamResult != 1) return res.status(400).send({ message: 'ไม่สามารถเพิ่มได้ ใบแจ้งสร้างไม่อนุมัติ' });
+        if(getExamResult.recordset[0].ExamResult != 1) return res.status(400).send({ message: 'ไม่สามารถเพิ่มได้ ใบแจ้งสร้างไม่อนุมัติ' });
 
         //? deprecate: ต้อง Receive PartList ให้ครบก่อน
         // Approve PartList ครั้งแรกแล้ว Trial ได้เลย
@@ -937,34 +937,52 @@ router.post('/evaluation/item', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/evaluation/add', async (req, res) => { // Check ExamResult, บล็อคตอนที่มี Pass แล้ว
+router.post('/evaluation/add', async (req, res) => { // Check not approve record , Check ExamResult, บล็อคตอนที่มี Pass แล้ว
     try {
         let pool = await getPool('JigPool', config);
         let { JigCreationID } = req.body;
 
         // Check ExamResult
-        let getExamResult = await pool.request().query(`SELECT ExamResult FROM [Jig].[JigCreation] WHERE JigCreationID = ${JigCreationID};`);
+        let getExamResult = await pool.request().query(`SELECT CustomerBudget, ExamResult FROM [Jig].[JigCreation] WHERE JigCreationID = ${JigCreationID};`);
         if(!getExamResult.recordset[0].ExamResult == null) return res.status(400).send({ message: 'ไม่สามารถเพิ่มได้ ต้องทำการอนุมัติก่อนใบแจ้งสร้างก่อน' });
         if(getExamResult.recordset[0].ExamResult != 1) return res.status(400).send({ message: 'ไม่สามารถเพิ่มได้ ใบแจ้งสร้างไม่อนุมัติ' });
 
-        // Check if Pass
-        let evals = await pool.request().query(`SELECT a.JigCreationID, a.CustomerBudget, b.TsResult, b.CustomerResult
+        // Check if Pass & Not Approve Record
+        let evals = await pool.request().query(`SELECT a.JigCreationID, a.CustomerBudget, b.TsResult, b.CustomerResult,
+        b.JigApproveBy, b.EnApproveBy, b.QaApproveBy, b.PdApproveBy, b.PeApproveBy, b.CustomerEval1, b.CustomerEval2, b.EvalID
         FROM [Jig].[JigCreation] a
         LEFT JOIN [Jig].[JigEvaluation] b ON b.JigCreationID = a.JigCreationID
         WHERE a.JigCreationID = ${JigCreationID};
         `);
         let evalResult = 0;
+        let notApprove = 0;
         for(let item of evals.recordset){
+            let EvalID = item.EvalID;
+            let JigApproveBy = item.JigApproveBy;
+            let EnApproveBy = item.EnApproveBy;
+            let QaApproveBy = item.QaApproveBy;
+            let PdApproveBy = item.PdApproveBy;
+            let PeApproveBy = item.PeApproveBy;
+            let CustomerEval1 = item.CustomerEval1;
+            let CustomerEval2 = item.CustomerEval2;
+
             if(!item.CustomerBudget){ // TS ทำเอง
                 if(item.TsResult == 1){
                     evalResult = 1;
+                }
+                if(EvalID && (!JigApproveBy || !EnApproveBy || !QaApproveBy || !PdApproveBy || !PeApproveBy)){
+                    notApprove = 1;
                 }
             } else { // Customer Budget
                 if(item.TsResult == 1 && item.CustomerResult == 1){
                     evalResult = 1;
                 }
+                if(EvalID && (!JigApproveBy || !EnApproveBy || !QaApproveBy || !PdApproveBy || !PeApproveBy || !(CustomerEval1 || CustomerEval2))){
+                    notApprove = 1;
+                }
             }
         }
+        if(notApprove) return res.status(400).send({ message: 'มีรายการการประเมินยังไม่ถูกอนุมัติ' });
         if(evalResult) return res.status(400).send({ message: 'มีผลการประเมินผ่านแล้ว' });
 
         let CustomerBudget = evals.recordset[0].CustomerBudget;
@@ -1017,7 +1035,7 @@ router.put('/evaluation/sign/eval', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/evaluation/sign/approve', async (req, res) => { // finish Creation
+router.put('/evaluation/sign/approve', async (req, res) => { // Check TsResult, finish Creation
     try {
         let pool = await getPool('JigPool', config);
         let { EvalID, ApproveBy, itemNo } = req.body;
@@ -1026,8 +1044,10 @@ router.put('/evaluation/sign/approve', async (req, res) => { // finish Creation
         if(!getUser.recordset.length) return res.status(400).send({ message: 'ขออภัย ไม่พบรหัสพนักงาน' });
 
         // Check Eval
-        let getSignEval = await pool.request().query(`SELECT ${itemMap[itemNo]}EvalBy AS EvalBy FROM [Jig].[JigEvaluation] WHERE EvalID = ${EvalID};`);
+        let getSignEval = await pool.request().query(`SELECT ${itemMap[itemNo]}EvalBy AS EvalBy, TsResult, ${itemMap[itemNo]}ApproveBy AS ApproveBy FROM [Jig].[JigEvaluation] WHERE EvalID = ${EvalID};`);
         if(!getSignEval.recordset[0].EvalBy) return res.status(400).send({ message: `กรุณาลงชื่อ Evaluator ${itemMap[itemNo].toUpperCase()} ก่อน` });
+        if(getSignEval.recordset[0].ApproveBy) return res.status(400).send({ message: `มีการลงชื่อไปแล้ว` });
+        if(getSignEval.recordset[0].TsResult == null) return res.status(400).send({ message: `กรุณาบันทึกผลการประเมิน(TS Result) ก่อน` });
 
         // Update ApproveSign
         let cur = new Date();
@@ -1037,7 +1057,7 @@ router.put('/evaluation/sign/approve', async (req, res) => { // finish Creation
 
         // Check Finish
         let eval = await pool.request().query(`SELECT a.JigApproveBy, a.EnApproveBy, a.QaApproveBy, a.PdApproveBy, a.PeApproveBy,
-        a.CustomerEval1, a.CustomerEval2, b.CustomerBudget, a.TsResult, a.CustomerResult,
+        a.CustomerEval1, a.CustomerEval2, b.CustomerBudget, a.TsResult, a.CustomerResult, b.RequestType,
         b.JigCreationID, b.Quantity, b.JlNo, b.JigTypeID, b.CustomerID, b.PartCode, b.PartName, b.RequestSection, b.UseIn
         FROM [Jig].[JigEvaluation] a
         LEFT JOIN [Jig].[JigCreation] b ON b.JigCreationID = a.JigCreationID
@@ -1046,6 +1066,7 @@ router.put('/evaluation/sign/approve', async (req, res) => { // finish Creation
         let CustomerBudget = eval.recordset[0].CustomerBudget;
         let TsResult = eval.recordset[0].TsResult;
         let CustomerResult = eval.recordset[0].CustomerResult;
+        let RequestType = eval.recordset[0].RequestType;
         let JigApproveBy = eval.recordset[0].JigApproveBy;
         let EnApproveBy = eval.recordset[0].EnApproveBy;
         let QaApproveBy = eval.recordset[0].QaApproveBy;
@@ -1054,53 +1075,61 @@ router.put('/evaluation/sign/approve', async (req, res) => { // finish Creation
         let CustomerEval1 = eval.recordset[0].CustomerEval1;
         let CustomerEval2 = eval.recordset[0].CustomerEval2;
         let finish;
-        if(!CustomerBudget){ // TS ทำเอง
-            if(TsResult){ // Pass
-                if(JigApproveBy && EnApproveBy && QaApproveBy && PdApproveBy && PeApproveBy){  // All Approve
-                    finish = true;
+        if(RequestType == 0){ // New Mold
+            if(!CustomerBudget){ // TS ทำเอง
+                if(TsResult){ // Pass
+                    if(JigApproveBy && EnApproveBy && QaApproveBy && PdApproveBy && PeApproveBy){  // All Approve
+                        finish = true;
+                    }
+                }
+            } else{ // Customer Budget
+                if(TsResult && CustomerResult){ // Pass
+                    if(JigApproveBy && EnApproveBy && QaApproveBy && PdApproveBy && PeApproveBy && (CustomerEval1 || CustomerEval2)){ // All Approve
+                        finish = true;
+                    }
                 }
             }
-        } else{ // Customer Budget
-            if(TsResult && CustomerResult){ // Pass
-                if(JigApproveBy && EnApproveBy && QaApproveBy && PdApproveBy && PeApproveBy && (CustomerEval1 || CustomerEval2)){ // All Approve
-                    finish = true;
+            if(finish){ // update Finish & Insert to Master
+                let JigCreationID = eval.recordset[0].JigCreationID;
+                let Quantity = eval.recordset[0].Quantity;
+                let JlNo = eval.recordset[0].JlNo.split('-')[1];
+                let JigTypeID = eval.recordset[0].JigTypeID;
+                let CustomerID = eval.recordset[0].CustomerID;
+                let PartCode = eval.recordset[0].PartCode;
+                let PartName = eval.recordset[0].PartName;
+                let RequestSection = eval.recordset[0].RequestSection;
+                let UseIn = eval.recordset[0].UseIn;
+
+                let updateJigCreate = `UPDATE [Jig].[JigCreation] SET FinishDate = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
+                let insertStatement = ``;
+                let insertArr = [];
+                for(let i = 0; i < Quantity; i++){
+                    let JigNo = `JL-${('0000'+JlNo).substr(-4)}-${('00'+(cur.getMonth()+1)).substr(-2)}-${cur.getFullYear().toString().substr(-2)}`;
+                    insertArr.push(`INSERT INTO [Jig].[MasterJig](JigTypeID, CustomerID, PartCode, PartName, Section, UseIn, JigNo, Active, Status)
+                    VALUES(${JigTypeID}, ${CustomerID}, N'${PartCode}', N'${PartName}', ${RequestSection}, ${UseIn}, '${JigNo}', 1, 1);
+                    `);
+                    JlNo++;
                 }
+                await pool.request().query(updateJigCreate + insertArr.join(' '));
             }
         }
-        if(finish){ // update Finish & Insert to Master
-            let JigCreationID = eval.recordset[0].JigCreationID;
-            let Quantity = eval.recordset[0].Quantity;
-            let JlNo = eval.recordset[0].JlNo.split('-')[1];
-            let JigTypeID = eval.recordset[0].JigTypeID;
-            let CustomerID = eval.recordset[0].CustomerID;
-            let PartCode = eval.recordset[0].PartCode;
-            let PartName = eval.recordset[0].PartName;
-            let RequestSection = eval.recordset[0].RequestSection;
-            let UseIn = eval.recordset[0].UseIn;
 
-            let updateJigCreate = `UPDATE [Jig].[JigCreation] SET FinishDate = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
-            let insertStatement = ``;
-            let insertArr = [];
-            for(let i = 0; i < Quantity; i++){
-                let JigNo = `JL-${('0000'+JlNo).substr(-4)}-${('00'+(cur.getMonth()+1)).substr(-2)}-${cur.getFullYear().toString().substr(-2)}`;
-                insertArr.push(`INSERT INTO [Jig].[MasterJig](JigTypeID, CustomerID, PartCode, PartName, Section, UseIn, JigNo, Active, Status)
-                VALUES(${JigTypeID}, ${CustomerID}, N'${PartCode}', N'${PartName}', ${RequestSection}, ${UseIn}, '${JigNo}', 1, 1);
-                `);
-                JlNo++;
-            }
-            await pool.request().query(updateJigCreate + insertArr.join(' '));
-        }
-
-        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr });
+        res.json({ message: 'Success', Username: !getUser.recordset.length? null: atob(getUser.recordset[0].FirstName), SignTime: curStr, isFinish: finish });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
     }
 })
-router.put('/evaluation/sign/customer', async (req, res) => { // finish Creation
+router.put('/evaluation/sign/customer', async (req, res) => { // Check CustomerResult, finish Creation
     try {
         let pool = await getPool('JigPool', config);
         let { EvalID, CustomerNo, CustomerName } = req.body;
+
+        // Check Eval
+        let getEval = await pool.request().query(`SELECT CustomerResult, CustomerEval${CustomerNo} AS CustomerEval FROM [Jig].[JigEvaluation] WHERE EvalID = ${EvalID};`);
+        if(getEval.recordset[0].CustomerResult == null) return res.status(400).send({ message: `กรุณาบันทึกผลการประเมิน(Customer Result) ก่อน` });
+        if(getEval.recordset[0].CustomerEval) return res.status(400).send({ message: `มีการลงชื่อไปแล้ว` });
+
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
         let signEval = `UPDATE [Jig].[JigEvaluation] SET CustomerEval${CustomerNo} = N'${CustomerName}', CustomerEvalTime${CustomerNo} = GETDATE() WHERE EvalID = ${EvalID};`;
@@ -1108,7 +1137,7 @@ router.put('/evaluation/sign/customer', async (req, res) => { // finish Creation
 
         // Check Finish
         let eval = await pool.request().query(`SELECT a.JigApproveBy, a.EnApproveBy, a.QaApproveBy, a.PdApproveBy, a.PeApproveBy,
-        a.CustomerEval1, a.CustomerEval2, b.CustomerBudget, a.TsResult, a.CustomerResult,
+        a.CustomerEval1, a.CustomerEval2, b.CustomerBudget, a.TsResult, a.CustomerResult, b.RequestType,
         b.JigCreationID, b.Quantity, b.JlNo, b.JigTypeID, b.CustomerID, b.PartCode, b.PartName, b.RequestSection, b.UseIn
         FROM [Jig].[JigEvaluation] a
         LEFT JOIN [Jig].[JigCreation] b ON b.JigCreationID = a.JigCreationID
@@ -1117,6 +1146,7 @@ router.put('/evaluation/sign/customer', async (req, res) => { // finish Creation
         let CustomerBudget = eval.recordset[0].CustomerBudget;
         let TsResult = eval.recordset[0].TsResult;
         let CustomerResult = eval.recordset[0].CustomerResult;
+        let RequestType = eval.recordset[0].RequestType;
         let JigApproveBy = eval.recordset[0].JigApproveBy;
         let EnApproveBy = eval.recordset[0].EnApproveBy;
         let QaApproveBy = eval.recordset[0].QaApproveBy;
@@ -1125,44 +1155,46 @@ router.put('/evaluation/sign/customer', async (req, res) => { // finish Creation
         let CustomerEval1 = eval.recordset[0].CustomerEval1;
         let CustomerEval2 = eval.recordset[0].CustomerEval2;
         let finish;
-        if(!CustomerBudget){ // TS ทำเอง
-            if(TsResult){ // Pass
-                if(JigApproveBy && EnApproveBy && QaApproveBy && PdApproveBy && PeApproveBy){  // All Approve
-                    finish = true;
+        if(RequestType == 0){ // New Mold
+            if(!CustomerBudget){ // TS ทำเอง
+                if(TsResult){ // Pass
+                    if(JigApproveBy && EnApproveBy && QaApproveBy && PdApproveBy && PeApproveBy){  // All Approve
+                        finish = true;
+                    }
+                }
+            } else{ // Customer Budget
+                if(TsResult && CustomerResult){ // Pass
+                    if(JigApproveBy && EnApproveBy && QaApproveBy && PdApproveBy && PeApproveBy && (CustomerEval1 || CustomerEval2)){ // All Approve
+                        finish = true;
+                    }
                 }
             }
-        } else{ // Customer Budget
-            if(TsResult && CustomerResult){ // Pass
-                if(JigApproveBy && EnApproveBy && QaApproveBy && PdApproveBy && PeApproveBy && (CustomerEval1 || CustomerEval2)){ // All Approve
-                    finish = true;
+            if(finish){ // update Finish & Insert to Master
+                let JigCreationID = eval.recordset[0].JigCreationID;
+                let Quantity = eval.recordset[0].Quantity;
+                let JlNo = eval.recordset[0].JlNo.split('-')[1];
+                let JigTypeID = eval.recordset[0].JigTypeID;
+                let CustomerID = eval.recordset[0].CustomerID;
+                let PartCode = eval.recordset[0].PartCode;
+                let PartName = eval.recordset[0].PartName;
+                let RequestSection = eval.recordset[0].RequestSection;
+                let UseIn = eval.recordset[0].UseIn;
+
+                let updateJigCreate = `UPDATE [Jig].[JigCreation] SET FinishDate = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
+                let insertStatement = ``;
+                let insertArr = [];
+                for(let i = 0; i < Quantity; i++){
+                    let JigNo = `JL-${('0000'+JlNo).substr(-4)}-${('00'+(cur.getMonth()+1)).substr(-2)}-${cur.getFullYear().toString().substr(-2)}`;
+                    insertArr.push(`INSERT INTO [Jig].[MasterJig](JigTypeID, CustomerID, PartCode, PartName, Section, UseIn, JigNo, Active, Status)
+                    VALUES(${JigTypeID}, ${CustomerID}, N'${PartCode}', N'${PartName}', ${RequestSection}, ${UseIn}, '${JigNo}', 1, 1);
+                    `);
+                    JlNo++;
                 }
+                await pool.request().query(updateJigCreate + (insertStatement + insertArr.join(' ')));
             }
         }
-        if(finish){ // update Finish & Insert to Master
-            let JigCreationID = eval.recordset[0].JigCreationID;
-            let Quantity = eval.recordset[0].Quantity;
-            let JlNo = eval.recordset[0].JlNo.split('-')[1];
-            let JigTypeID = eval.recordset[0].JigTypeID;
-            let CustomerID = eval.recordset[0].CustomerID;
-            let PartCode = eval.recordset[0].PartCode;
-            let PartName = eval.recordset[0].PartName;
-            let RequestSection = eval.recordset[0].RequestSection;
-            let UseIn = eval.recordset[0].UseIn;
 
-            let updateJigCreate = `UPDATE [Jig].[JigCreation] SET FinishDate = GETDATE() WHERE JigCreationID = ${JigCreationID};`;
-            let insertStatement = ``;
-            let insertArr = [];
-            for(let i = 0; i < Quantity; i++){
-                let JigNo = `JL-${('0000'+JlNo).substr(-4)}-${('00'+(cur.getMonth()+1)).substr(-2)}-${cur.getFullYear().toString().substr(-2)}`;
-                insertArr.push(`INSERT INTO [Jig].[MasterJig](JigTypeID, CustomerID, PartCode, PartName, Section, UseIn, JigNo, Active, Status)
-                VALUES(${JigTypeID}, ${CustomerID}, N'${PartCode}', N'${PartName}', ${RequestSection}, ${UseIn}, '${JigNo}', 1, 1);
-                `);
-                JlNo++;
-            }
-            await pool.request().query(updateJigCreate + (insertStatement + insertArr.join(' ')));
-        }
-
-        res.json({ message: 'Success', SignTime: curStr });
+        res.json({ message: 'Success', SignTime: curStr, isFinish: finish });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
