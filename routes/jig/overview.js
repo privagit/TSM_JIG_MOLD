@@ -35,7 +35,7 @@ router.post('/plan', async (req, res) => {
                 a.PmPlanID, a.JigID, a.PlanDate, a.PmStart, a.PmEnd, a.PmPlanNo
                 FROM [Jig].[PmPlan] a
             )
-            SELECT a.JigID, a.JigNo, b.JigType, a.Section, c.CustomerName, d.PmPlanID, d.PmStart, d.PmEnd,
+            SELECT a.JigID, a.JigNo, b.JigType, a.Section, c.CustomerName, d.PmPlanID, d.PmStart, d.PmEnd, d.PlanDate,
             CASE
                 WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) >= 7 THEN 1
                 WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) < 7 THEN 3
@@ -57,7 +57,7 @@ router.post('/plan', async (req, res) => {
                 FROM [Jig].[PmPlan] a
                 WHERE a.PlanDate = GETDATE()
             )
-            SELECT a.JigID, a.JigNo, b.JigType, a.Section, c.CustomerName, d.PmPlanID, d.PmStart, d.PmEnd,
+            SELECT a.JigID, a.JigNo, b.JigType, a.Section, c.CustomerName, d.PmPlanID, d.PmStart, d.PmEnd, d.PlanDate,
             CASE
                 WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) >= 7 THEN 1
                 WHEN d.PmEnd IS NOT NULL AND DATEDIFF(DAY, d.PmEnd, GETDATE()) < 7 THEN 3
@@ -106,9 +106,11 @@ router.post('/pm/history', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { JigID } = req.body;
-        var historys = await pool.request().query(`SELECT a.PlanDate, a.PmStart, a.PmPlanID, a.PmPlanNo
+        var historys = await pool.request().query(`SELECT a.PlanDate, a.PmStart, a.PmPlanID, a.PmPlanNo, b.RepairCheckID
         FROM [Jig].[PmPlan] a
-        WHERE a.JigID = ${JigID};
+        LEFT JOIN [Jig].[RepairCheck] b ON b.PmPlanID = a.PmPlanID
+        WHERE a.JigID = ${JigID} AND a.PmEnd IS NOT NULL
+        ORDER BY a.PmStart DESC;
         `);
         res.json(historys.recordset);
     } catch (err) {
@@ -137,9 +139,9 @@ router.post('/pm/topic', async (req, res) => {
         WHERE a.JigID = ${JigID};
         `);
         let PmID = pm.recordset[0]?.PmID;
-        if(!PmID) return res.status(400).send({ message: 'กรุณาตั้งค่า PM Topic ที่หน้า Setting ก่อน' });
-
         let topicId = JSON.parse(pm.recordset[0].PmTopic);
+
+        if(!PmID || !topicId.length) return res.status(400).send({ message: 'กรุณาตั้งค่า PM Topic ที่หน้า Setting ก่อน' });
         if(topicId.length){
             let topics = await pool.request().query(`SELECT a.PmTopicID, a.Topic, a.TopicType, a.StandardValue
             FROM [Jig].[MasterPmTopic] a
@@ -162,11 +164,12 @@ router.post('/pm/checksheet', async (req, res) => {
         let { PmPlanID } = req.body;
         var checksheet = await pool.request().query(`SELECT a.PmPlanID, a.PmStart, a.PmEnd, a.PmResult, a.JigStatus, a.PmPlanNo, a.Remark,
         b.FirstName AS ConfirmBy, a.ConfirmTime, c.FirstName AS ApproveBy, a.ApproveTime,
-        d.FirstName AS InspectBy, a.InspectTime
+        d.FirstName AS InspectBy, a.InspectTime, e.RepairCheckID
         FROM [Jig].[PmPlan] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.ConfirmBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.ApproveBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] d ON d.EmployeeID = a.InspectBy
+        LEFT JOIN [Jig].[RepairCheck] e ON e.PmPlanID = a.PmPlanID
         WHERE a.PmPlanID = ${PmPlanID};
         `);
         if(checksheet.recordset.length){
@@ -180,7 +183,19 @@ router.post('/pm/checksheet', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/pm/sign', async (req, res) => {
+router.post('/pm/checksheet/edit', async (req, res) => {
+    try {
+        let pool = await getPool('JigPool', config);
+        let { PmPlanID, PmResult, JigStatus, Remark } = req.body;
+        let updateChecksheet = `UPDATE [Jig].[PmPlan] SET PmResult = N'${PmResult}', JigStatus = ${JigStatus}, Remark = N'${Remark}' WHERE PmPlanID = ${PmPlanID};`;
+        await pool.request().query(updateChecksheet);
+        res.json({ message: 'Success' });
+    } catch (err) {
+        console.log(req.url, err);
+        res.status(500).send({ message: `${err}` });
+    }
+})
+router.post('/pm/sign', async (req, res) => { // if Inspect update stop time
     try {
         let pool = await getPool('JigPool', config);
         let { PmPlanID, ItemNo, EmployeeID } = req.body;
@@ -192,8 +207,9 @@ router.post('/pm/sign', async (req, res) => {
         let ItemMap = { 1: 'Inspect', 2: 'Confirm', 3: 'Approve' };
         let cur = new Date();
         let curStr = `${cur.getFullYear()}-${('00'+(cur.getMonth()+1)).substr(-2)}-${('00'+cur.getDate()).substr(-2)} ${('00'+cur.getHours()).substr(-2)}:${('00'+cur.getMinutes()).substr(-2)}`;
-        let timeString = `, ${ItemMap[ItemNo]}Time = '${curStr}'`;
-        var sign = `UPDATE [Jig].[PmPlan] SET ${ItemMap[ItemNo]}By = ${EmployeeID} ${timeString} WHERE PmPlanID = ${PmPlanID};`;
+        let timeStr = `, ${ItemMap[ItemNo]}Time = '${curStr}'`;
+        let pmEndStr = ItemNo == 1 ? `, PmEnd = '${curStr}'` : '';
+        var sign = `UPDATE [Jig].[PmPlan] SET ${ItemMap[ItemNo]}By = ${EmployeeID} ${timeStr} ${pmEndStr} WHERE PmPlanID = ${PmPlanID};`;
         await pool.request().query(sign);
 
         // io
@@ -226,41 +242,72 @@ router.post('/pm/sign', async (req, res) => {
     }
 })
 
-router.post('/technician', async (req, res) => { //TODO PM, Repair ?
+
+router.post('/technician', async (req, res) => { // PM, Repair
     try {
         let pool = await getPool('JigPool', config);
-        let maintenance = await pool.request().query(`WITH cte AS (
+        let maintenance = await pool.request().query(`WITH RepairTech AS (
             SELECT b.UserID, b.FirstName, b.LastName,
             COUNT(a.RepairCheckID) AS CntYear,
             COUNT(CASE WHEN MONTH(a.RequestTime) = MONTH(GETDATE()) THEN a.RepairCheckID END) AS CntMonth,
             d.PositionName
             FROM [Jig].[RepairCheck] a
-            INNER JOIN [TSMolymer_F].[dbo].[User] b ON a.RepairBy = b.EmployeeID
+            INNER JOIN [TSMolymer_F].[dbo].[User] b ON a.RepairBy = b.EmployeeID AND b.Active = 1
             LEFT JOIN [Jig].[MasterTechnician] c ON b.UserID = c.UserID
             LEFT JOIN [TSMolymer_F].[dbo].[MasterPosition] d ON b.PositionID = d.PositionID
             WHERE YEAR(a.RequestTime) = YEAR(GETDATE())
             GROUP BY b.UserID, b.FirstName, b.LastName, d.PositionName
-        ), cte2 AS (
+        ), PmTech AS (
+            SELECT b.UserID, b.FirstName, b.LastName,
+            COUNT(a.PmPlanID) AS CntYear,
+            COUNT(CASE WHEN MONTH(a.PlanDate) = MONTH(GETDATE()) THEN a.PmPlanID END) AS CntMonth,
+            d.PositionName
+            FROM [Jig].[PmPlan] a
+            INNER JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.InspectBy AND b.Active = 1
+            LEFT JOIN [Jig].[MasterTechnician] c ON b.UserID = c.UserID
+            LEFT JOIN [TSMolymer_F].[dbo].[MasterPosition] d ON b.PositionID = d.PositionID
+            WHERE YEAR(a.PlanDate) = YEAR(GETDATE())
+            GROUP BY b.UserID, b.FirstName, b.LastName, d.PositionName 
+        ), tbsum AS (
+            SELECT UserID, FirstName, LastName, PositionName, CntYear AS RepairCntYear, CntMonth AS RepairCntMonth, NULL AS PmCntYear, NULL AS PmCntMonth FROM [RepairTech]
+            UNION ALL
+            SELECT UserID, FirstName, LastName, PositionName, NULL AS RepairCntYear, NULL AS RepairCntMonth, CntYear AS PmCntYear, CntMonth AS PmCntMonth FROM [PmTech]
+        )
+        SELECT UserID, FirstName, LastName, PositionName, SUM(RepairCntYear) AS RepairCntYear, SUM(RepairCntMonth) AS RepairCntMonth,
+        SUM(PmCntYear) AS PmCntYear, SUM(PmCntMonth) AS PmCntMonth
+        FROM [tbsum]
+        GROUP BY UserID, FirstName, LastName, PositionName
+        `);
+        let total = await pool.request().query(`WITH totalRepair AS (
             SELECT COUNT(a.RepairCheckID) AS totalYear,
             COUNT(CASE WHEN MONTH(a.RequestTime) = MONTH(GETDATE()) THEN a.RepairCheckID END) AS totalMonth
             FROM [Jig].[RepairCheck] a
             WHERE YEAR(a.RequestTime) = YEAR(GETDATE())
+        ), totalPm AS (
+            SELECT COUNT(a.PmPlanID) AS totalYear,
+            COUNT(CASE WHEN MONTH(a.PlanDate) = MONTH(GETDATE()) THEN a.PmPlanID END) AS totalMonth
+            FROM [Jig].[PmPlan] a
+            WHERE YEAR(a.PlanDate) = YEAR(GETDATE())
+        ), tbsum AS (
+            SELECT totalYear AS RepairTotalYear, totalMonth AS RepairTotalMonth, NULL AS PmTotalYear, NULL AS PmTotalMonth FROM [totalRepair]
+            UNION ALL
+            SELECT NULL AS RepairTotalYear, NULL AS RepairTotalMonth, totalYear AS PmTotalYear, totalMonth AS PmTotalMonth FROM [totalPm]
         )
-        SELECT a.UserID, a.FirstName, a.LastName, a.PositionName, b.ImagePath, b.SkillScore, a.CntMonth, a.CntYear,
-        c.totalMonth, c.totalYear
-        FROM [cte] a
-        LEFT JOIN [Jig].[MasterTechnician] b ON a.UserID = b.UserID
-        CROSS JOIN [cte2] c
+        SELECT SUM(RepairTotalYear) AS RepairTotalYear, SUM(RepairTotalMonth) AS RepairTotalMonth, SUM(PmTotalYear) AS PmTotalYear, SUM(PmTotalMonth) AS PmTotalMonth
+        FROM [tbsum]
         `);
-        let PM_Month = maintenance.recordset[0]?.totalMonth || 0;
-        let PM_Year = maintenance.recordset[0]?.totalYear || 0;
+
+        let PM_Month = total.recordset[0]?.PmTotalMonth || 0;
+        let PM_Year = total.recordset[0]?.PmTotalYear || 0;
+        let Repair_Month = total.recordset[0]?.RepairTotalMonth || 0;
+        let Repair_Year = total.recordset[0]?.RepairTotalYear || 0;
         for(let item of maintenance.recordset){
             item.name = `${atob(item.FirstName)} ${atob(item.LastName)}`;
             item.PercentPMYear = Math.round(item.CntYear / PM_Year);
             item.PercentPMMonth = Math.round(item.CntMonth / PM_Month);
         }
 
-        res.json({ PM_Month, PM_Year, tech: maintenance.recordset });
+        res.json({ PM_Month, PM_Year, Repair_Month, Repair_Year, tech: maintenance.recordset });
     } catch (err) {
         console.log(req.url, err);
         res.status(500).send({ message: `${err}` });
@@ -269,11 +316,11 @@ router.post('/technician', async (req, res) => { //TODO PM, Repair ?
 
 //* ========== JigNo ==========
 // Jig Data
-router.post("/jig/specification", async (req, res) => { //TODO: ReceiveDate, Asset, UseIn
+router.post("/jig/specification", async (req, res) => { //TODO: ReceiveDate
     try {
         let pool = await getPool('JigPool', config);
         let { JigID } = req.body;
-        let specification = await pool.request().query(`SELECT a.JigNo, a.PartCode, a.PartName, b.CustomerName, c.JigType, a.Asset
+        let specification = await pool.request().query(`SELECT a.JigNo, a.PartCode, a.PartName, b.CustomerName, c.JigType, a.Asset, a.UseIn
         FROM [Jig].[MasterJig] a
         LEFT JOIN [TSMolymer_F].[dbo].[MasterCustomer] b ON b.CustomerID = a.CustomerID
         LEFT JOIN [Jig].[MasterJigType] c ON c.JigTypeID = a.JigTypeID
@@ -381,3 +428,4 @@ router.post("/jig/plan", async (req, res) => {
 });
 
 module.exports = router;
+

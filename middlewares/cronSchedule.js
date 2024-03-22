@@ -4,7 +4,7 @@ const cron = require('node-cron');
 const { getPool } = require('../middlewares/pool-manager');
 const EMAIL = process.env.EMAIL;
 
-const insertPmJig = async () => { //TODO:
+const insertPmJig = async () => {
     try {
         console.log('start Predict', new Date());
         let pool = await getPool('JigPool', config_jig);
@@ -21,19 +21,18 @@ const insertPmJig = async () => { //TODO:
             date.setDate(date.getDate() + 1);
         }
         if(weekDay.length == 4) weekDay.push(weekDay[3]);
-
         //* Get RunningNo
         let monthRunningNo = await pool.request().query(`SELECT a.MonthDate, a.RunningNo
         FROM [MonthRunningNo] a
-        WHERE Month(MonthDate) = ${date.getMonth()+1} AND YEAR(MonthDate) = ${date.getFullYear()};
+        WHERE Month(MonthDate) = ${month} AND YEAR(MonthDate) = ${year};
         `);
         if(monthRunningNo.recordset.length){
-            var RunningNo = monthRunningNo.recordset[0].PreventRunningNo + 1;
+            var RunningNo = monthRunningNo.recordset[0].RunningNo + 1;
         } else{
             var RunningNo = 1;
             await pool.request().query(`INSERT INTO [MonthRunningNo](MonthDate) VALUES('${year}-${month}-1')`);
         }
-        
+
         //* Get Machine
         let jigs = await pool.request().query(`SELECT a.JigID, b.Week
         FROM [Jig].[MasterJig] a
@@ -44,30 +43,27 @@ const insertPmJig = async () => { //TODO:
 
         //* Loop Week
         for(let i = 0; i < weekDay.length; i++){
+            let PlanDate = weekDay[i];
             let jigFiltered = jigs.recordset.filter(v => v.Week == i+1);
-        
+            for(let jig of jigFiltered){
+                let PmPlanNo = `PM-${('0000'+RunningNo).substr(-4)}-${('00'+ month).substr(-2)}-${year.toString().substr(-2)}`;
+                totalQuery.push(`(${jig.JigID}, '${PlanDate}', '${PmPlanNo}')
+                `);
+
+                RunningNo++;
+            }
         }
+        let insertPmPlan = `INSERT INTO [Jig].[PmPlan](JigID, PlanDate, PmPlanNo) VALUES` + totalQuery.join(',');
+        let updateRunningNo = `UPDATE [MonthRunningNo] SET RunningNo = ${RunningNo} WHERE MONTH(MonthDate) = ${month} AND YEAR(MonthDate) = ${year};`;
 
-        return
-        for(let jig of jigs.recordset){
-            //* Declare Parameter
-            let Planning_No = `EM-${('0000'+RunningNo).substr(-4)}-${('00'+ month).substr(-2)}-${year.toString().substr(-2)}`;
-            RunningNo++;
-
-            //* Map Quarter & Annual
-
-           
-
-        }
-        let updateRunningNo = `UPDATE [MonthRunningNo] SET PreventRunningNo = ${RunningNo} WHERE MONTH(MonthDate) = ${month} AND YEAR(MonthDate) = ${year};`;
-        await pool.request().query(totalQuery.join(''));
+        await pool.request().query(insertPmPlan);
         await pool.request().query(updateRunningNo);
         console.log('finish Predict', new Date());
     } catch (err) {
-        console.log('insertPredictPlan', err);
+        console.log('insertJigPmPlan', err);
     }
 }
-insertPmJig();
+// insertPmJig();
 
 const insertSpareMonthJig = async () => { // New Month: insert new [SpareMonth] and Remain is BF
     try {
@@ -232,7 +228,6 @@ const sendMail = async (text) => {
 //         console.log('updateSpare', err);
 //     }
 // })
-
 
 
 
