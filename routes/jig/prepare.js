@@ -81,7 +81,7 @@ router.post('/jig', async (req, res) => {
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/jig/edit', async (req, res) => { //TODO: test
+router.post('/jig/edit', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { PrepareID, Status, Remark, Tube, DailyCheck, Dummy } = req.body;
@@ -140,7 +140,7 @@ router.post('/jig/edit', async (req, res) => { //TODO: test
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/jig/confirm', async (req, res) => { //TODO: test
+router.post('/jig/confirm', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { ProductionDate, Shift, ZoneID, MachineID, Status } = req.body;
@@ -184,7 +184,7 @@ router.post('/jig/confirm', async (req, res) => { //TODO: test
         res.status(500).send({ message: `${err}` });
     }
 })
-router.post('/jig/confirm/edit', async (req, res) => { //TODO: test
+router.post('/jig/confirm/edit', async (req, res) => {
     try {
         let pool = await getPool('JigPool', config);
         let { PrepareID } = req.body;
@@ -254,7 +254,7 @@ router.post('/jig/confirm/edit', async (req, res) => { //TODO: test
 })
 
 //* Daily Check Sheet
-router.post('/daily', async (req, res) => {
+router.post('/daily', async (req, res) => {//TODO:
     try {
         let pool = await getPool('JigPool', config);
         let { JigID } = req.body;
@@ -281,7 +281,7 @@ router.post('/torque', async (req, res) => {
         FROM [Jig].[MasterTorqueCheck] a
         WHERE a.JigID = ${JigID};
         `);
-        let torqueCheckMonth = await pool.request().query(`SELECT b.FirstName AS CheckBy, a.CheckTime, c.FirstName AS ApproveBy, a.ApproveTime
+        let torqueCheckMonth = await pool.request().query(`SELECT a.MonthTorqueID, b.FirstName AS CheckBy, a.CheckTime, c.FirstName AS ApproveBy, a.ApproveTime
         FROM [Jig].[TorqueMonth] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.CheckBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.ApproveBy
@@ -305,7 +305,8 @@ router.post('/torque', async (req, res) => {
             CheckBy: null,
             CheckTime: null,
             ApproveBy: null,
-            ApproveTime: null
+            ApproveTime: null,
+            MonthTorqueID: null
         }
         if(torqueStd.recordset.length){
             std.TorqueNo = torqueStd.recordset[0].TorqueNo;
@@ -321,6 +322,7 @@ router.post('/torque', async (req, res) => {
             sign.ApproveBy = atob(torqueCheckMonth.recordset[0].ApproveBy || '');
             sign.CheckTime = torqueCheckMonth.recordset[0].CheckTime;
             sign.ApproveTime = torqueCheckMonth.recordset[0].ApproveTime;
+            sign.MonthTorqueID = torqueCheckMonth.recordset[0].MonthTorqueID;
         }
 
         res.json({ std, sign, checkSheet: torqueCheckSheet.recordset });
