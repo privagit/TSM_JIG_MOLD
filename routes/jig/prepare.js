@@ -45,7 +45,7 @@ router.post('/jig', async (req, res) => {
         a.PrepareID, e.MachineID, e.MachineNo, e.ZoneID, f.JigNo, c.FirstName AS PrepareBy, a.Status, d.FirstName AS InstallBy, a.InstallStatus,
         a.Shift, CONVERT(VARCHAR, a.PrepareDateTime, 23) AS PrepareDate, CONVERT(VARCHAR(5), a.PrepareDateTime, 108) AS PrepareTime,
         CONVERT(VARCHAR, a.ProductionDateTime, 23) AS ProductionDate, CONVERT(VARCHAR(5), a.ProductionDateTime, 108) AS ProductionTime,
-        CONVERT(VARCHAR(5), a.InstallTime, 108) AS InstallTime, a.Tube, a.DailyCheck, a.Dummy, a.Remark,
+        CONVERT(VARCHAR(5), a.InstallTime, 108) AS InstallTime, a.Tube, a.DailyCheck, a.Dummy, a.Remark, f.JigID,
         CONVERT(VARCHAR(5), a.ReadyTime, 108) AS ReadyTime
         FROM [Jig].[Prepare] a
         LEFT JOIN [TSMolymer_F].[Planner].[Plan_Inject] b ON a.Planning_No = b.Planning_No
