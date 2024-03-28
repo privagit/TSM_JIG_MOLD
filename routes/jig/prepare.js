@@ -283,7 +283,7 @@ router.post('/torque', async (req, res) => {
         FROM [Jig].[MasterTorqueCheck] a
         WHERE a.JigID = ${JigID};
         `);
-        let torqueCheckMonth = await pool.request().query(`SELECT b.FirstName AS CheckBy, a.CheckTime, c.FirstName AS ApproveBy, a.ApproveTime
+        let torqueCheckMonth = await pool.request().query(`SELECT a.MonthTorqueID, b.FirstName AS CheckBy, a.CheckTime, c.FirstName AS ApproveBy, a.ApproveTime
         FROM [Jig].[TorqueMonth] a
         LEFT JOIN [TSMolymer_F].[dbo].[User] b ON b.EmployeeID = a.CheckBy
         LEFT JOIN [TSMolymer_F].[dbo].[User] c ON c.EmployeeID = a.ApproveBy
